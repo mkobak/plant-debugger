@@ -122,7 +122,7 @@
 
 .image-preview__thumbnail {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1;
   cursor: pointer;
   overflow: hidden;
 }
