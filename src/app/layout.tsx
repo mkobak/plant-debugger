@@ -1,6 +1,12 @@
 import { Metadata } from 'next';
 import { DiagnosisProvider } from '@/context/DiagnosisContext';
-import '@/styles/global.css';
+import '@/styles/base.css';
+import '@/styles/terminal.css';
+import '@/styles/components.css';
+import '@/styles/modal.css';
+import '@/styles/upload.css';
+import '@/styles/pages.css';
+import '@/styles/responsive.css';
 
 export const metadata: Metadata = {
   title: 'Plant Debugger',
