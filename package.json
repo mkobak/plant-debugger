@@ -9,7 +9,9 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "generate-svgs": "node scripts/generateAsciiSvgs.js",
+    "update-ascii": "node scripts/updateAsciiFromConstants.js && npm run generate-svgs"
   },
   "dependencies": {
     "browser-image-compression": "^2.0.2",

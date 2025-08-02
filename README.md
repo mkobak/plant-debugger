@@ -4,13 +4,14 @@ An AI-powered plant health diagnostic tool that helps users identify plant disea
 
 ## Features
 
-- **Terminal-style UI** with ASCII art branding
+- **Terminal-style UI** with cross-browser compatible ASCII art branding
 - **Multi-step diagnosis flow**: Upload → Questions → Results  
 - **AI-powered plant identification** and health analysis
 - **Interactive diagnostic questions** to refine diagnosis
 - **Comprehensive treatment recommendations** with prevention tips
 - **PDF export functionality** for complete diagnosis reports
 - **Responsive design** optimized for mobile and desktop
+- **Automated ASCII art system** with SVG generation for universal browser support
 
 ## Tech Stack
 
@@ -94,6 +95,41 @@ src/
 - `npm run test` - Run Jest tests
 - `npm run test:watch` - Run tests in watch mode
 - `npm run test:coverage` - Run tests with coverage report
+- `npm run generate-svgs` - Generate SVG files from ASCII art in constants.ts
+- `npm run update-ascii` - Extract ASCII art from constants.ts and regenerate SVGs
+
+## ASCII Art System
+
+The application uses a custom SVG generation system for cross-browser compatible ASCII art logos:
+
+### How It Works
+
+1. **ASCII Art Storage**: ASCII art is stored in `src/lib/constants.ts`
+2. **Automatic Extraction**: Scripts automatically extract ASCII art from constants
+3. **SVG Generation**: Converts text-based ASCII to properly sized SVG images
+4. **CSS Integration**: Colors are extracted from `src/styles/base.css` design system
+5. **React Components**: `ASCIILogo` component displays SVGs responsively
+
+### Updating ASCII Art
+
+1. Edit ASCII art in `src/lib/constants.ts`:
+   - `ASCII_LOGO_SINGLE` - Single line logo
+   - `ASCII_LOGO_TWO_LINES` - Two-line logo
+   - `ASCII_PLANT_LOGO` - Plant ASCII art
+
+2. Regenerate SVG files:
+   ```bash
+   npm run update-ascii
+   ```
+
+3. SVG files are automatically saved to `public/images/` and dimensions are calculated
+
+### Script Files
+
+- `scripts/generateAsciiSvgs.js` - Main SVG generation logic
+- `scripts/extractColors.js` - Extracts colors from CSS custom properties  
+- `scripts/updateAsciiFromConstants.js` - Orchestrates the update process
+- `scripts/README.md` - Detailed documentation for script usage
 
 ## Development Guidelines
 

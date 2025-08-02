@@ -27,8 +27,8 @@ export function useScreenSize() {
       setScreenSize({
         width,
         height,
-        isSmall: width <= 768,
-        isMedium: width > 768 && width <= 1024,
+        isSmall: width <= 480,
+        isMedium: width > 480 && width <= 1024,
         isLarge: width > 1024,
       });
     };

@@ -13,20 +13,11 @@
 }
 
 /* Large screen constraints */
-@media (min-width: 1200px) {
+@media (min-width: 800px) {
   .terminal-container {
-    max-width: 1200px;
+    max-width: 800px;
     height: 90vh;
     margin: 5vh auto;
-  }
-}
-
-@media (max-width: 768px) {
-  .terminal-container {
-    margin: 0;
-    border-radius: 0;
-    border: none;
-    height: 98vh;
   }
 }
 
@@ -88,59 +79,14 @@
   width: 100%;
 }
 
-.ascii-logo-single {
-  color: var(--green);
-  line-height: 1;
-  margin: 0;
-  margin-bottom: var(--spacing-xs);
-  white-space: pre;
-  overflow: hidden;
-  display: block;
-  /* Responsive font sizing that prevents cutoff */
-  font-size: clamp(0.25rem, 1.2vw, 0.75rem);
-  /* Improved font stack for better ASCII art rendering on mobile */
-  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
-  /* Ensure consistent character spacing across platforms */
-  letter-spacing: 0;
-  word-spacing: 0;
-  /* Better text rendering for ASCII art */
-  text-rendering: optimizeSpeed;
-  font-variant-ligatures: none;
-  /* Force font metrics to be consistent */
-  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
-}
-
-.ascii-logo-two-lines {
-  color: var(--green);
-  line-height: 1;
-  margin: 0;
-  margin-bottom: var(--spacing-xs);
-  white-space: pre;
-  overflow: hidden;
-  display: block;
-  /* Responsive font sizing for two-line version */
-  font-size: clamp(0.3rem, 2.25vw, 0.6rem);
-  /* Improved font stack for better ASCII art rendering on mobile */
-  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
-  /* Ensure consistent character spacing across platforms */
-  letter-spacing: 0;
-  word-spacing: 0;
-  /* Better text rendering for ASCII art */
-  text-rendering: optimizeSpeed;
-  font-variant-ligatures: none;
-  /* Force font metrics to be consistent */
-  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
-}
-
 .logo-underline {
   color: var(--grey-2);
   margin-bottom: var(--spacing-lg);
   letter-spacing: 0;
-  overflow: hidden;
   white-space: nowrap;
   font-family: monospace;
-  position: relative;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .navigation-steps {
@@ -177,41 +123,68 @@
   color: var(--grey-2);
 }
 
-/* Responsive logo display */
+/* Image-based ASCII Logo styling */
+.ascii-logo-image {
+  display: block;
+  width: auto;
+  height: auto;
+  image-rendering: crisp-edges;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+  margin-bottom: 10px;
+}
+
+/* Single-line logo sizing */
+.ascii-logo-image.single,
+.ascii-logo-image.single-line {
+  max-width: clamp(250px, 88vw, 800px);
+}
+
+/* Two-lines logo sizing */
+.ascii-logo-image.two-lines {
+  max-width: clamp(200px, 88vw, 500px);
+}
+
+/* Plant logo sizing */
+.ascii-logo-image.plant,
+.ascii-logo-image.plant-logo {
+  max-width: clamp(150px, 35vw, 280px);
+}
+
+/* Responsive sizing for image logos */
 @media (max-width: 768px) {
-  .desktop-home {
-    display: none;
+  .ascii-logo-image.single,
+  .ascii-logo-image.single-line {
+    max-width: clamp(150px, 94vw, 800px);
   }
   
-  .mobile-home {
-    display: block;
-  }
-}
-
-@media (min-width: 769px) {
-  .mobile-home {
-    display: none;
+  .ascii-logo-image.two-lines {
+    max-width: clamp(150px, 90vw, 550px);
   }
   
-  .desktop-home {
-    display: block;
+  .ascii-logo-image.plant,
+  .ascii-logo-image.plant-logo {
+    max-width: clamp(110px, 60vw, 250px);
   }
 }
 
-/* ASCII Logo styling */
-.logo-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--spacing-2xl);
+@media (max-width: 480px) {
+  .ascii-logo-image.single,
+  .ascii-logo-image.single-line {
+    max-width: clamp(140px, 93vw, 600px);
+  }
+  
+  .ascii-logo-image.two-lines {
+    max-width: clamp(120px, 88vw, 600px);
+  }
+  
+  .ascii-logo-image.plant,
+  .ascii-logo-image.plant-logo {
+    max-width: clamp(90px, 60vw, 240px);
+  }
 }
 
-.ascii-logo {
-  color: var(--green);
-  font-size: 8px;
-  line-height: 1;
-  white-space: pre;
-  text-align: center;
-}
+/* ASCII Logo container - deprecated, now using SVG logos */
 
 /* Home Page Styles - Force left alignment on all screen sizes */
 .home-content {
@@ -231,30 +204,10 @@
 
 .plant-logo-container {
   display: flex !important;
-  justify-content: flex-start !important;
+  justify-content: center !important;
   margin: var(--spacing-xl) 0;
   width: 100%;
-  align-self: flex-start !important;
-}
-
-.ascii-plant-logo {
-  color: var(--grey-2);
-  font-size: clamp(0.5em, 1vw, 0.55em);
-  line-height: 0.95;
-  margin: 0;
-  text-align: left !important;
-  white-space: pre;
-  display: block;
-  /* Improved font stack for better ASCII art rendering on mobile */
-  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
-  /* Ensure consistent character spacing across platforms */
-  letter-spacing: 0;
-  word-spacing: 0;
-  /* Better text rendering for ASCII art */
-  text-rendering: optimizeSpeed;
-  font-variant-ligatures: none;
-  /* Force font metrics to be consistent */
-  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
+  align-self: center !important;
 }
 
 .home-actions {
@@ -267,24 +220,29 @@
   color: var(--grey-1);
 }
 
-/* Ensure all content stays left-aligned on all screen sizes */
+/* Ensure all content stays left-aligned on all screen sizes, except plant logo which should be centered */
 @media (min-width: 1200px) {
   .home-content,
-  .home-text,
-  .plant-logo-container {
+  .home-text {
     align-items: flex-start;
     text-align: left;
     justify-content: flex-start;
   }
   
+  .plant-logo-container {
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+  }
+  
   .ascii-plant-logo {
-    text-align: left;
+    text-align: center;
   }
 }
 
 /* Terminal text with typing effect */
 .terminal-text {
-  max-width: 800px;
+  width: 100%;
 }
 
 .typing-text {

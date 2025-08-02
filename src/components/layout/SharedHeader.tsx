@@ -2,9 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { ASCII_LOGO_SINGLE, ASCII_LOGO_TWO_LINES } from '@/lib/constants';
 import { useScreenSize } from '@/hooks/useScreenSize';
-import { useASCIIOptimization } from '@/hooks/useASCIIOptimization';
+import ASCIILogo from '@/components/ui/ASCIILogo';
 
 interface NavigationStep {
   step: number;
@@ -26,7 +25,6 @@ export default function SharedHeader({
 }: SharedHeaderProps) {
   const router = useRouter();
   const { isSmall: isSmallScreen } = useScreenSize();
-  const logoRef = useRef<HTMLPreElement>(null);
   const underlineRef = useRef<HTMLDivElement>(null);
 
   // For small screens on home page, always start with two-line format
@@ -34,39 +32,48 @@ export default function SharedHeader({
   const shouldShowTwoLines = isHomePage && isSmallScreen;
   const shouldShowSingleLine = !shouldShowTwoLines;
 
-  // Optimize ASCII art rendering for mobile devices
-  useASCIIOptimization(logoRef, [shouldShowTwoLines, isSmallScreen]);
-
   // Calculate underline width to match logo exactly
   useEffect(() => {
     const calculateUnderline = () => {
-      // Small delay to ensure logo has rendered
+      // Small delay to ensure logo SVG has rendered
       setTimeout(() => {
-        if (logoRef.current && underlineRef.current) {
-          const logoWidth = logoRef.current.offsetWidth;
+        if (underlineRef.current) {
           const underlineElement = underlineRef.current;
           
-          // Create a temporary element to measure the width of a single '#' character
-          // using the fixed font size (1rem) that we set in CSS
-          const tempSpan = document.createElement('span');
-          tempSpan.style.fontFamily = 'monospace';
-          tempSpan.style.fontSize = '1rem';
-          tempSpan.style.visibility = 'hidden';
-          tempSpan.style.position = 'absolute';
-          tempSpan.style.whiteSpace = 'nowrap';
-          tempSpan.textContent = '#';
-          document.body.appendChild(tempSpan);
+          // Find the logo image element
+          const logoImage = underlineElement.parentElement?.querySelector('.ascii-logo-image');
           
-          const charWidth = tempSpan.offsetWidth;
-          const numChars = Math.floor(logoWidth / charWidth);
-          
-          // Ensure we have at least one character and don't exceed reasonable limits
-          const finalNumChars = Math.max(1, Math.min(numChars, 200));
-          underlineElement.textContent = '#'.repeat(finalNumChars);
-          
-          document.body.removeChild(tempSpan);
+          if (logoImage) {
+            // Get the actual rendered width of the SVG
+            const logoWidth = logoImage.getBoundingClientRect().width;
+            
+            // Create a temporary element to measure actual character width
+            const testElement = document.createElement('span');
+            testElement.style.font = window.getComputedStyle(underlineElement).font;
+            testElement.style.position = 'absolute';
+            testElement.style.visibility = 'hidden';
+            testElement.style.whiteSpace = 'nowrap';
+            testElement.textContent = '#';
+            document.body.appendChild(testElement);
+            
+            const actualCharWidth = testElement.getBoundingClientRect().width;
+            document.body.removeChild(testElement);
+            
+            // Calculate the number of characters needed
+            const numChars = Math.round(logoWidth / actualCharWidth);
+            
+            // Ensure we have a reasonable minimum (in case of measurement errors)
+            const minChars = shouldShowTwoLines ? 15 : 25;
+            const finalCharCount = Math.max(numChars, minChars);
+            
+            underlineElement.textContent = '#'.repeat(finalCharCount);
+          } else {
+            // Fallback if logo not found
+            const numChars = shouldShowTwoLines ? 30 : 50;
+            underlineElement.textContent = '#'.repeat(numChars);
+          }
         }
-      }, 10);
+      }, 150);
     };
 
     // Calculate initially
@@ -120,12 +127,10 @@ export default function SharedHeader({
       <div className="logo-section">
         {shouldShowSingleLine && (
           <>
-            <pre 
-              ref={logoRef}
-              className={`ascii-logo-single ${isHomePage ? 'home-page' : 'other-page'}`}
-            >
-{ASCII_LOGO_SINGLE}
-            </pre>
+            <ASCIILogo 
+              variant="single" 
+              className={`single-line ${isHomePage ? 'home-page' : 'other-page'}`}
+            />
             <div 
               ref={underlineRef}
               className={`logo-underline single-line ${isHomePage ? 'home-page' : 'other-page'}`}
@@ -136,12 +141,10 @@ export default function SharedHeader({
         
         {shouldShowTwoLines && (
           <>
-            <pre 
-              ref={logoRef}
-              className="ascii-logo-two-lines"
-            >
-{ASCII_LOGO_TWO_LINES}
-            </pre>
+            <ASCIILogo 
+              variant="two-lines" 
+              className="two-lines"
+            />
             <div 
               ref={underlineRef}
               className="logo-underline two-lines"
