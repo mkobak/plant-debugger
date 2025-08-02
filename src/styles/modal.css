@@ -1,0 +1,126 @@
+/* Modal Component Styles */
+
+.terminal-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.terminal-modal {
+  background-color: var(--grey-4);
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.terminal-modal--sm {
+  width: 90%;
+  max-width: 400px;
+}
+
+.terminal-modal--md {
+  width: 90%;
+  max-width: 600px;
+}
+
+.terminal-modal--lg {
+  width: 90%;
+  max-width: 800px;
+}
+
+.terminal-modal--xl {
+  width: 95%;
+  max-width: 1200px;
+}
+
+.terminal-modal__header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--grey-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terminal-modal__title {
+  color: var(--green);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.terminal-modal__close {
+  background: transparent;
+  border: none;
+  color: var(--grey-1);
+  font-size: var(--font-size-2xl);
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-modal__close:hover {
+  color: var(--red);
+}
+
+.terminal-modal__content {
+  padding: var(--spacing-lg);
+}
+
+/* Image Preview Modal */
+.image-preview-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.image-preview-modal__main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.image-preview-modal__img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.image-preview-modal__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.image-preview-modal__meta {
+  color: var(--grey-1);
+}
+
+.image-preview-modal__meta p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.compressed-indicator {
+  color: var(--green);
+  font-weight: var(--font-weight-bold);
+}
+
+.image-preview-modal__controls {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}

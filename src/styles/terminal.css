@@ -1,0 +1,307 @@
+/* Terminal Layout and Container Styles */
+
+.terminal-container {
+  height: 95vh;
+  background-color: var(--grey-4);
+  border: 2px solid var(--grey-3);
+  border-radius: var(--radius-lg);
+  margin: var(--spacing-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Large screen constraints */
+@media (min-width: 1200px) {
+  .terminal-container {
+    max-width: 1200px;
+    height: 90vh;
+    margin: 5vh auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .terminal-container {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    height: 98vh;
+  }
+}
+
+.terminal-header {
+  background-color: var(--grey-3);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--grey-2);
+  flex-shrink: 0;
+}
+
+.terminal-controls {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+}
+
+.control.close {
+  background-color: var(--red);
+}
+
+.control.minimize {
+  background-color: var(--orange);
+}
+
+.control.maximize {
+  background-color: var(--green);
+}
+
+.terminal-title {
+  color: var(--grey-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.terminal-content {
+  padding: var(--spacing-2xl);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Shared Header Styles */
+.shared-header {
+  margin-bottom: var(--spacing-xl);
+  width: 100%;
+}
+
+.logo-section {
+  text-align: left;
+  width: 100%;
+}
+
+.ascii-logo-single {
+  color: var(--green);
+  line-height: 1;
+  margin: 0;
+  margin-bottom: var(--spacing-xs);
+  white-space: pre;
+  overflow: hidden;
+  display: block;
+  /* Responsive font sizing that prevents cutoff */
+  font-size: clamp(0.25rem, 1.2vw, 1rem);
+}
+
+.ascii-logo-two-lines {
+  color: var(--green);
+  line-height: 1;
+  margin: 0;
+  margin-bottom: var(--spacing-xs);
+  white-space: pre;
+  overflow: hidden;
+  display: block;
+  /* Responsive font sizing for two-line version */
+  font-size: clamp(0.3rem, 2.25vw, 0.8rem);
+}
+
+.logo-underline {
+  color: var(--grey-2);
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: monospace;
+  position: relative;
+  font-size: 1rem;
+}
+
+.navigation-steps {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.nav-step {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  transition: var(--transition-normal);
+}
+
+.nav-step.clickable {
+  cursor: pointer;
+}
+
+.nav-step.clickable:hover {
+  color: var(--white);
+  text-shadow: 0 0 8px var(--green);
+}
+
+.nav-step--completed {
+  color: var(--white);
+}
+
+.nav-step--current {
+  color: var(--green);
+}
+
+.nav-step--future {
+  color: var(--grey-2);
+}
+
+/* Responsive logo display */
+@media (max-width: 768px) {
+  .desktop-home {
+    display: none;
+  }
+  
+  .mobile-home {
+    display: block;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-home {
+    display: none;
+  }
+  
+  .desktop-home {
+    display: block;
+  }
+}
+
+/* ASCII Logo styling */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.ascii-logo {
+  color: var(--green);
+  font-size: 8px;
+  line-height: 1;
+  white-space: pre;
+  text-align: center;
+}
+
+/* Home Page Styles - Force left alignment on all screen sizes */
+.home-content {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  min-height: 60vh;
+  width: 100%;
+}
+
+.home-text {
+  text-align: left !important;
+  width: 100%;
+  margin-bottom: var(--spacing-xl);
+}
+
+.plant-logo-container {
+  display: flex !important;
+  justify-content: flex-start !important;
+  margin: var(--spacing-xl) 0;
+  width: 100%;
+  align-self: flex-start !important;
+}
+
+.ascii-plant-logo {
+  color: var(--grey-2);
+  font-size: clamp(0.5em, 1vw, 0.55em);
+  line-height: 0.95;
+  margin: 0;
+  text-align: left !important;
+  white-space: pre;
+  display: block;
+}
+
+.home-actions {
+  margin-top: var(--spacing-lg);
+  align-self: flex-start !important;
+}
+
+.prompt-line {
+  margin: 0;
+  color: var(--grey-1);
+}
+
+/* Ensure all content stays left-aligned on all screen sizes */
+@media (min-width: 1200px) {
+  .home-content,
+  .home-text,
+  .plant-logo-container {
+    align-items: flex-start;
+    text-align: left;
+    justify-content: flex-start;
+  }
+  
+  .ascii-plant-logo {
+    text-align: left;
+  }
+}
+
+/* Terminal text with typing effect */
+.terminal-text {
+  max-width: 800px;
+}
+
+.typing-text {
+  color: var(--grey-1);
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.5;
+}
+
+.typing-cursor {
+  animation: blink 1s infinite;
+  color: var(--green);
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.typing-text.delay-1 {
+  animation-delay: 0.8s;
+}
+
+.typing-text.delay-2 {
+  animation-delay: 1.6s;
+}
+
+.typing-text.delay-3 {
+  animation-delay: 2.4s;
+}
+
+.prompt {
+  color: var(--green);
+  font-weight: var(--font-weight-bold);
+}
+
+.command-link {
+  color: var(--green);
+  text-decoration: underline;
+  transition: var(--transition-normal);
+}
+
+.command-link:hover {
+  color: var(--white);
+  text-shadow: 0 0 8px var(--green);
+}
+
+/* Enhanced Typing Animation */
+
+
+

@@ -1,0 +1,235 @@
+/* UI Component Styles */
+
+/* Button Component */
+.terminal-button {
+  background: transparent;
+  border: 2px solid var(--green);
+  color: var(--green);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-button:hover:not(:disabled) {
+  background-color: var(--green);
+  color: var(--grey-4);
+  box-shadow: 0 0 16px rgba(130, 228, 88, 0.4);
+}
+
+.terminal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.terminal-button--primary {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.terminal-button--secondary {
+  border-color: var(--grey-1);
+  color: var(--grey-1);
+}
+
+.terminal-button--secondary:hover:not(:disabled) {
+  background-color: var(--grey-1);
+  color: var(--grey-4);
+}
+
+.terminal-button--danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.terminal-button--danger:hover:not(:disabled) {
+  background-color: var(--red);
+  color: var(--white);
+}
+
+.terminal-button--sm {
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+}
+
+.terminal-button--md {
+  font-size: var(--font-size-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+.terminal-button--lg {
+  font-size: var(--font-size-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
+}
+
+.terminal-button--loading .loading-spinner {
+  display: inline-block;
+}
+
+/* Action Button Component */
+.action-button {
+  background: transparent;
+  border: none;
+  font-family: var(--font-family);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-sm) var(--spacing-xs);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  border-radius: 0;
+}
+
+.action-button--primary {
+  color: var(--grey-2);
+}
+
+.action-button--primary:hover:not(:disabled) {
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green);
+}
+
+.action-button--primary.has-images {
+  color: var(--green);
+}
+
+.action-button--primary.has-images:hover:not(:disabled) {
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green);
+}
+
+.action-button--secondary {
+  color: var(--grey-2);
+}
+
+.action-button--secondary:hover:not(:disabled) {
+  color: var(--white);
+  text-shadow: 0 0 8px var(--white);
+}
+
+.action-button--reset {
+  color: var(--grey-1);
+}
+
+.action-button--reset:hover:not(:disabled) {
+  color: var(--grey-1);
+  text-shadow: 0 0 8px var(--grey-1);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(180deg); }
+  75% { transform: rotate(270deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Card Component */
+.terminal-card {
+  border: 1px solid var(--grey-3);
+  background-color: rgba(46, 46, 46, 0.3);
+  margin-bottom: var(--spacing-lg);
+}
+
+.terminal-card__header {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--grey-3);
+  color: var(--green);
+  font-weight: var(--font-weight-bold);
+}
+
+.terminal-card__content {
+  padding: var(--spacing-lg);
+}
+
+/* Progress Bar Component */
+.terminal-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.terminal-progress__track {
+  flex: 1;
+  height: 4px;
+  background-color: var(--grey-3);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-progress__fill {
+  height: 100%;
+  background-color: var(--green);
+  transition: width var(--transition-normal);
+  position: relative;
+}
+
+.terminal-progress__fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, var(--green));
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-20px); }
+  100% { transform: translateX(20px); }
+}
+
+.terminal-progress__percentage {
+  color: var(--green);
+  font-size: var(--font-size-sm);
+  min-width: 3ch;
+  text-align: right;
+}
+
+.terminal-progress--sm .terminal-progress__track {
+  height: 2px;
+}
+
+.terminal-progress--sm .terminal-progress__percentage {
+  font-size: var(--font-size-xs);
+}
+
+.terminal-progress--lg .terminal-progress__track {
+  height: 6px;
+}
+
+.terminal-progress--lg .terminal-progress__percentage {
+  font-size: var(--font-size-md);
+}
+
+/* Loading Spinner Component */
+.terminal-spinner {
+  display: inline-block;
+  color: var(--green);
+  font-weight: var(--font-weight-bold);
+}
+
+.terminal-spinner--sm {
+  font-size: var(--font-size-sm);
+}
+
+.terminal-spinner--md {
+  font-size: var(--font-size-md);
+}
+
+.terminal-spinner--lg {
+  font-size: var(--font-size-lg);
+}

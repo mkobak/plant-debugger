@@ -1,0 +1,8 @@
+/* Import all modular CSS files */
+@import './base.css';
+@import './terminal.css';
+@import './components.css';
+@import './modal.css';
+@import './upload.css';
+@import './pages.css';
+@import './responsive.css';

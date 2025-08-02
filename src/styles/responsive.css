@@ -1,0 +1,44 @@
+/* Responsive Design Media Queries */
+
+@media (max-width: 768px) {
+  .terminal-container {
+    margin: var(--spacing-sm);
+    border-radius: var(--radius-md);
+  }
+  
+  .terminal-content {
+    padding: var(--spacing-lg);
+  }
+
+  .image-upload__grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+  }
+  
+  .image-preview-modal__controls {
+    flex-direction: column;
+  }
+  
+  .image-upload__dropzone {
+    padding: var(--spacing-lg);
+  }
+  
+  .image-upload__icon {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .terminal-content {
+    padding: var(--spacing-md);
+  }
+
+  .image-upload__icon {
+    font-size: 28px;
+  }
+
+  .terminal-button--lg {
+    font-size: var(--font-size-md);
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+}
