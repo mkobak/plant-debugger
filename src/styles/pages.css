@@ -40,7 +40,9 @@
   padding: var(--spacing-lg);
   border: 1px solid var(--grey-3);
   background-color: rgba(46, 46, 46, 0.3);
-}* Page-specific Styles */
+}
+
+/* Page-specific Styles */
 
 /* Upload Page Specific Styles */
 .error-message {
