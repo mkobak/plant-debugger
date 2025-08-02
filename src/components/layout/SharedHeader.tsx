@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { ASCII_LOGO_SINGLE, ASCII_LOGO_TWO_LINES } from '@/lib/constants';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { useASCIIOptimization } from '@/hooks/useASCIIOptimization';
 
 interface NavigationStep {
   step: number;
@@ -32,6 +33,9 @@ export default function SharedHeader({
   // On subsequent steps, use single line format (scaled down)
   const shouldShowTwoLines = isHomePage && isSmallScreen;
   const shouldShowSingleLine = !shouldShowTwoLines;
+
+  // Optimize ASCII art rendering for mobile devices
+  useASCIIOptimization(logoRef, [shouldShowTwoLines, isSmallScreen]);
 
   // Calculate underline width to match logo exactly
   useEffect(() => {

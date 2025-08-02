@@ -1,16 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
 import TypingCommand from '@/components/ui/TypingCommand';
 import { ASCII_PLANT_LOGO } from '@/lib/constants';
+import { useASCIIOptimization } from '@/hooks/useASCIIOptimization';
 
 export default function HomePage() {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
   const [commandComplete, setCommandComplete] = useState(false);
+  const plantLogoRef = useRef<HTMLPreElement>(null);
+
+  // Optimize ASCII art rendering for mobile devices
+  useASCIIOptimization(plantLogoRef, [commandComplete]);
 
   return (
     <TerminalLayout>
@@ -44,7 +49,7 @@ export default function HomePage() {
         </div>
         {commandComplete && (
           <div className="plant-logo-container">
-            <pre className="ascii-plant-logo">
+            <pre ref={plantLogoRef} className="ascii-plant-logo">
               {ASCII_PLANT_LOGO}
             </pre>
           </div>

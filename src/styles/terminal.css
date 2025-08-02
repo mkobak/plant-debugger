@@ -97,7 +97,17 @@
   overflow: hidden;
   display: block;
   /* Responsive font sizing that prevents cutoff */
-  font-size: clamp(0.25rem, 1.2vw, 1rem);
+  font-size: clamp(0.25rem, 1.2vw, 0.75rem);
+  /* Improved font stack for better ASCII art rendering on mobile */
+  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
+  /* Ensure consistent character spacing across platforms */
+  letter-spacing: 0;
+  word-spacing: 0;
+  /* Better text rendering for ASCII art */
+  text-rendering: optimizeSpeed;
+  font-variant-ligatures: none;
+  /* Force font metrics to be consistent */
+  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
 }
 
 .ascii-logo-two-lines {
@@ -109,7 +119,17 @@
   overflow: hidden;
   display: block;
   /* Responsive font sizing for two-line version */
-  font-size: clamp(0.3rem, 2.25vw, 0.8rem);
+  font-size: clamp(0.3rem, 2.25vw, 0.6rem);
+  /* Improved font stack for better ASCII art rendering on mobile */
+  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
+  /* Ensure consistent character spacing across platforms */
+  letter-spacing: 0;
+  word-spacing: 0;
+  /* Better text rendering for ASCII art */
+  text-rendering: optimizeSpeed;
+  font-variant-ligatures: none;
+  /* Force font metrics to be consistent */
+  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
 }
 
 .logo-underline {
@@ -225,6 +245,16 @@
   text-align: left !important;
   white-space: pre;
   display: block;
+  /* Improved font stack for better ASCII art rendering on mobile */
+  font-family: 'Courier New', 'Lucida Console', 'Monaco', 'DejaVu Sans Mono', monospace;
+  /* Ensure consistent character spacing across platforms */
+  letter-spacing: 0;
+  word-spacing: 0;
+  /* Better text rendering for ASCII art */
+  text-rendering: optimizeSpeed;
+  font-variant-ligatures: none;
+  /* Force font metrics to be consistent */
+  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0;
 }
 
 .home-actions {
