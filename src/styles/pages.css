@@ -38,3 +38,162 @@
   border: 1px solid var(--grey-3);
   background-color: rgba(46, 46, 46, 0.3);
 }
+
+/* Questions Page Specific Styles */
+.terminal-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.plant-identification {
+  margin: var(--spacing-md) 0;
+  color: var(--green);
+}
+
+.questions-section {
+  margin-top: var(--spacing-lg);
+}
+
+.question-item {
+  margin: var(--spacing-lg) 0;
+}
+
+.question-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  margin: var(--spacing-sm) 0 var(--spacing-lg) var(--spacing-md);
+}
+
+.answer-button,
+.skip-button {
+  background: transparent;
+  border: 1px solid var(--grey-3);
+  color: var(--white);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease-in-out;
+}
+
+.answer-button:hover,
+.skip-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.answer-button.selected {
+  background-color: var(--green);
+  border-color: var(--green);
+  color: var(--black);
+}
+
+.skip-button.selected {
+  background-color: var(--grey-3);
+  border-color: var(--grey-3);
+  color: var(--black);
+}
+
+.answer-button:disabled,
+.skip-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-questions {
+  margin: var(--spacing-lg) 0;
+  color: var(--grey-2);
+}
+
+/* Results Page Specific Styles */
+.diagnosis-results {
+  margin-top: var(--spacing-lg);
+}
+
+.result-section {
+  margin: var(--spacing-md) 0;
+}
+
+.confidence-indicator {
+  margin: var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+}
+
+.confidence-text {
+  font-weight: var(--font-weight-bold);
+}
+
+.summary-content {
+  margin: var(--spacing-sm) 0 var(--spacing-md) var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-left: 2px solid var(--green);
+  background-color: rgba(46, 46, 46, 0.3);
+  line-height: 1.5;
+}
+
+.result-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+}
+
+.detail-button {
+  background: transparent;
+  border: 1px solid var(--grey-3);
+  color: var(--white);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease-in-out;
+}
+
+.detail-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.detailed-section,
+.care-section {
+  margin: var(--spacing-lg) 0;
+  padding: var(--spacing-md);
+  border: 1px solid var(--grey-3);
+  background-color: rgba(46, 46, 46, 0.2);
+}
+
+.detailed-section h3,
+.care-section h3 {
+  color: var(--green);
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-lg);
+}
+
+.diagnosis-subsection {
+  margin: var(--spacing-md) 0;
+}
+
+.diagnosis-subsection h4 {
+  color: var(--white);
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-md);
+}
+
+.markdown-content {
+  line-height: 1.6;
+  color: var(--grey-1);
+}
+
+.markdown-content strong {
+  color: var(--white);
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
+}
+
+.markdown-content li {
+  margin: var(--spacing-xs) 0;
+}

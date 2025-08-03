@@ -17,7 +17,6 @@ export interface DiagnosisStep {
 
 export interface PlantIdentification {
   species: string;
-  confidence: number;
   commonName?: string;
   scientificName?: string;
 }
@@ -39,18 +38,20 @@ export interface DiagnosticAnswer {
 export interface DiagnosisResult {
   primary: {
     condition: string;
-    confidence: number;
+    confidence: 'High' | 'Medium' | 'Low';
     severity: 'low' | 'medium' | 'high';
   };
   secondary?: {
     condition: string;
-    confidence: number;
+    confidence: 'High' | 'Medium' | 'Low';
     severity: 'low' | 'medium' | 'high';
   };
   summary: string;
   treatment: string;
   prevention: string;
   careTips: string;
+  plant?: string;
+  reasoning?: string;
 }
 
 export interface DiagnosisState {

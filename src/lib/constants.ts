@@ -28,13 +28,6 @@ export const DIAGNOSIS_STEPS = {
   RESULTS: 'results',
 } as const;
 
-// Confidence thresholds
-export const CONFIDENCE_THRESHOLDS = {
-  HIGH: 0.8,
-  MEDIUM: 0.6,
-  LOW: 0.4,
-} as const;
-
 // ASCII Art logos (for reference)
 export const ASCII_LOGO_SINGLE = `██╗      ██████╗ ██╗      █████╗ ███╗   ██╗████████╗    ██████╗ ███████╗██████╗ ██╗   ██╗ ██████╗  ██████╗ ███████╗██████╗ 
 ╚██╗     ██╔══██╗██║     ██╔══██╗████╗  ██║╚══██╔══╝    ██╔══██╗██╔════╝██╔══██╗██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔══██╗
