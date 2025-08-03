@@ -8,6 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const opentype = require('opentype.js');
 const { extractColorsFromCSS } = require('./extractColors');
 
 // Extract colors from CSS
@@ -59,16 +60,26 @@ const CONFIG = {
   PLANT_COLOR: cssColors['grey-2'] || '#575757',   // Grey for plant
   
   // Font settings
-  FONT_FAMILY: "'Courier New', 'Lucida Console', 'Monaco', monospace",
   FONT_SIZE: 10,            // Base font size in pixels
   LINE_HEIGHT: 1.0,         // Line height multiplier
   
+  // Font path (system fonts or web fonts)
+  FONT_PATHS: [
+    // Windows system fonts
+    'C:/Windows/Fonts/consola.ttf',  // Consolas
+    'C:/Windows/Fonts/cour.ttf',     // Courier New
+    'C:/Windows/Fonts/lucon.ttf',    // Lucida Console
+    // Fallback to Node.js bundled font paths if available
+    path.join(__dirname, '../node_modules/@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff'),
+    path.join(__dirname, '../fonts/courier-new.ttf'), // Custom font if provided
+  ],
+  
   // Padding around the text (in pixels)
   PADDING: {
-    top: -8,       // Minimal top padding to reduce extra space
-    right: -7,
-    bottom: 9,    // Extra bottom padding to prevent cropping
-    left: 0
+    top: 1,
+    right: 1,
+    bottom: 1,
+    left: 1
   },
   
   // Output directory
@@ -145,58 +156,158 @@ const ASCII_ART = extractedAscii || {
 };
 
 /**
+ * Load a monospace font for path generation
+ */
+function loadFont() {
+  for (const fontPath of CONFIG.FONT_PATHS) {
+    try {
+      if (fs.existsSync(fontPath)) {
+        console.log(`✅ Loading font: ${fontPath}`);
+        return opentype.loadSync(fontPath);
+      }
+    } catch (error) {
+      console.warn(`⚠️  Could not load font: ${fontPath}`);
+    }
+  }
+  
+  // If no system fonts found, create a simple fallback
+  console.warn('⚠️  No monospace font found, using fallback character mapping');
+  return null;
+}
+
+/**
+ * Generate SVG paths from text using loaded font
+ */
+function generateTextPaths(text, font, fontSize, x, y) {
+  if (!font) {
+    // Fallback: create simple rectangles for each character
+    return generateFallbackPaths(text, fontSize, x, y);
+  }
+  
+  try {
+    const path = font.getPath(text, x, y, fontSize);
+    return path.toSVG(2); // 2 decimal precision
+  } catch (error) {
+    console.warn('⚠️  Error generating font paths, using fallback');
+    return generateFallbackPaths(text, fontSize, x, y);
+  }
+}
+
+/**
+ * Fallback path generation for when font loading fails
+ * Creates simple rectangles to represent ASCII block characters
+ */
+function generateFallbackPaths(text, fontSize, x, y) {
+  let paths = '';
+  const charWidth = fontSize * 0.6; // Monospace character width
+  const charHeight = fontSize * 0.8; // Character height
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const charX = x + (i * charWidth);
+    
+    // Only create rectangles for non-space characters
+    if (char !== ' ' && char.trim() !== '') {
+      // Create a rectangle for block characters (█, ╗, ║, etc.)
+      if (char.match(/[█╗╝╚╔║═╣╠╬╦╩▓▒░▄▀▐▌]/)) {
+        paths += `<rect x="${charX}" y="${y - charHeight}" width="${charWidth}" height="${charHeight}" />`;
+      }
+      // For other characters, create a smaller rectangle
+      else {
+        const smallWidth = charWidth * 0.8;
+        const smallHeight = charHeight * 0.6;
+        paths += `<rect x="${charX}" y="${y - smallHeight}" width="${smallWidth}" height="${smallHeight}" />`;
+      }
+    }
+  }
+  
+  return paths;
+}
+
+/**
  * Calculate precise dimensions for ASCII art
  */
-function calculateDimensions(asciiText, fontSize, lineHeight) {
+function calculateDimensions(asciiText, fontSize, lineHeight, font = null) {
   const lines = asciiText.split('\n');
   const height = lines.length * fontSize * lineHeight;
   
-  // Find the longest line to determine width
-  const maxLineLength = Math.max(...lines.map(line => line.length));
+  let width = 0;
   
-  // Average character width for monospace fonts (approximately 0.6 * fontSize)
-  const charWidth = fontSize * 0.6;
-  const width = maxLineLength * charWidth;
+  if (font) {
+    // Calculate actual width using font metrics for each line
+    lines.forEach(line => {
+      if (line.trim()) {
+        try {
+          const path = font.getPath(line, 0, 0, fontSize);
+          const bbox = path.getBoundingBox();
+          const lineWidth = bbox.x2 - bbox.x1;
+          width = Math.max(width, lineWidth);
+        } catch (error) {
+          // Fallback to character estimation if font path fails
+          const charWidth = fontSize * 0.6;
+          width = Math.max(width, line.length * charWidth);
+        }
+      }
+    });
+  } else {
+    // Fallback: use character width estimation
+    const maxLineLength = Math.max(...lines.map(line => line.length));
+    const charWidth = fontSize * 0.6;
+    width = maxLineLength * charWidth;
+  }
   
   return {
     width: Math.ceil(width),
     height: Math.ceil(height),
     lines,
-    maxLineLength
+    maxLineLength: Math.max(...lines.map(line => line.length))
   };
 }
 
 /**
- * Generate SVG content
+ * Generate SVG content with paths instead of font-dependent text
  */
-function generateSVG(asciiText, color, fileName) {
+function generateSVG(asciiText, color, fileName, font) {
   const { width, height, lines } = calculateDimensions(
     asciiText, 
     CONFIG.FONT_SIZE, 
-    CONFIG.LINE_HEIGHT
+    CONFIG.LINE_HEIGHT,
+    font
   );
   
   // Add padding to dimensions
   const totalWidth = width + CONFIG.PADDING.left + CONFIG.PADDING.right;
   const totalHeight = height + CONFIG.PADDING.top + CONFIG.PADDING.bottom;
   
-  // Generate SVG
+  // Generate SVG header
   let svgContent = `<svg width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg">
   <style>
-    .ascii-text {
-      font-family: ${CONFIG.FONT_FAMILY};
-      font-size: ${CONFIG.FONT_SIZE}px;
+    .ascii-path {
       fill: ${color};
-      white-space: pre;
-      dominant-baseline: text-before-edge;
     }
   </style>`;
 
-  // Add text elements for each line
+  // Generate paths for each line
   lines.forEach((line, index) => {
-    // Improved Y positioning: start closer to top with minimal padding
+    const x = CONFIG.PADDING.left;
     const y = CONFIG.PADDING.top + CONFIG.FONT_SIZE + (index * CONFIG.FONT_SIZE * CONFIG.LINE_HEIGHT);
-    svgContent += `\n  <text x="${CONFIG.PADDING.left}" y="${y}" class="ascii-text">${escapeXml(line)}</text>`;
+    
+    if (line.trim()) { // Skip empty lines
+      const pathContent = generateTextPaths(line, font, CONFIG.FONT_SIZE, x, y);
+      
+      if (font && pathContent.includes('<path')) {
+        // Extract path data from opentype.js output
+        const pathMatch = pathContent.match(/d="([^"]+)"/);
+        if (pathMatch) {
+          svgContent += `\n  <path d="${pathMatch[1]}" class="ascii-path" />`;
+        }
+      } else {
+        // Use fallback rectangles
+        svgContent += `\n  <g class="ascii-path">`;
+        svgContent += generateFallbackPaths(line, CONFIG.FONT_SIZE, x, y);
+        svgContent += `</g>`;
+      }
+    }
   });
   
   svgContent += '\n</svg>';
@@ -231,7 +342,10 @@ function ensureDirectoryExists(dirPath) {
  * Main execution
  */
 function main() {
-  console.log('🎨 Generating ASCII SVG files...\n');
+  console.log('🎨 Generating ASCII SVG files with vector paths...\n');
+  
+  // Load font for path generation
+  const font = loadFont();
   
   // Ensure output directory exists
   ensureDirectoryExists(CONFIG.OUTPUT_DIR);
@@ -256,14 +370,15 @@ function main() {
   ];
   
   files.forEach(file => {
-    const svgContent = generateSVG(file.ascii, file.color, file.name);
+    const svgContent = generateSVG(file.ascii, file.color, file.name, font);
     const filePath = path.join(CONFIG.OUTPUT_DIR, file.name);
     
     fs.writeFileSync(filePath, svgContent, 'utf8');
     console.log(`✅ Saved: ${filePath}`);
   });
   
-  console.log('\n🎉 All SVG files generated successfully!');
+  console.log('\n🎉 All SVG files generated successfully with vector paths!');
+  console.log('✅ These SVGs will render consistently across all devices and browsers.');
   console.log('\nTo customize colors or settings, edit the CONFIG object at the top of this script.');
 }
 
@@ -272,4 +387,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { generateSVG, calculateDimensions, CONFIG };
+module.exports = { generateSVG, calculateDimensions, loadFont, CONFIG };
