@@ -43,29 +43,17 @@ export default function ImageUpload({
     }
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragEvents = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    handleDragEvents(e);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       onFilesSelected(files);
     }
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
   };
 
   const openFileDialog = () => {
@@ -88,9 +76,9 @@ export default function ImageUpload({
         <div
           className="image-upload__dropzone"
           onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
+          onDragOver={handleDragEvents}
+          onDragEnter={handleDragEvents}
+          onDragLeave={handleDragEvents}
         >
           <div className="image-upload__content">
             <p className="image-upload__text">

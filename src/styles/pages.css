@@ -17,9 +17,6 @@
   padding-top: var(--spacing-xl);
 }
 
-/* Home page styles are now handled in terminal.css to avoid conflicts */
-
-
 /* Error message styling */
 .error-message {
   margin: var(--spacing-md) 0;
@@ -40,32 +37,4 @@
   padding: var(--spacing-lg);
   border: 1px solid var(--grey-3);
   background-color: rgba(46, 46, 46, 0.3);
-}
-
-/* Page-specific Styles */
-
-/* Upload Page Specific Styles */
-.error-message {
-  margin-bottom: var(--spacing-lg);
-}
-
-.error-text {
-  color: var(--red) !important;
-  font-weight: var(--font-weight-bold);
-}
-
-.upload-actions {
-  margin-top: var(--spacing-2xl);
-  padding-top: var(--spacing-2xl);
-  border-top: 1px solid var(--grey-3);
-}
-
-.upload-actions__buttons {
-  margin-top: var(--spacing-lg);
-  display: flex;
-  justify-content: center;
-}
-
-.upload-actions__buttons a {
-  text-decoration: none;
 }

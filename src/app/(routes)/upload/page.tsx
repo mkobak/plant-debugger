@@ -30,7 +30,6 @@ export default function UploadPage() {
   } = useImageUpload({
     initialImages: contextImages,
     onUploadComplete: (uploadedImages: PlantImage[]) => {
-      console.log('Upload complete:', uploadedImages.length, 'images');
       setContextImages(uploadedImages);
       setError('');
     },

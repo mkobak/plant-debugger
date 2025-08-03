@@ -71,15 +71,22 @@
   }
 
   .page-actions {
-    margin-top: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
-    padding-bottom: var(--spacing-lg);
     flex-direction: column;
     gap: var(--spacing-md);
   }
 
-  .upload-page {
-    min-height: auto;
-    padding-bottom: var(--spacing-xl);
+  /* Further responsive logo sizing for very small screens */
+  .ascii-logo-image.single,
+  .ascii-logo-image.single-line {
+    max-width: clamp(140px, 90vw, 600px);
+  }
+  
+  .ascii-logo-image.two-lines {
+    max-width: clamp(120px, 92vw, 600px);
+  }
+  
+  .ascii-logo-image.plant,
+  .ascii-logo-image.plant-logo {
+    max-width: clamp(90px, 60vw, 240px);
   }
 }

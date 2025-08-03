@@ -43,17 +43,9 @@
   display: block;
 }
 
-.control.close {
-  background-color: var(--red);
-}
-
-.control.minimize {
-  background-color: var(--orange);
-}
-
-.control.maximize {
-  background-color: var(--green);
-}
+.control.close { background-color: var(--red); }
+.control.minimize { background-color: var(--orange); }
+.control.maximize { background-color: var(--green); }
 
 .terminal-title {
   color: var(--grey-1);
@@ -82,8 +74,6 @@
 .logo-underline {
   color: var(--grey-2);
   margin-bottom: var(--spacing-lg);
-  letter-spacing: 0;
-  white-space: nowrap;
   font-family: monospace;
   font-size: 0.9rem;
   line-height: 1;
@@ -111,19 +101,11 @@
   text-shadow: 0 0 8px var(--green);
 }
 
-.nav-step--completed {
-  color: var(--white);
-}
+.nav-step--completed { color: var(--white); }
+.nav-step--current { color: var(--green); }
+.nav-step--future { color: var(--grey-2); }
 
-.nav-step--current {
-  color: var(--green);
-}
-
-.nav-step--future {
-  color: var(--grey-2);
-}
-
-/* Image-based ASCII Logo styling */
+/* ASCII Logo styling */
 .ascii-logo-image {
   display: block;
   width: auto;
@@ -134,24 +116,22 @@
   margin-bottom: 10px;
 }
 
-/* Single-line logo sizing */
+/* Base Logo sizing */
 .ascii-logo-image.single,
 .ascii-logo-image.single-line {
   max-width: clamp(250px, 87vw, 810px);
 }
 
-/* Two-lines logo sizing */
 .ascii-logo-image.two-lines {
   max-width: clamp(200px, 88vw, 500px);
 }
 
-/* Plant logo sizing */
 .ascii-logo-image.plant,
 .ascii-logo-image.plant-logo {
   max-width: clamp(150px, 35vw, 280px);
 }
 
-/* Responsive sizing for image logos */
+/* Responsive logo sizing */
 @media (max-width: 768px) {
   .ascii-logo-image.single,
   .ascii-logo-image.single-line {
@@ -184,9 +164,7 @@
   }
 }
 
-/* ASCII Logo container - deprecated, now using SVG logos */
-
-/* Home Page Styles - Force left alignment on all screen sizes */
+/* Home Page Styles */
 .home-content {
   display: flex !important;
   flex-direction: column !important;
@@ -220,26 +198,6 @@
   color: var(--grey-1);
 }
 
-/* Ensure all content stays left-aligned on all screen sizes, except plant logo which should be centered */
-@media (min-width: 1200px) {
-  .home-content,
-  .home-text {
-    align-items: flex-start;
-    text-align: left;
-    justify-content: flex-start;
-  }
-  
-  .plant-logo-container {
-    align-items: center;
-    text-align: center;
-    justify-content: center;
-  }
-  
-  .ascii-plant-logo {
-    text-align: center;
-  }
-}
-
 /* Terminal text with typing effect */
 .terminal-text {
   width: 100%;
@@ -261,18 +219,6 @@
   51%, 100% { opacity: 0; }
 }
 
-.typing-text.delay-1 {
-  animation-delay: 0.8s;
-}
-
-.typing-text.delay-2 {
-  animation-delay: 1.6s;
-}
-
-.typing-text.delay-3 {
-  animation-delay: 2.4s;
-}
-
 .prompt {
   color: var(--green);
   font-weight: var(--font-weight-bold);
@@ -288,8 +234,6 @@
   color: var(--white);
   text-shadow: 0 0 8px var(--green);
 }
-
-/* Enhanced Typing Animation */
 
 
 

@@ -35,31 +35,3 @@ export function createObjectURL(file: File): string {
 export function revokeObjectURL(url: string): void {
   URL.revokeObjectURL(url);
 }
-
-// Debounce function
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  return (...args: Parameters<T>) => {
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    
-    timeout = setTimeout(() => {
-      func(...args);
-    }, wait);
-  };
-}
-
-// Sleep utility for animations
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Clamp number between min and max
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}

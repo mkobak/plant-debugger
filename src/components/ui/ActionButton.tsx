@@ -25,12 +25,7 @@ export default function ActionButton({
 
   const handleClick = () => {
     if (href) {
-      if (variant === 'reset') {
-        // Reset button always goes to home
-        router.push('/');
-      } else {
-        router.push(href);
-      }
+      router.push(href);
     } else if (onClick) {
       onClick();
     }

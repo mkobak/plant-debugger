@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import ASCIILogo from '@/components/ui/ASCIILogo';
 
@@ -25,75 +25,36 @@ export default function SharedHeader({
 }: SharedHeaderProps) {
   const router = useRouter();
   const { isSmall: isSmallScreen } = useScreenSize();
-  const underlineRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const [underlineLength, setUnderlineLength] = useState(40); // Default fallback
 
-  // For small screens on home page, always start with two-line format
-  // On subsequent steps, use single line format (scaled down)
-  const shouldShowTwoLines = isHomePage && isSmallScreen;
-  const shouldShowSingleLine = !shouldShowTwoLines;
+  // Simplified logo logic - use two-lines for home page on small screens
+  const logoVariant = isHomePage && isSmallScreen ? 'two-lines' : 'single';
 
-  // Calculate underline width to match logo exactly
+  // Calculate underline length based on actual logo width
   useEffect(() => {
     const calculateUnderline = () => {
-      // Small delay to ensure logo SVG has rendered
-      setTimeout(() => {
-        if (underlineRef.current) {
-          const underlineElement = underlineRef.current;
-          
-          // Find the logo image element
-          const logoImage = underlineElement.parentElement?.querySelector('.ascii-logo-image');
-          
-          if (logoImage) {
-            // Get the actual rendered width of the SVG
-            const logoWidth = logoImage.getBoundingClientRect().width;
-            
-            // Create a temporary element to measure actual character width
-            const testElement = document.createElement('span');
-            testElement.style.font = window.getComputedStyle(underlineElement).font;
-            testElement.style.position = 'absolute';
-            testElement.style.visibility = 'hidden';
-            testElement.style.whiteSpace = 'nowrap';
-            testElement.textContent = '#';
-            document.body.appendChild(testElement);
-            
-            const actualCharWidth = testElement.getBoundingClientRect().width;
-            document.body.removeChild(testElement);
-            
-            // Calculate the number of characters needed
-            const numChars = Math.round(logoWidth / actualCharWidth);
-            
-            // Ensure we have a reasonable minimum (in case of measurement errors)
-            const minChars = shouldShowTwoLines ? 15 : 25;
-            const finalCharCount = Math.max(numChars, minChars);
-            
-            underlineElement.textContent = '#'.repeat(finalCharCount);
-          } else {
-            // Fallback if logo not found
-            const numChars = shouldShowTwoLines ? 30 : 50;
-            underlineElement.textContent = '#'.repeat(numChars);
-          }
-        }
-      }, 150);
+      if (logoRef.current) {
+        const logoWidth = logoRef.current.getBoundingClientRect().width;
+        // Approximate character width in monospace font (adjusted for better fit)
+        const charWidth = 7.95;
+        const charCount = Math.round(logoWidth / charWidth);
+        setUnderlineLength(Math.max(charCount, 15)); // Minimum 15 characters
+      }
     };
 
-    // Calculate initially
-    calculateUnderline();
+    // Calculate after logo loads
+    const timer = setTimeout(calculateUnderline, 100);
     
-    // Recalculate on window resize with debouncing
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(calculateUnderline, 100);
-    };
-    
+    // Recalculate on window resize
+    const handleResize = () => calculateUnderline();
     window.addEventListener('resize', handleResize);
     
-    // Cleanup
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimeout);
     };
-  }, [shouldShowTwoLines, isSmallScreen]);
+  }, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
     { 
@@ -125,33 +86,14 @@ export default function SharedHeader({
   return (
     <div className="shared-header">
       <div className="logo-section">
-        {shouldShowSingleLine && (
-          <>
-            <ASCIILogo 
-              variant="single" 
-              className={`single-line ${isHomePage ? 'home-page' : 'other-page'}`}
-            />
-            <div 
-              ref={underlineRef}
-              className={`logo-underline single-line ${isHomePage ? 'home-page' : 'other-page'}`}
-            >
-            </div>
-          </>
-        )}
-        
-        {shouldShowTwoLines && (
-          <>
-            <ASCIILogo 
-              variant="two-lines" 
-              className="two-lines"
-            />
-            <div 
-              ref={underlineRef}
-              className="logo-underline two-lines"
-            >
-            </div>
-          </>
-        )}
+        <ASCIILogo 
+          ref={logoRef}
+          variant={logoVariant}
+          className={`${logoVariant} ${isHomePage ? 'home-page' : 'other-page'}`}
+        />
+        <div className={`logo-underline ${logoVariant}`}>
+          {'#'.repeat(underlineLength)}
+        </div>
       </div>
       
       {showNavigation && (

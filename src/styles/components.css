@@ -23,25 +23,11 @@
   cursor: not-allowed;
 }
 
-.terminal-button--primary {
-  color: var(--green);
-}
-
-.terminal-button--secondary {
-  color: var(--grey-1);
-}
-
-.terminal-button--secondary:hover:not(:disabled) {
-  color: var(--grey-4);
-}
-
-.terminal-button--danger {
-  color: var(--red);
-}
-
-.terminal-button--danger:hover:not(:disabled) {
-  color: var(--white);
-}
+.terminal-button--primary { color: var(--green); }
+.terminal-button--secondary { color: var(--grey-1); }
+.terminal-button--secondary:hover:not(:disabled) { color: var(--grey-4); }
+.terminal-button--danger { color: var(--red); }
+.terminal-button--danger:hover:not(:disabled) { color: var(--white); }
 
 .terminal-button--sm {
   font-size: var(--font-size-sm);
@@ -56,10 +42,6 @@
 .terminal-button--lg {
   font-size: var(--font-size-lg);
   padding: var(--spacing-md) var(--spacing-xl);
-}
-
-.terminal-button--loading .loading-spinner {
-  display: inline-block;
 }
 
 /* Action Button Component */
@@ -116,6 +98,7 @@
   cursor: not-allowed;
 }
 
+/* Loading Spinner */
 .loading-spinner {
   display: inline-block;
   animation: spin 1s linear infinite;
@@ -192,37 +175,19 @@
   text-align: right;
 }
 
-.terminal-progress--sm .terminal-progress__track {
-  height: 2px;
-}
+/* Progress Bar Sizes */
+.terminal-progress--sm .terminal-progress__track { height: 2px; }
+.terminal-progress--sm .terminal-progress__percentage { font-size: var(--font-size-xs); }
+.terminal-progress--lg .terminal-progress__track { height: 6px; }
+.terminal-progress--lg .terminal-progress__percentage { font-size: var(--font-size-md); }
 
-.terminal-progress--sm .terminal-progress__percentage {
-  font-size: var(--font-size-xs);
-}
-
-.terminal-progress--lg .terminal-progress__track {
-  height: 6px;
-}
-
-.terminal-progress--lg .terminal-progress__percentage {
-  font-size: var(--font-size-md);
-}
-
-/* Loading Spinner Component */
+/* Terminal Spinner Component */
 .terminal-spinner {
   display: inline-block;
   color: var(--green);
   font-weight: var(--font-weight-bold);
 }
 
-.terminal-spinner--sm {
-  font-size: var(--font-size-sm);
-}
-
-.terminal-spinner--md {
-  font-size: var(--font-size-md);
-}
-
-.terminal-spinner--lg {
-  font-size: var(--font-size-lg);
-}
+.terminal-spinner--sm { font-size: var(--font-size-sm); }
+.terminal-spinner--md { font-size: var(--font-size-md); }
+.terminal-spinner--lg { font-size: var(--font-size-lg); }
