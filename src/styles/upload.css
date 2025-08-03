@@ -32,7 +32,6 @@
 
 .image-upload__dropzone {
   border: 2px dashed var(--green);
-  border-radius: var(--radius-lg);
   padding: var(--spacing-2xl);
   text-align: center;
   transition: var(--transition-normal);
@@ -118,8 +117,6 @@
 }
 
 .image-preview {
-  border: 1px solid var(--grey-3);
-  border-radius: var(--radius-md);
   overflow: hidden;
   background-color: var(--grey-3);
 }

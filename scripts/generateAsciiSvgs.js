@@ -60,7 +60,7 @@ const CONFIG = {
   PLANT_COLOR: cssColors['grey-2'] || '#575757',   // Grey for plant
   
   // Font settings
-  FONT_SIZE: 10,            // Base font size in pixels
+  FONT_SIZE: 12,            // Base font size in pixels
   LINE_HEIGHT: 1.0,         // Line height multiplier
   
   // Font path (system fonts or web fonts)

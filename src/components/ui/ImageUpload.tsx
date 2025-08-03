@@ -158,7 +158,7 @@ export default function ImageUpload({
                     onClick={() => onImageRemove(image.id)}
                     className="image-preview__remove"
                   >
-                    Remove
+                    [ Remove ]
                   </Button>
                 </div>
               </div>

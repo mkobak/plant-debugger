@@ -3,7 +3,7 @@
 /* Button Component */
 .terminal-button {
   background: transparent;
-  border: 2px solid var(--green);
+  border: none;
   color: var(--green);
   font-family: var(--font-family);
   font-size: var(--font-size-md);
@@ -15,9 +15,7 @@
 }
 
 .terminal-button:hover:not(:disabled) {
-  background-color: var(--green);
   color: var(--grey-4);
-  box-shadow: 0 0 16px rgba(130, 228, 88, 0.4);
 }
 
 .terminal-button:disabled {
@@ -26,27 +24,22 @@
 }
 
 .terminal-button--primary {
-  border-color: var(--green);
   color: var(--green);
 }
 
 .terminal-button--secondary {
-  border-color: var(--grey-1);
   color: var(--grey-1);
 }
 
 .terminal-button--secondary:hover:not(:disabled) {
-  background-color: var(--grey-1);
   color: var(--grey-4);
 }
 
 .terminal-button--danger {
-  border-color: var(--red);
   color: var(--red);
 }
 
 .terminal-button--danger:hover:not(:disabled) {
-  background-color: var(--red);
   color: var(--white);
 }
 

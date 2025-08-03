@@ -13,9 +13,9 @@
 }
 
 /* Large screen constraints */
-@media (min-width: 800px) {
+@media (min-width: 880px) {
   .terminal-container {
-    max-width: 800px;
+    max-width: 880px;
     height: 90vh;
     margin: 5vh auto;
   }
@@ -137,7 +137,7 @@
 /* Single-line logo sizing */
 .ascii-logo-image.single,
 .ascii-logo-image.single-line {
-  max-width: clamp(250px, 88vw, 800px);
+  max-width: clamp(250px, 87vw, 810px);
 }
 
 /* Two-lines logo sizing */
@@ -155,7 +155,7 @@
 @media (max-width: 768px) {
   .ascii-logo-image.single,
   .ascii-logo-image.single-line {
-    max-width: clamp(150px, 94vw, 800px);
+    max-width: clamp(150px, 92vw, 800px);
   }
   
   .ascii-logo-image.two-lines {
@@ -171,11 +171,11 @@
 @media (max-width: 480px) {
   .ascii-logo-image.single,
   .ascii-logo-image.single-line {
-    max-width: clamp(140px, 93vw, 600px);
+    max-width: clamp(140px, 90vw, 600px);
   }
   
   .ascii-logo-image.two-lines {
-    max-width: clamp(120px, 88vw, 600px);
+    max-width: clamp(120px, 92vw, 600px);
   }
   
   .ascii-logo-image.plant,
