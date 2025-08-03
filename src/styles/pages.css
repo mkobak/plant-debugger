@@ -30,6 +30,30 @@
   font-weight: var(--font-weight-bold);
 }
 
+.error-actions {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.retry-button,
+.reset-button {
+  background: none;
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.retry-button:hover,
+.reset-button:hover {
+  background-color: var(--green);
+  color: var(--black);
+}
+
 /* Placeholder content */
 .questions-placeholder,
 .results-placeholder {
@@ -42,13 +66,49 @@
 /* Questions Page Specific Styles */
 .terminal-line {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  line-height: 1;
+}
+
+.terminal-line .typing-text {
+  display: inline-block;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.terminal-line .terminal-spinner {
+  display: inline-block;
+  margin-left: var(--spacing-xs);
+  flex: 0 0 auto;
 }
 
 .plant-identification {
   margin: var(--spacing-md) 0;
   color: var(--green);
+}
+
+.plant-name-container {
+  display: inline-block;
+  margin-left: var(--spacing-xs);
+}
+
+.plant-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--green);
+  color: var(--green);
+  font-family: var(--font-family);
+  font-size: inherit;
+  padding: 2px 8px;
+  outline: none;
+  min-width: 200px;
+}
+
+.plant-name-input:focus {
+  border-bottom-color: var(--white);
+  color: var(--white);
+  text-shadow: 0 0 4px var(--white);
 }
 
 .questions-section {
@@ -57,6 +117,11 @@
 
 .question-item {
   margin: var(--spacing-lg) 0;
+}
+
+.question-item .typing-text,
+.question-item div {
+  color: var(--white);
 }
 
 .question-buttons {
@@ -68,7 +133,7 @@
 .answer-button,
 .skip-button {
   background: transparent;
-  border: 1px solid var(--grey-3);
+  border: none;
   color: var(--white);
   padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
@@ -79,14 +144,11 @@
 
 .answer-button:hover,
 .skip-button:hover {
-  border-color: var(--green);
   color: var(--green);
 }
 
 .answer-button.selected {
-  background-color: var(--green);
-  border-color: var(--green);
-  color: var(--black);
+  color: var(--green);
 }
 
 .skip-button.selected {
@@ -127,9 +189,17 @@
 .summary-content {
   margin: var(--spacing-sm) 0 var(--spacing-md) var(--spacing-md);
   padding: var(--spacing-sm);
-  border-left: 2px solid var(--green);
   background-color: rgba(46, 46, 46, 0.3);
   line-height: 1.5;
+}
+
+.summary-content ul {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+}
+
+.summary-content li {
+  margin: var(--spacing-xs) 0;
 }
 
 .result-actions {

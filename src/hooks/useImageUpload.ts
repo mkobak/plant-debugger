@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import imageCompression from 'browser-image-compression';
 import { PlantImage } from '@/types';
 import { generateId, isValidImageFile, createObjectURL } from '@/utils';
@@ -22,6 +22,11 @@ export function useImageUpload({
   const [images, setImages] = useState<PlantImage[]>(initialImages);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Update images when initialImages changes
+  useEffect(() => {
+    setImages(initialImages);
+  }, [initialImages]);
 
   const compressImage = useCallback(async (file: File): Promise<File> => {
     try {

@@ -39,19 +39,21 @@ export interface DiagnosisResult {
   primary: {
     condition: string;
     confidence: 'High' | 'Medium' | 'Low';
-    severity: 'low' | 'medium' | 'high';
+    summary: string;
+    reasoning: string;
+    treatment: string;
+    prevention: string;
   };
   secondary?: {
     condition: string;
     confidence: 'High' | 'Medium' | 'Low';
-    severity: 'low' | 'medium' | 'high';
+    summary: string;
+    reasoning: string;
+    treatment: string;
+    prevention: string;
   };
-  summary: string;
-  treatment: string;
-  prevention: string;
   careTips: string;
   plant?: string;
-  reasoning?: string;
 }
 
 export interface DiagnosisState {

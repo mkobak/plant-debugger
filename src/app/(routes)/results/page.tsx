@@ -1,31 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
 import ActionButton from '@/components/ui/ActionButton';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useDiagnosis } from '@/context/DiagnosisContext';
+import { useNavigation } from '@/hooks/useNavigation';
 import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
 
 export default function ResultsPage() {
-  const router = useRouter();
+  const { goHome, goToUpload, maxReachedStep } = useNavigation();
   const {
     images,
     setCurrentStep,
     questions,
     answers,
-    resetDiagnosis: resetGlobalDiagnosis
+    diagnosisResult: contextDiagnosisResult,
+    setDiagnosisResult: setContextDiagnosisResult,
   } = useDiagnosis();
 
   const [stepInitialized, setStepInitialized] = useState(false);
-  const [line1Complete, setLine1Complete] = useState(false);
-  const [line2Complete, setLine2Complete] = useState(false);
-  const [line3Complete, setLine3Complete] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
   const [showCare, setShowCare] = useState(false);
+  const [loadingComplete, setLoadingComplete] = useState(false);
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
   // Format questions and answers for the diagnosis
   const formatQuestionsAndAnswers = () => {
@@ -33,8 +33,8 @@ export default function ResultsPage() {
       return 'No additional questions were answered.';
     }
 
-    return questions.map(question => {
-      const answer = answers.find(a => a.questionId === question.id);
+    return questions.map((question: any) => {
+      const answer = answers.find((a: any) => a.questionId === question.id);
       if (!answer) return '';
       
       if (answer.skipped) {
@@ -42,6 +42,31 @@ export default function ResultsPage() {
       }
       return `${question.question}: ${answer.answer ? 'Yes' : 'No'}`;
     }).filter(Boolean).join('\n');
+  };
+
+  const formatAsBulletPoints = (text: string) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    const bulletItems: string[] = [];
+    const regularLines: string[] = [];
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
+        bulletItems.push(trimmed.replace(/^[-•]\s*/, ''));
+      } else {
+        regularLines.push(trimmed);
+      }
+    });
+    
+    let formatted = '';
+    if (regularLines.length > 0) {
+      formatted += regularLines.map(line => `<p>${line}</p>`).join('');
+    }
+    if (bulletItems.length > 0) {
+      formatted += '<ul>' + bulletItems.map(item => `<li>${item}</li>`).join('') + '</ul>';
+    }
+    
+    return formatted;
   };
 
   const questionsAndAnswers = formatQuestionsAndAnswers();
@@ -68,37 +93,74 @@ export default function ResultsPage() {
 
   // Handle redirects and start diagnosis
   useEffect(() => {
-    console.log('ResultsPage: Main effect - images:', images.length, 'stepInitialized:', stepInitialized, 'isReady:', isReady);
+    console.log('ResultsPage: Main effect - images:', images.length, 'stepInitialized:', stepInitialized, 'isReady:', isReady, 'diagnosisResult:', !!diagnosisResult, 'contextDiagnosisResult:', !!contextDiagnosisResult);
     
     // Redirect if no images
     if (images.length === 0) {
       console.log('ResultsPage: No images, redirecting to upload');
-      router.push('/upload');
+      goToUpload();
+      return;
+    }
+
+    // If we already have a diagnosis result in context, we're navigating back - don't restart the process
+    if (contextDiagnosisResult) {
+      console.log('ResultsPage: Context diagnosis result already exists, skipping diagnosis');
+      setIsNavigatingBack(true);
+      setLoadingComplete(true);
+      return;
+    }
+
+    // If we already have a diagnosis result from the hook, we're navigating back - don't restart the process
+    if (diagnosisResult) {
+      console.log('ResultsPage: Hook diagnosis result already exists, skipping diagnosis');
+      setIsNavigatingBack(true);
+      setLoadingComplete(true);
       return;
     }
 
     // Start diagnosis if ready and step is initialized
-    if (stepInitialized && isReady && !diagnosisResult) {
+    if (stepInitialized && isReady && !diagnosisResult && !contextDiagnosisResult) {
       console.log('ResultsPage: Starting diagnosis...');
       startDiagnosis();
     }
-  }, [images.length, stepInitialized, isReady, diagnosisResult, router, startDiagnosis]);
+  }, [images.length, stepInitialized, isReady, diagnosisResult, contextDiagnosisResult, goToUpload, startDiagnosis]);
+
+  // Save diagnosis result to context when it's completed
+  useEffect(() => {
+    if (diagnosisResult && !contextDiagnosisResult) {
+      console.log('ResultsPage: Saving diagnosis result to context');
+      setContextDiagnosisResult(diagnosisResult);
+    }
+  }, [diagnosisResult, contextDiagnosisResult, setContextDiagnosisResult]);
+
+  // Reset hook state if context diagnosis result is cleared (e.g., after reset)
+  useEffect(() => {
+    if (!contextDiagnosisResult && diagnosisResult) {
+      console.log('ResultsPage: Context was reset, resetting hook state');
+      resetDiagnosis();
+    }
+  }, [contextDiagnosisResult, diagnosisResult, resetDiagnosis]);
 
   const getConfidenceColor = (confidence: 'High' | 'Medium' | 'Low') => {
     if (confidence === 'High') return 'var(--green)';
-    if (confidence === 'Medium') return 'var(--yellow)';
+    if (confidence === 'Medium') return 'var(--orange)';
     return 'var(--red)';
   };
 
   const handleNewDiagnosis = () => {
-    resetGlobalDiagnosis();
-    router.push('/');
+    // Reset the diagnosis flow hook state before going home
+    resetDiagnosis();
+    goHome();
   };
 
   const handleRetryDiagnosis = () => {
     // Reset diagnosis state and try again
+    setLoadingComplete(false);
     resetDiagnosis();
   };
+
+  // Use the diagnosis result from context if available, otherwise from hook
+  const currentDiagnosisResult = contextDiagnosisResult || diagnosisResult;
 
   return (
     <TerminalLayout title="plant-debugger:~/results$">
@@ -106,34 +168,16 @@ export default function ResultsPage() {
       
       <div className="results-page">
         <div className="terminal-text">
-          <TypingText
-            text="> Processing diagnosis..."
-            speed={60}
-            onComplete={() => setLine1Complete(true)}
-          />
-          
-          {line1Complete && (
-            <div className="terminal-line">
-              <TypingText
-                text="> Aggregating multi-model responses"
-                speed={60}
-                delay={1000}
-                onComplete={() => setLine2Complete(true)}
-              />
-              {isDiagnosing && !initialDiagnosisComplete && <LoadingSpinner />}
-            </div>
-          )}
-          
-          {line2Complete && (
-            <div className="terminal-line">
-              <TypingText
-                text="> Generating comprehensive treatment plan"
-                speed={60}
-                delay={2000}
-                onComplete={() => setLine3Complete(true)}
-              />
-              {isDiagnosing && initialDiagnosisComplete && !finalDiagnosisComplete && <LoadingSpinner />}
-            </div>
+          {/* Show loading screen while diagnosing */}
+          {isDiagnosing && !loadingComplete && (
+            <LoadingScreen 
+              isDiagnosing={isDiagnosing}
+              isAggregating={!initialDiagnosisComplete}
+              isGeneratingTreatment={initialDiagnosisComplete && !finalDiagnosisComplete}
+              aggregatingComplete={initialDiagnosisComplete}
+              finalDiagnosisComplete={finalDiagnosisComplete}
+              onComplete={() => setLoadingComplete(true)} 
+            />
           )}
 
           {error && (
@@ -161,45 +205,90 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {finalDiagnosisComplete && diagnosisResult && (
+          {/* Show results only when diagnosis is complete */}
+          {(finalDiagnosisComplete || contextDiagnosisResult) && (diagnosisResult || contextDiagnosisResult) && (loadingComplete || !isDiagnosing) && (
             <div className="diagnosis-results">
               <br />
-              <TypingText 
-                text="> Diagnosis Complete!"
-                speed={80}
-              />
+              {!isNavigatingBack ? (
+                <TypingText 
+                  text="> Diagnosis Complete!"
+                  speed={80}
+                />
+              ) : (
+                <div>&gt; Diagnosis Complete!</div>
+              )}
               <br />
 
               {/* Plant Information */}
-              {diagnosisResult.plant && (
+              {currentDiagnosisResult?.plant && (
                 <div className="result-section">
-                  <TypingText text={`> Plant: ${diagnosisResult.plant}`} speed={60} />
+                  <TypingText text={`> Plant: ${currentDiagnosisResult.plant}`} speed={60} />
                 </div>
               )}
 
               {/* Primary Diagnosis */}
-              <div className="result-section">
-                <TypingText 
-                  text={`> Primary Diagnosis: ${diagnosisResult.primary.condition}`}
-                  speed={60}
-                />
-                <div className="confidence-indicator">
-                  <span 
-                    className="confidence-text"
-                    style={{ color: getConfidenceColor(diagnosisResult.primary.confidence) }}
-                  >
-                    Confidence: {diagnosisResult.primary.confidence}
-                  </span>
+              {currentDiagnosisResult && (
+                <div className="result-section">
+                  <TypingText 
+                    text={`> Primary Diagnosis: ${currentDiagnosisResult.primary.condition}`}
+                    speed={60}
+                  />
+                  <div className="confidence-indicator">
+                    <span 
+                      className="confidence-text"
+                      style={{ color: getConfidenceColor(currentDiagnosisResult.primary.confidence) }}
+                    >
+                      Confidence: {currentDiagnosisResult.primary.confidence}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Executive Summary */}
-              <div className="result-section">
-                <TypingText text="> Executive Summary:" speed={60} />
-                <div className="summary-content">
-                  {diagnosisResult.summary}
+              {/* Primary Summary */}
+              {currentDiagnosisResult && (
+                <div className="result-section">
+                  <TypingText text="> Primary Summary:" speed={60} />
+                  <div className="summary-content">
+                    <div 
+                      dangerouslySetInnerHTML={{ 
+                        __html: formatAsBulletPoints(currentDiagnosisResult.primary.summary)
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Secondary Diagnosis */}
+              {currentDiagnosisResult?.secondary && (
+                <>
+                  <div className="result-section">
+                    <TypingText 
+                      text={`> Secondary Diagnosis: ${currentDiagnosisResult.secondary.condition}`}
+                      speed={60}
+                    />
+                    <div className="confidence-indicator">
+                      <span 
+                        className="confidence-text"
+                        style={{ color: getConfidenceColor(currentDiagnosisResult.secondary.confidence) }}
+                      >
+                        Confidence: {currentDiagnosisResult.secondary.confidence}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Secondary Summary */}
+                  <div className="result-section">
+                    <TypingText text="> Secondary Summary:" speed={60} />
+                    <div className="summary-content">
+                      <div 
+                        dangerouslySetInnerHTML={{ 
+                          __html: formatAsBulletPoints(currentDiagnosisResult.secondary.summary)
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Action Buttons */}
               <div className="result-actions">
@@ -219,45 +308,73 @@ export default function ResultsPage() {
               </div>
 
               {/* Detailed Diagnosis */}
-              {showDetailed && (
+              {showDetailed && currentDiagnosisResult && (
                 <div className="detailed-section">
                   <h3>Detailed Diagnosis</h3>
                   
-                  {diagnosisResult.reasoning && (
-                    <div className="diagnosis-subsection">
-                      <h4>Reasoning:</h4>
-                      <div 
-                        className="markdown-content"
-                        dangerouslySetInnerHTML={{ __html: diagnosisResult.reasoning.replace(/\n/g, '<br>') }}
-                      />
-                    </div>
+                  {/* Primary Diagnosis Details */}
+                  <div className="diagnosis-subsection">
+                    <h4>Primary Diagnosis - Reasoning:</h4>
+                    <div 
+                      className="markdown-content"
+                      dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.primary.reasoning.replace(/\n/g, '<br>') }}
+                    />
+                  </div>
+                  
+                  <div className="diagnosis-subsection">
+                    <h4>Primary Diagnosis - Treatment Plan:</h4>
+                    <div 
+                      className="markdown-content"
+                      dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.primary.treatment.replace(/\n/g, '<br>') }}
+                    />
+                  </div>
+                  
+                  <div className="diagnosis-subsection">
+                    <h4>Primary Diagnosis - Prevention Tips:</h4>
+                    <div 
+                      className="markdown-content"
+                      dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.primary.prevention.replace(/\n/g, '<br>') }}
+                    />
+                  </div>
+
+                  {/* Secondary Diagnosis Details */}
+                  {currentDiagnosisResult.secondary && (
+                    <>
+                      <div className="diagnosis-subsection">
+                        <h4>Secondary Diagnosis - Reasoning:</h4>
+                        <div 
+                          className="markdown-content"
+                          dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.secondary.reasoning.replace(/\n/g, '<br>') }}
+                        />
+                      </div>
+                      
+                      <div className="diagnosis-subsection">
+                        <h4>Secondary Diagnosis - Treatment Plan:</h4>
+                        <div 
+                          className="markdown-content"
+                          dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.secondary.treatment.replace(/\n/g, '<br>') }}
+                        />
+                      </div>
+                      
+                      <div className="diagnosis-subsection">
+                        <h4>Secondary Diagnosis - Prevention Tips:</h4>
+                        <div 
+                          className="markdown-content"
+                          dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.secondary.prevention.replace(/\n/g, '<br>') }}
+                        />
+                      </div>
+                    </>
                   )}
-                  
-                  <div className="diagnosis-subsection">
-                    <h4>Treatment Plan:</h4>
-                    <div 
-                      className="markdown-content"
-                      dangerouslySetInnerHTML={{ __html: diagnosisResult.treatment.replace(/\n/g, '<br>') }}
-                    />
-                  </div>
-                  
-                  <div className="diagnosis-subsection">
-                    <h4>Prevention Tips:</h4>
-                    <div 
-                      className="markdown-content"
-                      dangerouslySetInnerHTML={{ __html: diagnosisResult.prevention.replace(/\n/g, '<br>') }}
-                    />
-                  </div>
                 </div>
               )}
 
               {/* Care Tips */}
-              {showCare && (
+              {showCare && currentDiagnosisResult && (
                 <div className="care-section">
                   <h3>General Care Tips</h3>
                   <div 
                     className="markdown-content"
-                    dangerouslySetInnerHTML={{ __html: diagnosisResult.careTips.replace(/\n/g, '<br>') }}
+                    dangerouslySetInnerHTML={{ __html: currentDiagnosisResult.careTips.replace(/\n/g, '<br>') }}
                   />
                 </div>
               )}
@@ -267,19 +384,19 @@ export default function ResultsPage() {
 
         <div className="page-actions">
           <ActionButton 
-            variant="secondary"
-            href="/questions"
-            disabled={isDiagnosing}
-          >
-            [ Back to Questions ]
-          </ActionButton>
-          
-          <ActionButton 
             variant="reset"
             onClick={handleNewDiagnosis}
             disabled={isDiagnosing}
           >
-            [ New Diagnosis ]
+            [ Reset ]
+          </ActionButton>
+          
+          <ActionButton 
+            variant="primary"
+            disabled={true}
+            className="placeholder-button"
+          >
+            [ Download ]
           </ActionButton>
         </div>
       </div>

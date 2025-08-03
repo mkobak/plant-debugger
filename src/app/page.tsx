@@ -1,16 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
 import TypingCommand from '@/components/ui/TypingCommand';
 import ASCIILogo from '@/components/ui/ASCIILogo';
+import { useDiagnosis } from '@/context/DiagnosisContext';
 
 export default function HomePage() {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
   const [commandComplete, setCommandComplete] = useState(false);
+  const { setCurrentStep } = useDiagnosis();
+
+  useEffect(() => {
+    // Set current step to 0 for home page
+    setCurrentStep(0);
+  }, [setCurrentStep]);
 
   return (
     <TerminalLayout>

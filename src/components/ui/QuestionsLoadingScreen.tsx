@@ -1,0 +1,77 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import TypingText from './TypingText';
+import LoadingSpinner from './LoadingSpinner';
+
+interface QuestionsLoadingScreenProps {
+  isIdentifying: boolean;
+  isGeneratingQuestions: boolean;
+  identificationComplete: boolean;
+  questionsGenerated: boolean;
+  onComplete?: () => void;
+}
+
+export default function QuestionsLoadingScreen({ 
+  isIdentifying, 
+  isGeneratingQuestions, 
+  identificationComplete, 
+  questionsGenerated,
+  onComplete 
+}: QuestionsLoadingScreenProps) {
+  const [line1Complete, setLine1Complete] = useState(false);
+  const [line2Complete, setLine2Complete] = useState(false);
+  const [line3Complete, setLine3Complete] = useState(false);
+
+  // Call onComplete when everything is done
+  useEffect(() => {
+    if (questionsGenerated && line3Complete && onComplete) {
+      console.log('QuestionsLoadingScreen: All steps complete, calling onComplete');
+      const timer = setTimeout(() => {
+        onComplete();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [questionsGenerated, line3Complete, onComplete]);
+
+  return (
+    <div className="questions-loading-screen">
+      <TypingText
+        text="> Analyzing images..."
+        speed={80}
+        onComplete={() => {
+          console.log('QuestionsLoadingScreen: Line 1 complete');
+          setLine1Complete(true);
+        }}
+      />
+      
+      {line1Complete && (
+        <div className="terminal-line">
+          <TypingText
+            text="> Identifying plant..."
+            speed={80}
+            onComplete={() => {
+              console.log('QuestionsLoadingScreen: Line 2 complete');
+              setLine2Complete(true);
+            }}
+          />
+          {isIdentifying && <LoadingSpinner />}
+        </div>
+      )}
+      
+      {line2Complete && identificationComplete && (
+        <div className="terminal-line">
+          <TypingText
+            text="> Generating questions..."
+            speed={80}
+            onComplete={() => {
+              console.log('QuestionsLoadingScreen: Line 3 complete');
+              setLine3Complete(true);
+            }}
+          />
+          {isGeneratingQuestions && <LoadingSpinner />}
+        </div>
+      )}
+    </div>
+  );
+}

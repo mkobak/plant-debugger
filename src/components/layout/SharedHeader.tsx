@@ -1,14 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { useDiagnosis } from '@/context/DiagnosisContext';
+import { useNavigation } from '@/hooks/useNavigation';
 import ASCIILogo from '@/components/ui/ASCIILogo';
 
 interface NavigationStep {
   step: number;
   label: string;
-  status: 'completed' | 'current' | 'future';
   route: string;
 }
 
@@ -23,8 +23,8 @@ export default function SharedHeader({
   showNavigation = false,
   isHomePage = false
 }: SharedHeaderProps) {
-  const router = useRouter();
   const { isSmall: isSmallScreen } = useScreenSize();
+  const { canNavigateToStep, goToUpload, goToQuestions, goToResults } = useNavigation();
   const logoRef = useRef<HTMLImageElement>(null);
   const [underlineLength, setUnderlineLength] = useState(40); // Default fallback
 
@@ -57,30 +57,31 @@ export default function SharedHeader({
   }, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
-    { 
-      step: 1, 
-      label: 'Upload', 
-      route: '/upload',
-      status: currentStep === 1 ? 'current' : currentStep > 1 ? 'completed' : 'future' 
-    },
-    { 
-      step: 2, 
-      label: 'Questions', 
-      route: '/questions',
-      status: currentStep === 2 ? 'current' : currentStep > 2 ? 'completed' : 'future' 
-    },
-    { 
-      step: 3, 
-      label: 'Results', 
-      route: '/results',
-      status: currentStep === 3 ? 'current' : currentStep > 3 ? 'completed' : 'future' 
-    },
+    { step: 1, label: 'Upload', route: '/upload' },
+    { step: 2, label: 'Questions', route: '/questions' },
+    { step: 3, label: 'Results', route: '/results' },
   ];
 
   const handleStepClick = (step: NavigationStep) => {
-    if (step.status === 'completed' || step.status === 'current') {
-      router.push(step.route);
+    if (canNavigateToStep(step.step)) {
+      switch (step.step) {
+        case 1:
+          goToUpload();
+          break;
+        case 2:
+          goToQuestions();
+          break;
+        case 3:
+          goToResults();
+          break;
+      }
     }
+  };
+
+  const getStepStatus = (step: number) => {
+    if (step === currentStep) return 'current';
+    if (canNavigateToStep(step)) return 'completed';
+    return 'future';
   };
 
   return (
@@ -98,17 +99,20 @@ export default function SharedHeader({
       
       {showNavigation && (
         <div className="navigation-steps">
-          {navigationSteps.map((step) => (
-            <span 
-              key={step.step}
-              className={`nav-step nav-step--${step.status} ${
-                step.status === 'completed' || step.status === 'current' ? 'clickable' : ''
-              }`}
-              onClick={() => handleStepClick(step)}
-            >
-              [{step.step}.]
-            </span>
-          ))}
+          {navigationSteps.map((step) => {
+            const status = getStepStatus(step.step);
+            return (
+              <span 
+                key={step.step}
+                className={`nav-step nav-step--${status} ${
+                  status === 'completed' || status === 'current' ? 'clickable' : ''
+                }`}
+                onClick={() => handleStepClick(step)}
+              >
+                [{step.step}.]
+              </span>
+            );
+          })}
         </div>
       )}
     </div>

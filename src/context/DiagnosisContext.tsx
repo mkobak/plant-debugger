@@ -17,10 +17,13 @@ interface DiagnosisContextType {
   clearImages: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  maxReachedStep: number;
+  setMaxReachedStep: (step: number) => void;
   
   // Plant identification state
   plantIdentification: PlantIdentification | null;
   setPlantIdentification: (identification: PlantIdentification | null) => void;
+  updatePlantSpecies: (species: string) => void;
   
   // Questions state
   questions: DiagnosticQuestion[];
@@ -42,7 +45,7 @@ interface DiagnosisContextType {
   setIsDiagnosing: (loading: boolean) => void;
   
   // Reset function
-  resetDiagnosis: () => void;
+  resetAll: () => void;
 }
 
 const DiagnosisContext = createContext<DiagnosisContextType | undefined>(undefined);
@@ -53,7 +56,8 @@ interface DiagnosisProviderProps {
 
 export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [images, setImages] = useState<PlantImage[]>([]);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [maxReachedStep, setMaxReachedStep] = useState(1); // Start with step 1 (upload) reachable
   
   console.log('DiagnosisProvider render - images count:', images.length);
   
@@ -90,7 +94,6 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const clearImages = () => {
     console.log('clearImages called');
     setImages([]);
-    setCurrentStep(1);
   };
 
   const addAnswer = (answer: DiagnosticAnswer) => {
@@ -105,9 +108,18 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     });
   };
 
-  const resetDiagnosis = () => {
+  const updatePlantSpecies = (species: string) => {
+    setPlantIdentification(prev => {
+      if (!prev) return null;
+      return { ...prev, species };
+    });
+  };
+
+  const resetAll = () => {
+    console.log('resetAll called - clearing all state');
     setImages([]);
-    setCurrentStep(1);
+    setCurrentStep(0);
+    setMaxReachedStep(1); // Reset to only step 1 being reachable
     setPlantIdentification(null);
     setQuestions([]);
     setAnswers([]);
@@ -125,8 +137,11 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     clearImages,
     currentStep,
     setCurrentStep,
+    maxReachedStep,
+    setMaxReachedStep,
     plantIdentification,
     setPlantIdentification,
+    updatePlantSpecies,
     questions,
     setQuestions,
     answers,
@@ -140,7 +155,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setIsGeneratingQuestions,
     isDiagnosing,
     setIsDiagnosing,
-    resetDiagnosis,
+    resetAll,
   };
 
   return (

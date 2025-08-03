@@ -6,142 +6,152 @@ import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
 import ActionButton from '@/components/ui/ActionButton';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import QuestionsLoadingScreen from '@/components/ui/QuestionsLoadingScreen';
 import { useDiagnosis } from '@/context/DiagnosisContext';
+import { useNavigation } from '@/hooks/useNavigation';
 import { identifyPlant, generateQuestions } from '@/lib/api/diagnosis';
+
+// Simplified page states
+enum PageState {
+  LOADING = 'loading',
+  SHOWING_CONTENT = 'showing_content',
+  ERROR = 'error'
+}
+
+enum LoadingPhase {
+  ANALYZING = 'analyzing',
+  IDENTIFYING = 'identifying', 
+  GENERATING_QUESTIONS = 'generating_questions',
+  COMPLETE = 'complete'
+}
 
 export default function QuestionsPage() {
   const router = useRouter();
-  const identificationStartedRef = useRef(false);
+  const processStartedRef = useRef(false);
+  const { goHome, goToResults, maxReachedStep } = useNavigation();
   const {
     images,
     setCurrentStep,
+    setMaxReachedStep,
     plantIdentification,
     setPlantIdentification,
+    updatePlantSpecies,
     questions,
     setQuestions,
     answers,
     addAnswer,
-    isIdentifying,
-    setIsIdentifying,
-    isGeneratingQuestions,
-    setIsGeneratingQuestions
   } = useDiagnosis();
 
-  const [line1Complete, setLine1Complete] = useState(false);
-  const [line2Complete, setLine2Complete] = useState(false);
-  const [line3Complete, setLine3Complete] = useState(false);
-  const [identificationComplete, setIdentificationComplete] = useState(false);
-  const [questionsGenerated, setQuestionsGenerated] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // Simplified state management
+  const [pageState, setPageState] = useState<PageState>(PageState.LOADING);
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>(LoadingPhase.ANALYZING);
+  const [editablePlantName, setEditablePlantName] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [plantNameTyped, setPlantNameTyped] = useState(false);
+  const [instructionsTyped, setInstructionsTyped] = useState(false);
 
+  // Initialize page
   useEffect(() => {
+    console.log('QuestionsPage initializing - images:', images.length, 'questions:', questions.length);
     setCurrentStep(2);
-    
-    console.log('QuestionsPage useEffect - images count:', images.length);
-    console.log('QuestionsPage useEffect - plantIdentification:', !!plantIdentification);
-    console.log('QuestionsPage useEffect - isIdentifying:', isIdentifying);
-    console.log('QuestionsPage useEffect - identificationStarted:', identificationStartedRef.current);
-    
-    // Redirect if no images immediately
+
+    // Check if we have images, if not redirect after a brief delay
     if (images.length === 0) {
-      console.log('No images found, redirecting to upload');
-      router.push('/upload');
+      const timeout = setTimeout(() => {
+        console.log('No images found, redirecting to upload');
+        router.push('/upload');
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+
+    // If we already have questions, we're navigating back
+    if (questions.length > 0 && plantIdentification) {
+      console.log('Already have questions and plant identification, showing content');
+      setIsNavigatingBack(true);
+      setEditablePlantName(plantIdentification.species || '');
+      setPlantNameTyped(true);
+      setInstructionsTyped(true);
+      setPageState(PageState.SHOWING_CONTENT);
       return;
     }
 
-    // Start plant identification if not already done
-    if (!plantIdentification && !isIdentifying && images.length > 0 && !identificationStartedRef.current) {
-      console.log('Starting plant identification...');
-      identificationStartedRef.current = true;
-      startPlantIdentification();
+    // Start the identification and question generation process
+    if (!processStartedRef.current) {
+      console.log('Starting identification and question generation process');
+      processStartedRef.current = true;
+      startDiagnosisProcess();
     }
-  }, [setCurrentStep, images, plantIdentification, isIdentifying, router]);
+  }, [images.length, questions.length, plantIdentification, setCurrentStep, router]);
 
-  const startPlantIdentification = async () => {
-    console.log('startPlantIdentification called, images:', images.length);
-    console.log('Images details:', images.map(img => ({ id: img.id, hasFile: !!img.file, fileName: img.file?.name })));
-    
-    if (!images || images.length === 0) {
-      console.log('No images available for identification');
-      setError('No images available for identification');
-      identificationStartedRef.current = false;
-      return;
-    }
-    
-    setIsIdentifying(true);
-    setError('');
-    
+  const startDiagnosisProcess = async () => {
     try {
-      const identification = await identifyPlant(images);
-      setPlantIdentification(identification);
-      setIdentificationComplete(true);
+      setPageState(PageState.LOADING);
+      setLoadingPhase(LoadingPhase.ANALYZING);
+      setError('');
+
+      // Step 1: Identify plant
+      console.log('Step 1: Identifying plant...');
+      setLoadingPhase(LoadingPhase.IDENTIFYING);
       
-      // Start question generation after a brief delay
-      setTimeout(() => {
-        startQuestionGeneration();
-      }, 1000);
-    } catch (error) {
-      console.error('Plant identification failed:', error);
-      setError('Failed to identify plant. Please try again.');
-      identificationStartedRef.current = false;
-    } finally {
-      setIsIdentifying(false);
-    }
-  };
+      const identification = await identifyPlant(images);
+      console.log('Plant identified:', identification);
+      
+      setPlantIdentification(identification);
+      setEditablePlantName(identification.species || 'Unknown species');
 
-  const startQuestionGeneration = async () => {
-    setIsGeneratingQuestions(true);
-    
-    try {
+      // Step 2: Generate questions
+      console.log('Step 2: Generating questions...');
+      setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
+      
       const generatedQuestions = await generateQuestions(images);
+      console.log('Questions generated:', generatedQuestions.length);
+      
       setQuestions(generatedQuestions);
-      setQuestionsGenerated(true);
+      setLoadingPhase(LoadingPhase.COMPLETE);
+
+      // Show content after a brief delay
+      setTimeout(() => {
+        console.log('Process complete, showing content');
+        setPageState(PageState.SHOWING_CONTENT);
+      }, 500);
+
     } catch (error) {
-      console.error('Question generation failed:', error);
-      setError('Failed to generate questions. You can proceed to diagnosis anyway.');
-      setQuestionsGenerated(true); // Allow user to continue
-    } finally {
-      setIsGeneratingQuestions(false);
+      console.error('Diagnosis process failed:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      setPageState(PageState.ERROR);
+      processStartedRef.current = false;
     }
   };
 
-  const handleAnswer = (answer: boolean) => {
-    const question = questions[currentQuestionIndex];
+  const handleAnswer = (questionId: string, answer: boolean) => {
     addAnswer({
-      questionId: question.id,
+      questionId,
       answer,
       skipped: false
     });
-    
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const handleSkip = () => {
-    const question = questions[currentQuestionIndex];
-    addAnswer({
-      questionId: question.id,
-      answer: false,
-      skipped: true
-    });
-    
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const isAnswered = (questionIndex: number) => {
-    return answers.some(a => a.questionId === questions[questionIndex]?.id);
   };
 
   const getAnswer = (questionIndex: number) => {
-    return answers.find(a => a.questionId === questions[questionIndex]?.id);
+    return answers.find((a: any) => a.questionId === questions[questionIndex]?.id);
   };
 
-  const canProceed = questionsGenerated && (questions.length === 0 || answers.length > 0);
+  const handleReset = () => {
+    goHome();
+  };
+
+  const handleNext = () => {
+    setMaxReachedStep(Math.max(maxReachedStep, 3));
+    goToResults();
+  };
+
+  const canProceed = pageState === PageState.SHOWING_CONTENT || pageState === PageState.ERROR;
+
+  // Loading state calculations for the loading screen
+  const isIdentifying = loadingPhase === LoadingPhase.IDENTIFYING;
+  const isGeneratingQuestions = loadingPhase === LoadingPhase.GENERATING_QUESTIONS;
+  const identificationComplete = loadingPhase === LoadingPhase.GENERATING_QUESTIONS || loadingPhase === LoadingPhase.COMPLETE;
+  const questionsGenerated = loadingPhase === LoadingPhase.COMPLETE;
 
   return (
     <TerminalLayout title="plant-debugger:~/questions$">
@@ -149,96 +159,113 @@ export default function QuestionsPage() {
       
       <div className="questions-page">
         <div className="terminal-text">
-          <TypingText
-            text="> Analyzing uploaded images..."
-            speed={80}
-            onComplete={() => setLine1Complete(true)}
-          />
-          
-          {line1Complete && (
-            <div className="terminal-line">
-              <TypingText
-                text="> Plant species identification in progress"
-                speed={80}
-                onComplete={() => setLine2Complete(true)}
-              />
-              {isIdentifying && <LoadingSpinner />}
-            </div>
-          )}
-          
-          {line2Complete && identificationComplete && (
-            <div className="terminal-line">
-              <TypingText
-                text="> Generating diagnostic questions"
-                speed={80}
-                onComplete={() => setLine3Complete(true)}
-              />
-              {isGeneratingQuestions && <LoadingSpinner />}
-            </div>
+          {/* Show loading screen while processing */}
+          {pageState === PageState.LOADING && (
+            <QuestionsLoadingScreen 
+              isIdentifying={isIdentifying}
+              isGeneratingQuestions={isGeneratingQuestions}
+              identificationComplete={identificationComplete}
+              questionsGenerated={questionsGenerated}
+              onComplete={() => {
+                if (loadingPhase === LoadingPhase.COMPLETE) {
+                  setPageState(PageState.SHOWING_CONTENT);
+                }
+              }}
+            />
           )}
 
+          {/* Show error message */}
           {error && (
             <div className="error-message">
               <TypingText text={`> Error: ${error}`} speed={80} />
+              <div className="error-actions">
+                <button onClick={() => {
+                  processStartedRef.current = false;
+                  startDiagnosisProcess();
+                }} className="retry-button">
+                  [ Retry ]
+                </button>
+                <button onClick={handleReset} className="reset-button">
+                  [ Reset ]
+                </button>
+              </div>
             </div>
           )}
 
-          {plantIdentification && (
+          {/* Show plant identification and questions when ready */}
+          {pageState === PageState.SHOWING_CONTENT && plantIdentification && (
             <div className="plant-identification">
-              <TypingText 
-                text={`> Plant identified: ${plantIdentification.species || 'Unknown species'}`} 
-                speed={80} 
-              />
+              {!isNavigatingBack ? (
+                <TypingText 
+                  text={`> Plant identified:`} 
+                  speed={80}
+                  onComplete={() => setPlantNameTyped(true)}
+                />
+              ) : (
+                <div>&gt; Plant identified:</div>
+              )}
+              {(plantNameTyped || isNavigatingBack) && (
+                <div className="plant-name-container">
+                  <span className="plant-name-label"> </span>
+                  <input
+                    type="text"
+                    value={editablePlantName}
+                    onChange={(e) => {
+                      setEditablePlantName(e.target.value);
+                      updatePlantSpecies(e.target.value);
+                    }}
+                    className="plant-name-input"
+                    placeholder="Unknown species"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {questionsGenerated && questions.length > 0 && (
+          {pageState === PageState.SHOWING_CONTENT && questions.length > 0 && (plantNameTyped || isNavigatingBack) && (
             <div className="questions-section">
               <br />
-              <TypingText 
-                text="> Please answer the following questions to improve diagnosis accuracy:"
-                speed={80}
-              />
-              <br />
+              {!isNavigatingBack ? (
+                <TypingText 
+                  text="> Please answer the following questions to improve debugging accuracy:"
+                  speed={80}
+                  onComplete={() => setInstructionsTyped(true)}
+                />
+              ) : (
+                <div>&gt; Please answer the following questions to improve debugging accuracy:</div>
+              )}
               
-              {questions.map((question, index) => (
+              {(instructionsTyped || isNavigatingBack) && questions.map((question: any, index: number) => (
                 <div key={question.id} className="question-item">
-                  <TypingText 
-                    text={`> ${question.question}`}
-                    speed={80}
-                  />
-                  
-                  {index <= currentQuestionIndex && (
-                    <div className="question-buttons">
-                      <button
-                        className={`answer-button ${getAnswer(index)?.answer === true ? 'selected' : ''}`}
-                        onClick={() => handleAnswer(true)}
-                        disabled={isAnswered(index)}
-                      >
-                        [Y] Yes
-                      </button>
-                      <button
-                        className={`answer-button ${getAnswer(index)?.answer === false && !getAnswer(index)?.skipped ? 'selected' : ''}`}
-                        onClick={() => handleAnswer(false)}
-                        disabled={isAnswered(index)}
-                      >
-                        [N] No
-                      </button>
-                      <button
-                        className={`skip-button ${getAnswer(index)?.skipped ? 'selected' : ''}`}
-                        onClick={handleSkip}
-                        disabled={isAnswered(index)}
-                      >
-                        [Skip]
-                      </button>
-                    </div>
+                  {!isNavigatingBack ? (
+                    <TypingText 
+                      text={`> ${question.question}`}
+                      speed={80}
+                    />
+                  ) : (
+                    <div>&gt; {question.question}</div>
                   )}
+                  
+                  <div className="question-buttons">
+                    <button
+                      className={`answer-button ${getAnswer(index)?.answer === true ? 'selected' : ''}`}
+                      onClick={() => handleAnswer(question.id, true)}
+                    >
+                      [Y] Yes
+                    </button>
+                    <button
+                      className={`answer-button ${getAnswer(index)?.answer === false && !getAnswer(index)?.skipped ? 'selected' : ''}`}
+                      onClick={() => handleAnswer(question.id, false)}
+                    >
+                      [N] No
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {questionsGenerated && questions.length === 0 && (
+          {pageState === PageState.SHOWING_CONTENT && questions.length === 0 && (plantNameTyped || isNavigatingBack) && (
             <div className="no-questions">
               <TypingText 
                 text="> No additional questions needed. Proceeding to diagnosis..."
@@ -251,7 +278,7 @@ export default function QuestionsPage() {
         <div className="page-actions">
           <ActionButton 
             variant="reset"
-            href="/"
+            onClick={handleReset}
           >
             [ Reset ]
           </ActionButton>
@@ -260,8 +287,10 @@ export default function QuestionsPage() {
             variant="primary"
             href="/results"
             disabled={!canProceed}
+            className={canProceed ? 'has-images' : ''}
+            onClick={handleNext}
           >
-            [ Proceed to Diagnosis ]
+            [ Debug ]
           </ActionButton>
         </div>
       </div>

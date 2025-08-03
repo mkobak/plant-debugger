@@ -98,6 +98,11 @@
   cursor: not-allowed;
 }
 
+.action-button.placeholder-button {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* Loading Spinner */
 .loading-spinner {
   display: inline-block;
@@ -184,8 +189,10 @@
 /* Terminal Spinner Component */
 .terminal-spinner {
   display: inline-block;
-  color: var(--green);
+  color: var(--grey-1);
   font-weight: var(--font-weight-bold);
+  vertical-align: baseline;
+  line-height: 1;
 }
 
 .terminal-spinner--sm { font-size: var(--font-size-sm); }

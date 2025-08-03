@@ -23,11 +23,20 @@ export default function ActionButton({
 }: ActionButtonProps) {
   const router = useRouter();
 
-  const handleClick = () => {
-    if (href) {
-      router.push(href);
-    } else if (onClick) {
+  const handleClick = (e: React.MouseEvent) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
+    
+    // If there's an onClick handler, call it first
+    if (onClick) {
       onClick();
+    }
+    
+    // Then navigate if href is provided
+    if (href && !disabled) {
+      router.push(href);
     }
   };
 

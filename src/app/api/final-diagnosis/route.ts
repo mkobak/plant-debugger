@@ -111,15 +111,24 @@ export async function POST(request: NextRequest) {
       primary: {
         condition: diagnosisData.primaryDiagnosis,
         confidence: diagnosisData.primaryConfidence,
-        severity: diagnosisData.primaryConfidence === 'High' ? 'high' as const : 
-                 diagnosisData.primaryConfidence === 'Medium' ? 'medium' as const : 'low' as const
+        summary: diagnosisData.primarySummary,
+        reasoning: diagnosisData.primaryReasoning,
+        treatment: diagnosisData.primaryTreatmentPlan,
+        prevention: diagnosisData.primaryPreventionTips,
       },
-      summary: diagnosisData.primaryReasoning || 'No summary provided',
-      treatment: diagnosisData.primaryTreatmentPlan || 'No treatment plan provided',
-      prevention: diagnosisData.primaryPreventionTips || 'No prevention tips provided',
+      ...(diagnosisData.secondaryDiagnosis && {
+        secondary: {
+          condition: diagnosisData.secondaryDiagnosis,
+          confidence: diagnosisData.secondaryConfidence,
+          summary: diagnosisData.secondarySummary,
+          reasoning: diagnosisData.secondaryReasoning,
+          treatment: diagnosisData.secondaryTreatmentPlan,
+          prevention: diagnosisData.secondaryPreventionTips,
+        }
+      }),
       careTips: diagnosisData.careTips || 'No care tips provided',
       plant: diagnosisData.plant,
-      reasoning: diagnosisData.primaryReasoning
+      
     };
 
     console.log('Final diagnosis result:', JSON.stringify(diagnosisResult, null, 2));
