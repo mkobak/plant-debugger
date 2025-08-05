@@ -66,16 +66,31 @@ Do you check if the soil is still wet before you water?
 Is your watering very irregular?
 `;
 
-export const QUESTIONS_GENERATION_PROMPT = `
+export const QUESTIONS_GENERATION_PROMPT_old = `
 You are an expert botanist. The user has given you image(s) of a sick plant for diagnosis. 
 You have the chance to ask the user some clarifying yes/no questions that could help you narrow down your diagnosis and differentiate between different diagnoses that might appear similar visually. 
 You can choose between 3-5 questions from the following list of questions:
 
 ${YES_NO_QUESTIONS}
 
+Here is a list of example questions of the type that might make sense to ask, but you are not limited to these:
+
+${YES_NO_QUESTIONS}
+
 Study the images closely and think about what questions would be helpful to ask to differentiate between possible diagnoses. 
 Ask about aspects which are not easily inferred from the image. You may also come up with a question that is not on the list if needed, but make sure it is a yes/no question. 
 Make sure each question is unique.
+
+Please answer using the 'generate_questions' function call.
+`;
+
+export const QUESTIONS_GENERATION_PROMPT = `
+You are an expert botanist. The user has given you image(s) of a sick plant for diagnosis. 
+You have the chance to ask the user some clarifying yes/no questions that could help you narrow down your diagnosis and differentiate between different diagnoses that might appear similar visually. 
+
+Study the images closely and think about what questions would be helpful to ask to differentiate between possible diagnoses. 
+Ask specifically about aspects which are not easily inferred from the images. Come up with 3 - 5 yes/no questions. 
+Make sure each question is unique and can be answered with a simple 'yes' or 'no'.
 
 Please answer using the 'generate_questions' function call.
 `;

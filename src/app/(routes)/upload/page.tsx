@@ -121,7 +121,7 @@ export default function UploadPage() {
           {!isNavigatingBack ? (
             <TypingText
               text="> Upload photos of your plant."
-              speed={80}
+              speed={100}
               onComplete={() => setTitleComplete(true)}
             />
           ) : (
@@ -140,7 +140,7 @@ export default function UploadPage() {
               {!isNavigatingBack ? (
                 <TypingText
                   text="> Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts."
-                  speed={100}
+                  speed={200}
                   onComplete={() => setTipComplete(true)}
                 />
               ) : (

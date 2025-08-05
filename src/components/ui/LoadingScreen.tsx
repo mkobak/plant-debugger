@@ -41,18 +41,18 @@ export default function LoadingScreen({
 
   return (
     <div className="loading-screen">
-      <TypingText
-        text="> Processing diagnosis..."
-        speed={60}
-        onComplete={() => setLine1Complete(true)}
-      />
-      
+      <div className="terminal-line">
+        <TypingText
+          text="> Processing answers..."
+          speed={60}
+          onComplete={() => setLine1Complete(true)}
+        />
+      </div>
       {line1Complete && (
         <div className="terminal-line">
           <TypingText
-            text="> Aggregating multi-model responses"
+            text="> Investigating possible bugs..."
             speed={60}
-            delay={1000}
             onComplete={() => setLine2Complete(true)}
           />
           {isAggregating && <LoadingSpinner />}
@@ -62,9 +62,8 @@ export default function LoadingScreen({
       {line2Complete && aggregatingComplete && (
         <div className="terminal-line">
           <TypingText
-            text="> Generating comprehensive treatment plan"
+            text="> Generating debugging report..."
             speed={60}
-            delay={2000}
             onComplete={handleLine3Complete}
           />
           {isGeneratingTreatment && <LoadingSpinner />}

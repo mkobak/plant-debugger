@@ -51,7 +51,6 @@
 .terminal-modal__title {
   color: var(--green);
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
   margin: 0;
 }
 
@@ -116,7 +115,6 @@
 
 .compressed-indicator {
   color: var(--green);
-  font-weight: var(--font-weight-bold);
 }
 
 .image-preview-modal__controls {

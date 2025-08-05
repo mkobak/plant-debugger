@@ -50,7 +50,6 @@
 .terminal-title {
   color: var(--grey-1);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
 }
 
 .terminal-content {
@@ -88,7 +87,6 @@
 .nav-step {
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
   transition: var(--transition-normal);
 }
 
@@ -98,10 +96,9 @@
 
 .nav-step.clickable:hover {
   color: var(--white);
-  text-shadow: 0 0 8px var(--green);
 }
 
-.nav-step--completed { color: var(--white); }
+.nav-step--completed { color: var(--grey-0); }
 .nav-step--current { color: var(--green); }
 .nav-step--future { color: var(--grey-2); }
 
@@ -201,10 +198,10 @@
 /* Terminal text with typing effect */
 .terminal-text {
   width: 100%;
+  color: var(--white);
 }
 
 .typing-text {
-  color: var(--grey-1);
   margin-bottom: var(--spacing-sm);
   line-height: 1.5;
 }
@@ -221,7 +218,7 @@
 
 .prompt {
   color: var(--green);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-normal);
 }
 
 .command-link {
@@ -232,7 +229,6 @@
 
 .command-link:hover {
   color: var(--white);
-  text-shadow: 0 0 8px var(--green);
 }
 
 

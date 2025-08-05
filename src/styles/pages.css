@@ -27,7 +27,6 @@
 
 .error-text {
   color: var(--red) !important;
-  font-weight: var(--font-weight-bold);
 }
 
 .error-actions {
@@ -85,7 +84,7 @@
 
 .plant-identification {
   margin: var(--spacing-md) 0;
-  color: var(--green);
+  color: var(--white);
 }
 
 .plant-name-container {
@@ -96,23 +95,23 @@
 .plant-name-input {
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--green);
-  color: var(--green);
+  border: 1px solid var(--grey-0);
+  color: var(--grey-0);
   font-family: var(--font-family);
   font-size: inherit;
-  padding: 2px 8px;
+  padding: 3px 8px;
   outline: none;
   min-width: 200px;
+  margin-top: 10px;
 }
 
 .plant-name-input:focus {
-  border-bottom-color: var(--white);
+  border-color: var(--white);
   color: var(--white);
-  text-shadow: 0 0 4px var(--white);
 }
 
 .questions-section {
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-2xl);
 }
 
 .question-item {
@@ -121,7 +120,7 @@
 
 .question-item .typing-text,
 .question-item div {
-  color: var(--white);
+  color: var(--grey-0);
 }
 
 .question-buttons {
@@ -130,11 +129,10 @@
   margin: var(--spacing-sm) 0 var(--spacing-lg) var(--spacing-md);
 }
 
-.answer-button,
-.skip-button {
+.answer-button {
   background: transparent;
   border: none;
-  color: var(--white);
+  color: var(--grey-0);
   padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
   font-family: var(--font-mono);
@@ -142,23 +140,15 @@
   transition: all 0.2s ease-in-out;
 }
 
-.answer-button:hover,
-.skip-button:hover {
-  color: var(--green);
+.answer-button:hover {
+  color: var(--white);
 }
 
 .answer-button.selected {
   color: var(--green);
 }
 
-.skip-button.selected {
-  background-color: var(--grey-3);
-  border-color: var(--grey-3);
-  color: var(--black);
-}
-
-.answer-button:disabled,
-.skip-button:disabled {
+.answer-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -183,7 +173,6 @@
 }
 
 .confidence-text {
-  font-weight: var(--font-weight-bold);
 }
 
 .summary-content {

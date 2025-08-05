@@ -197,12 +197,12 @@ export default function QuestionsPage() {
             <div className="plant-identification">
               {!isNavigatingBack ? (
                 <TypingText 
-                  text={`> Plant identified:`} 
+                  text={`> Plant name:`} 
                   speed={80}
                   onComplete={() => setPlantNameTyped(true)}
                 />
               ) : (
-                <div>&gt; Plant identified:</div>
+                <div>&gt; Plant name:</div>
               )}
               {(plantNameTyped || isNavigatingBack) && (
                 <div className="plant-name-container">
@@ -215,7 +215,7 @@ export default function QuestionsPage() {
                       updatePlantSpecies(e.target.value);
                     }}
                     className="plant-name-input"
-                    placeholder="Unknown species"
+                    placeholder="Unknown"
                   />
                 </div>
               )}
@@ -224,15 +224,14 @@ export default function QuestionsPage() {
 
           {pageState === PageState.SHOWING_CONTENT && questions.length > 0 && (plantNameTyped || isNavigatingBack) && (
             <div className="questions-section">
-              <br />
               {!isNavigatingBack ? (
                 <TypingText 
-                  text="> Please answer the following questions to improve debugging accuracy:"
+                  text="> Answer the following questions to improve debugging accuracy:"
                   speed={80}
                   onComplete={() => setInstructionsTyped(true)}
                 />
               ) : (
-                <div>&gt; Please answer the following questions to improve debugging accuracy:</div>
+                <div>&gt; Answer the following questions to improve debugging accuracy:</div>
               )}
               
               {(instructionsTyped || isNavigatingBack) && questions.map((question: any, index: number) => (

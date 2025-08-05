@@ -137,7 +137,7 @@ export default function ImageUpload({
                   <p className="image-preview__size">
                     {formatFileSize(image.size)}
                     {image.compressed && (
-                      <span className="image-preview__compressed"> ✓ compressed</span>
+                      <span className="image-preview__compressed"> ✓</span>
                     )}
                   </p>
                   <Button

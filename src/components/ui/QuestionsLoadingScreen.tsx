@@ -36,20 +36,22 @@ export default function QuestionsLoadingScreen({
 
   return (
     <div className="questions-loading-screen">
-      <TypingText
-        text="> Analyzing images..."
-        speed={80}
-        onComplete={() => {
-          console.log('QuestionsLoadingScreen: Line 1 complete');
-          setLine1Complete(true);
-        }}
-      />
+      <div className="terminal-line">
+        <TypingText
+          text="> Analyzing images..."
+          speed={60}
+          onComplete={() => {
+            console.log('QuestionsLoadingScreen: Line 1 complete');
+            setLine1Complete(true);
+          }}
+        />
+      </div>
       
       {line1Complete && (
         <div className="terminal-line">
           <TypingText
             text="> Identifying plant..."
-            speed={80}
+            speed={60}
             onComplete={() => {
               console.log('QuestionsLoadingScreen: Line 2 complete');
               setLine2Complete(true);
@@ -63,7 +65,7 @@ export default function QuestionsLoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Generating questions..."
-            speed={80}
+            speed={60}
             onComplete={() => {
               console.log('QuestionsLoadingScreen: Line 3 complete');
               setLine3Complete(true);

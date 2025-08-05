@@ -9,7 +9,7 @@
 .upload-tip {
   margin-top: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
-  color: var(--grey-2);
+  color: var(--grey-1); 
 }
 
 /* Image Upload Component Styles */
@@ -92,12 +92,14 @@
 /* Image Previews */
 .image-upload__previews {
   margin-top: var(--spacing-lg);
+  font-weight: var(--font-weight-normal);
 }
 
 .image-upload__previews-title {
   color: var(--grey-1);
   margin-bottom: var(--spacing-lg);
   font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
 }
 
 .image-upload__grid {
@@ -153,14 +155,13 @@
 }
 
 .image-preview__size {
-  color: var(--grey-2);
+  color: var(--grey-1);
   font-size: var(--font-size-sm);
   margin-bottom: var(--spacing-sm);
 }
 
 .image-preview__compressed {
-  color: var(--green);
-  font-weight: var(--font-weight-bold);
+  color: var(--grey-1);
 }
 
 .image-preview__remove {

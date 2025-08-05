@@ -211,11 +211,11 @@ export default function ResultsPage() {
               <br />
               {!isNavigatingBack ? (
                 <TypingText 
-                  text="> Diagnosis Complete!"
+                  text="> Debugging results page under construction."
                   speed={80}
                 />
               ) : (
-                <div>&gt; Diagnosis Complete!</div>
+                <div>&gt; Debugging results page under construction.</div>
               )}
               <br />
 
