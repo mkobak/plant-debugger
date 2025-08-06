@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, DragEvent, ChangeEvent } from 'react';
+import { useRef, DragEvent, ChangeEvent, useEffect, useState } from 'react';
 import { PlantImage } from '@/types';
 import Button from '@/components/ui/Button';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -31,6 +31,26 @@ export default function ImageUpload({
   className = '',
 }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Detect if we're on a mobile device
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase()) ||
+             (window.matchMedia && window.matchMedia('(max-width: 880px)').matches);
+    };
+    
+    setIsMobile(checkMobile());
+    
+    // Listen for window resize to update mobile detection
+    const handleResize = () => {
+      setIsMobile(checkMobile());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -60,6 +80,22 @@ export default function ImageUpload({
     fileInputRef.current?.click();
   };
 
+  const openCameraDialog = () => {
+    // Create a temporary input for camera access
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = ACCEPTED_IMAGE_TYPES.join(',');
+    input.capture = 'environment'; // Use back camera
+    input.multiple = false; // Camera typically captures one photo at a time
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        onFilesSelected(files);
+      }
+    };
+    input.click();
+  };
+
   const uploadAreaClasses = [
     'image-upload',
     !canAddMore ? 'image-upload--disabled' : '',
@@ -82,7 +118,7 @@ export default function ImageUpload({
         >
           <div className="image-upload__content">
             <p className="image-upload__text">
-              Drop images here or click to select
+              {isMobile ? 'Tap to select or take photos' : 'Click to select or drop photos here'}
             </p>
             <p className="image-upload__info">
               {remainingSlots} of {MAX_FILES} slots remaining
@@ -98,6 +134,20 @@ export default function ImageUpload({
             className="image-upload__input"
             disabled={isUploading}
           />
+          <div className="image-upload__click-overlay" onClick={openFileDialog} />
+        </div>
+      )}
+
+      {/* Mobile Camera Button */}
+      {canAddMore && isMobile && (
+        <div className="image-upload__camera-section">
+          <Button
+            onClick={openCameraDialog}
+            className="image-upload__camera-button"
+            disabled={isUploading}
+          >
+            Take Photo
+          </Button>
         </div>
       )}
 

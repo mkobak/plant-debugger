@@ -16,6 +16,8 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
   
   const diagnosisStartedRef = useRef(false);
   const lastDiagnosisAttemptRef = useRef<number>(0);
+  const retryCountRef = useRef(0);
+  const maxRetries = 2; // Maximum of 2 retries (total 3 attempts)
 
   const startDiagnosis = useCallback(async () => {
     const now = Date.now();
@@ -42,6 +44,7 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       setError('No images available for diagnosis');
       return;
     }
+    console.log(`useDiagnosisFlow: Starting diagnosis attempt ${retryCountRef.current + 1}/${maxRetries + 1} with images:`, images.length);
     
     diagnosisStartedRef.current = true;
     lastDiagnosisAttemptRef.current = now;
@@ -72,10 +75,23 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
           console.log('useDiagnosisFlow: Final diagnosis complete:', finalResult);
           setDiagnosisResult(finalResult);
           setFinalDiagnosisComplete(true);
+          
+          // Reset retry count on success
+          retryCountRef.current = 0;
         } catch (finalError) {
           console.error('useDiagnosisFlow: Final diagnosis failed:', finalError);
-          setError(`Failed to complete final diagnosis: ${finalError instanceof Error ? finalError.message : 'Unknown error'}`);
-          diagnosisStartedRef.current = false; // Reset on error
+          
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current++;
+            console.log(`useDiagnosisFlow: Will retry final diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`);
+            diagnosisStartedRef.current = false; // Allow retry
+            setTimeout(() => startDiagnosis(), 3000); // Retry after 3 seconds
+            return;
+          }
+          
+          setError(`Failed to complete final diagnosis after ${maxRetries + 1} attempts: ${finalError instanceof Error ? finalError.message : 'Unknown error'}`);
+          diagnosisStartedRef.current = false;
+          retryCountRef.current = 0;
         } finally {
           setIsDiagnosing(false);
         }
@@ -83,11 +99,22 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       
     } catch (error) {
       console.error('useDiagnosisFlow: Initial diagnosis failed:', error);
-      setError(`Failed to generate diagnosis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      if (retryCountRef.current < maxRetries) {
+        retryCountRef.current++;
+        console.log(`useDiagnosisFlow: Will retry initial diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`);
+        diagnosisStartedRef.current = false; // Allow retry
+        setIsDiagnosing(false);
+        setTimeout(() => startDiagnosis(), 3000); // Retry after 3 seconds
+        return;
+      }
+      
+      setError(`Failed to generate initial diagnosis after ${maxRetries + 1} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsDiagnosing(false);
       diagnosisStartedRef.current = false;
+      retryCountRef.current = 0;
     }
-  }, [images, questionsAndAnswers]);
+  }, [images, questionsAndAnswers, isDiagnosing]);
 
   const resetDiagnosis = useCallback(() => {
     console.log('useDiagnosisFlow: resetDiagnosis called');
@@ -98,6 +125,7 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
     setIsDiagnosing(false);
     diagnosisStartedRef.current = false;
     lastDiagnosisAttemptRef.current = 0;
+    retryCountRef.current = 0; // Reset retry count
   }, []);
 
   return {

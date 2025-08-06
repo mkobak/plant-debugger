@@ -21,13 +21,13 @@
 }
 
 .image-upload__dropzone {
-  border: 2px dashed var(--green);
+  border: 1px dashed var(--green);
   padding: var(--spacing-2xl);
   text-align: center;
   transition: var(--transition-normal);
   position: relative;
   background-color: var(--grey-5);
-  margin-bottom: var(--spacing-2xl);
+  margin-bottom: var(--spacing-xl);
   margin-top: var(--spacing-2xl);
 }
 
@@ -69,6 +69,17 @@
   height: 100%;
   opacity: 0;
   cursor: pointer;
+  pointer-events: none; /* Disable direct clicking on input */
+}
+
+.image-upload__click-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  z-index: 1;
 }
 
 .image-upload__input:disabled {
@@ -89,6 +100,39 @@
   margin-bottom: var(--spacing-lg);
 }
 
+/* Camera Button Section */
+.image-upload__camera-section {
+  display: none; /* Hidden by default, shown on mobile */
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.image-upload__camera-button {
+  background-color: var(--grey-5);
+  border: 1px solid var(--grey-2);
+  color: var(--grey-1);
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  white-space: nowrap;
+  border-radius: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.image-upload__camera-button:hover:not(:disabled) {
+  color: var(--white);
+  background-color: var(--grey-3);
+}
+
+.image-upload__camera-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border: 1px solid var(--grey-0);
+}
+
 /* Image Previews */
 .image-upload__previews {
   margin-top: var(--spacing-lg);
@@ -104,8 +148,9 @@
 
 .image-upload__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--spacing-lg);
+  width: 100%;
 }
 
 .image-preview {
@@ -155,9 +200,10 @@
 }
 
 .image-preview__size {
+  text-align: center;
   color: var(--grey-1);
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--spacing-xs);
 }
 
 .image-preview__compressed {
@@ -166,4 +212,5 @@
 
 .image-preview__remove {
   width: 100%;
+  white-space: nowrap;
 }

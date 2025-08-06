@@ -31,6 +31,9 @@ interface DiagnosisContextType {
   answers: DiagnosticAnswer[];
   setAnswers: (answers: DiagnosticAnswer[]) => void;
   addAnswer: (answer: DiagnosticAnswer) => void;
+  removeAnswer: (questionId: string) => void;
+  additionalComments: string;
+  setAdditionalComments: (comments: string) => void;
   
   // Results state
   diagnosisResult: DiagnosisResult | null;
@@ -67,6 +70,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   // Questions state
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([]);
   const [answers, setAnswers] = useState<DiagnosticAnswer[]>([]);
+  const [additionalComments, setAdditionalComments] = useState<string>('');
   
   // Results state
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
@@ -108,6 +112,10 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     });
   };
 
+  const removeAnswer = (questionId: string) => {
+    setAnswers(prev => prev.filter(a => a.questionId !== questionId));
+  };
+
   const updatePlantSpecies = (species: string) => {
     setPlantIdentification(prev => {
       if (!prev) return null;
@@ -123,6 +131,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setPlantIdentification(null);
     setQuestions([]);
     setAnswers([]);
+    setAdditionalComments('');
     setDiagnosisResult(null);
     setIsIdentifying(false);
     setIsGeneratingQuestions(false);
@@ -147,6 +156,9 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     answers,
     setAnswers,
     addAnswer,
+    removeAnswer,
+    additionalComments,
+    setAdditionalComments,
     diagnosisResult,
     setDiagnosisResult,
     isIdentifying,

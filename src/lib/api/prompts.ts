@@ -4,9 +4,10 @@
 
 export const PLANT_IDENTIFICATION_PROMPT = `
 Identify the plant in the provided image(s). Only reply with the plant name, nothing else. 
-Use the name that an average person familiar with plants would use.
-E.g., for Monstera Deliciosa, reply 'Monstera Deliciosa' and not 'Swiss Cheese Plant', since the scientific name is commonly known.
-However, for a plant with an unknown scientific name and a well-known common name, use the common name.
+Use the name that an average person somewhat familiar with plants would use.
+E.g., for Monstera Deliciosa, reply 'Monstera Deliciosa' and not 'Swiss Cheese Plant', since the scientific name is commonly known. 
+E.g., For a ZZ plant, reply 'ZZ Plant' and not 'Zamioculcas zamiifolia', since the scientific name is not commonly known.
+If you are unsure which name to use, use the format 'common name (scientific name)'.
 If no plant is detected, or there are clearly multiple plants on the pictures, or the plant name cannot be identified with high certainty, reply with a blank string ''.
 `;
 
@@ -69,11 +70,7 @@ Is your watering very irregular?
 export const QUESTIONS_GENERATION_PROMPT_old = `
 You are an expert botanist. The user has given you image(s) of a sick plant for diagnosis. 
 You have the chance to ask the user some clarifying yes/no questions that could help you narrow down your diagnosis and differentiate between different diagnoses that might appear similar visually. 
-You can choose between 3-5 questions from the following list of questions:
-
-${YES_NO_QUESTIONS}
-
-Here is a list of example questions of the type that might make sense to ask, but you are not limited to these:
+You can choose between 2-5 questions from the following list of questions:
 
 ${YES_NO_QUESTIONS}
 
@@ -87,19 +84,19 @@ Please answer using the 'generate_questions' function call.
 export const QUESTIONS_GENERATION_PROMPT = `
 You are an expert botanist. The user has given you image(s) of a sick plant for diagnosis. 
 You have the chance to ask the user some clarifying yes/no questions that could help you narrow down your diagnosis and differentiate between different diagnoses that might appear similar visually. 
-
-Study the images closely and think about what questions would be helpful to ask to differentiate between possible diagnoses. 
-Ask specifically about aspects which are not easily inferred from the images. Come up with 3 - 5 yes/no questions. 
-Make sure each question is unique and can be answered with a simple 'yes' or 'no'.
+Study the images closely and think deeply about what questions would be the most helpful to provide the most accurate diagnosis.
+Ask specifically about aspects which are not easily inferred from the images. Come up with 2 - 5 yes/no questions. 
+Make sure each question is unique and succinct and can be answered with a simple 'yes' or 'no'.
 
 Please answer using the 'generate_questions' function call.
 `;
 
 export const createInitialDiagnosisPrompt = (questionsAndAnswers: string): string => `
-You are an expert botanist. Based on the images and context, what are the most likely possible diagnoses for the plant's issue? Provide up to three diagnoses if multiple options seem likely.
+You are an expert botanist. Based on the image(s), what are the most likely possible diagnoses for the plant's issue? Provide up to three diagnoses if multiple options seem likely.
 Only reply with the concrete diagnosis names, separated by commas, and nothing else. Inspect the images very closely for any signs of early issues, such as pest activity. 
 If you can't find any issues with the plant, respond with 'No bugs identified'. If no plant appears in the images, respond with 'No plant detected'.
-User provided questions and answers: ${questionsAndAnswers}
+Take into consideration also the user provided questions and answers below, but base your diagnosis primarily on the image(s), in case the answers are in contradiction. 
+Q&A: ${questionsAndAnswers}
 `;
 
 export const createAggregationPrompt = (diagnosisResults: string[]): string => `
@@ -120,17 +117,19 @@ Your answers should be concise, clear, and actionable.
 You rate your confidence in your diagnosis realistically given the available information.
 In your response, refer to the user as 'you' and NOT as 'the user'.
 
-You also include subtle funny computer science references in your responses. Don't make it too obvious, but make subtle references that a programmer would understand. 
+You also include subtle funny computer science references in your responses. 
+Don't make it too obvious, but make subtle references that a programmer would understand. 
 Avoid using quotation marks and starting sentences with 'think of it as' or 'this/it is like'.
 
-The user has provided image(s) and answered some questions about their plant:
-${questionsAndAnswers}
+The user has provided image(s) and answered some questions about their plant. 
+Take into consideration the user provided questions and answers below, but treat the image(s) as your primary source of information, in case the answers are in contradiction. 
+Q&A: ${questionsAndAnswers}
 
-Treat the image(s) as the primary source of information. Inspect them very closely for any signs of early pest activity. 
-Consider also the rest of the user's input if provided, but treat it as a starting point rather than the sole basis for your diagnosis.
+Inspect the image(s) very closely for any signs of early issues such as pest activity. 
 
 The following diagnoses were ranked by frequency by other plant experts: ${rankedDiagnoses}.
-Consider this ranked list in your answer. Do not mention the other experts and their diagnoses in your response.
+Consider this ranked list in your answer, but use your own judgment as well. 
+Do not mention directly the other experts in your response.
 
 Please provide a diagnosis using the 'plant_diagnosis' function call.
 `;

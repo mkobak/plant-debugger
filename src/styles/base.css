@@ -4,7 +4,7 @@
 :root {
   /* Text Colors */
   --white: #ffffff;
-  --grey-0: #afafaf;
+  --grey-0: #bbbbbb;
   --grey-1: #8b8b8b;
   --grey-2: #575757;
   --green: #6dcf43;
@@ -14,7 +14,7 @@
   /* Background Colors */
   --grey-3: #2e2e2e;
   --grey-4: #171717;
-  --grey-5: #0d0d0d;
+  --grey-5: #131313;
 
   /* Common Spacing */
   --spacing-xs: 0.25rem;
@@ -23,6 +23,7 @@
   --spacing-lg: 1rem;
   --spacing-xl: 1.5rem;
   --spacing-2xl: 2rem;
+  --spacing-3xl: 3rem;
 
   /* Common Radius */
   --radius-sm: 4px;
@@ -42,6 +43,7 @@
   --font-size-lg: 18px;
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
   --font-weight-normal: 400;
   --font-weight-bold: 700;
 }
@@ -56,7 +58,7 @@
 body {
   font-family: var(--font-family);
   background-color: var(--grey-5);
-  color: var(--green);
+  color: var(--white);
   line-height: 1.4;
   height: 100vh;
   overflow: hidden;

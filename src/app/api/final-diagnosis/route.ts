@@ -12,12 +12,14 @@ import {
 import { createFinalDiagnosisPrompt } from '@/lib/api/prompts';
 
 export async function POST(request: NextRequest) {
+  console.log('=== FINAL-DIAGNOSIS API CALL START ===');
+  
   try {
     // Rate limiting check
     const clientId = getClientId(request);
     
     if (!checkRateLimit(clientId)) {
-      console.warn(`Rate limit exceeded for client: ${clientId}`);
+      console.warn(`[FINAL-DIAGNOSIS] Rate limit exceeded for client: ${clientId}`);
       return NextResponse.json(
         { error: 'Too many requests. Please wait before trying again.' },
         { status: 429 }
@@ -28,20 +30,35 @@ export async function POST(request: NextRequest) {
     const { images, questionsAndAnswers, rankedDiagnoses } = await processFormData(formData);
     
     validateImages(images);
-
-    console.log(`Final diagnosis requested for ${images.length} images by client: ${clientId}`);
+    console.log(`[FINAL-DIAGNOSIS] Processing ${images.length} images for client: ${clientId}`);
+    console.log(`[FINAL-DIAGNOSIS] Questions and answers:`, questionsAndAnswers);
+    console.log(`[FINAL-DIAGNOSIS] Ranked diagnoses:`, rankedDiagnoses);
 
     // Additional protection: if there are multiple rapid requests, add a delay
     await addRateLimitDelay(clientId);
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
+    console.log(`[FINAL-DIAGNOSIS] Converted ${imageParts.length} images to base64`);
 
     const MAIN_DIAGNOSIS_PROMPT = createFinalDiagnosisPrompt(questionsAndAnswers || '', rankedDiagnoses || '');
+    console.log(`[FINAL-DIAGNOSIS] Generated diagnosis prompt (first 500 chars):`, MAIN_DIAGNOSIS_PROMPT.substring(0, 500) + '...');
 
     const tools = getDiagnosisTools();
+    
+    // Log what we're sending to AI
+    console.log('[FINAL-DIAGNOSIS] Sending to AI:', {
+      promptLength: MAIN_DIAGNOSIS_PROMPT.length,
+      questionsAndAnswers: questionsAndAnswers || 'None',
+      rankedDiagnoses: rankedDiagnoses || 'None',
+      imageCount: imageParts.length,
+      imageSizes: imageParts.map(img => img.inlineData.data.length),
+      mimeTypes: imageParts.map(img => img.inlineData.mimeType),
+      toolsCount: tools.length
+    });
 
     // Call Gemini API for final structured diagnosis
+    console.log('[FINAL-DIAGNOSIS] Calling Gemini API...');
     const result = await models.modelHigh.generateContent({
       contents: [
         {
@@ -61,13 +78,17 @@ export async function POST(request: NextRequest) {
 
     // Parse the function call response
     const response = result.response;
-    console.log('Final diagnosis response candidates:', JSON.stringify(response.candidates, null, 2));
+    console.log('[FINAL-DIAGNOSIS] AI response received');
+    console.log('[FINAL-DIAGNOSIS] AI response full:', JSON.stringify(response, null, 2));
+    console.log('[FINAL-DIAGNOSIS] Response candidates count:', response.candidates?.length || 0);
     
     if (!response.candidates || response.candidates.length === 0) {
       throw new Error('No response candidates received from AI');
     }
 
     const candidate = response.candidates[0];
+    console.log('[FINAL-DIAGNOSIS] First candidate:', JSON.stringify(candidate, null, 2));
+    
     if (!candidate.content || !candidate.content.parts) {
       throw new Error('No content parts in response');
     }
@@ -77,34 +98,37 @@ export async function POST(request: NextRequest) {
     // Look for function calls in the response parts
     const functionCallPart = candidate.content.parts.find(part => part.functionCall);
     if (functionCallPart && functionCallPart.functionCall) {
-      console.log('Function call found:', JSON.stringify(functionCallPart.functionCall, null, 2));
+      console.log('[FINAL-DIAGNOSIS] Function call found:', JSON.stringify(functionCallPart.functionCall, null, 2));
       
       if (functionCallPart.functionCall.name === 'plant_diagnosis') {
         diagnosisData = functionCallPart.functionCall.args;
+        console.log('[FINAL-DIAGNOSIS] Extracted diagnosis data from function call:', JSON.stringify(diagnosisData, null, 2));
       } else {
         throw new Error(`Unexpected function call: ${functionCallPart.functionCall.name}`);
       }
     } else {
       // Fallback: try to parse as text response if no function call
       const responseText = response.text();
-      console.log('No function call found, trying to parse text response:', responseText);
+      console.log('[FINAL-DIAGNOSIS] No function call found, trying to parse text response');
+      console.log('[FINAL-DIAGNOSIS] Response text:', responseText);
       
       try {
         // Extract JSON from response
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           diagnosisData = JSON.parse(jsonMatch[0]);
+          console.log('[FINAL-DIAGNOSIS] Parsed diagnosis data from text:', JSON.stringify(diagnosisData, null, 2));
         } else {
           throw new Error('No JSON found in response and no function call');
         }
       } catch (parseError) {
-        console.error('Failed to parse diagnosis response:', parseError);
-        console.error('Response text:', responseText);
+        console.error('[FINAL-DIAGNOSIS] Failed to parse diagnosis response:', parseError);
+        console.error('[FINAL-DIAGNOSIS] Response text:', responseText);
         throw new Error('Invalid diagnosis response format');
       }
     }
 
-    console.log('Parsed diagnosis data:', JSON.stringify(diagnosisData, null, 2));
+    console.log('[FINAL-DIAGNOSIS] Parsed diagnosis data:', JSON.stringify(diagnosisData, null, 2));
 
     // Format the response according to our DiagnosisResult interface
     const diagnosisResult = {
@@ -128,15 +152,19 @@ export async function POST(request: NextRequest) {
       }),
       careTips: diagnosisData.careTips || 'No care tips provided',
       plant: diagnosisData.plant,
-      
     };
 
-    console.log('Final diagnosis result:', JSON.stringify(diagnosisResult, null, 2));
+    console.log('[FINAL-DIAGNOSIS] Final diagnosis result:', JSON.stringify(diagnosisResult, null, 2));
+    console.log('=== FINAL-DIAGNOSIS API CALL SUCCESS ===');
 
     return NextResponse.json({ diagnosisResult });
 
   } catch (error) {
-    console.error('Final diagnosis error:', error);
+    console.error('=== FINAL-DIAGNOSIS API CALL ERROR ===');
+    console.error('[FINAL-DIAGNOSIS] Error details:', error);
+    console.error('[FINAL-DIAGNOSIS] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('=== FINAL-DIAGNOSIS API CALL ERROR END ===');
+    
     return NextResponse.json(
       { error: 'Failed to generate final diagnosis' },
       { status: 500 }

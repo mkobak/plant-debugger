@@ -1,17 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import Modal from '@/components/ui/Modal';
-import Button from '@/components/ui/Button';
 import { PlantImage } from '@/types';
-import { formatFileSize } from '@/utils';
 
 interface ImagePreviewModalProps {
   images: PlantImage[];
   currentImageId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onImageRemove?: (imageId: string) => void;
 }
 
 export default function ImagePreviewModal({
@@ -19,7 +15,6 @@ export default function ImagePreviewModal({
   currentImageId,
   isOpen,
   onClose,
-  onImageRemove,
 }: ImagePreviewModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -45,17 +40,13 @@ export default function ImagePreviewModal({
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const handleRemoveImage = () => {
-    const imageToRemove = images[currentIndex];
-    if (imageToRemove && onImageRemove) {
-      onImageRemove(imageToRemove.id);
-      
-      // Navigate to next image or close modal if it was the last one
-      if (images.length === 1) {
-        onClose();
-      } else if (currentIndex === images.length - 1) {
-        setCurrentIndex(currentIndex - 1);
-      }
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    } else if (e.key === 'ArrowLeft' && images.length > 1) {
+      navigateToPrevious();
+    } else if (e.key === 'ArrowRight' && images.length > 1) {
+      navigateToNext();
     }
   };
 
@@ -64,66 +55,58 @@ export default function ImagePreviewModal({
   const displayImage = images[currentIndex];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Image Preview"
-      size="lg"
+    <div
+      className="image-preview-backdrop"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
     >
-      <div className="image-preview-modal">
-        <div className="image-preview-modal__main">
+      <div className="image-preview-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header with close button */}
+        <div className="image-preview-header">
+          <button
+            className="image-preview-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Image and controls */}
+        <div className="image-preview-content">
           <img
             src={displayImage.url}
             alt={`Plant image ${currentIndex + 1}`}
-            className="image-preview-modal__img"
+            className="image-preview-img"
           />
-        </div>
 
-        <div className="image-preview-modal__info">
-          <div className="image-preview-modal__meta">
-            <p>
-              <span className="prompt">file-info:</span>{' '}
-              {formatFileSize(displayImage.size)}
-              {displayImage.compressed && (
-                <span className="compressed-indicator"> (compressed)</span>
-              )}
-            </p>
-            <p>
-              <span className="prompt">image:</span> {currentIndex + 1} of {images.length}
-            </p>
-          </div>
-
-          <div className="image-preview-modal__controls">
-            {images.length > 1 && (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={navigateToPrevious}
-                  disabled={images.length <= 1}
-                >
-                  ← Previous
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={navigateToNext}
-                  disabled={images.length <= 1}
-                >
-                  Next →
-                </Button>
-              </>
-            )}
+          {/* Navigation controls below image */}
+          <div className="image-preview-controls">
+            <button
+              className="image-preview-arrow"
+              onClick={navigateToPrevious}
+              disabled={images.length <= 1}
+              aria-label="Previous image"
+            >
+              &lt;- prev
+            </button>
             
-            {onImageRemove && (
-              <Button
-                variant="danger"
-                onClick={handleRemoveImage}
-              >
-                Remove Image
-              </Button>
-            )}
+            <div className="image-preview-counter">
+              {currentIndex + 1} / {images.length}
+            </div>
+            
+            <button
+              className="image-preview-arrow"
+              onClick={navigateToNext}
+              disabled={images.length <= 1}
+              aria-label="Next image"
+            >
+              next -&gt;
+            </button>
           </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 }

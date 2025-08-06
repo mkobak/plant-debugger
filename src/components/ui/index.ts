@@ -11,4 +11,5 @@ export { default as TypingText } from './TypingText';
 export { default as TypingCommand } from './TypingCommand';
 export { default as ImageUpload } from './ImageUpload';
 export { default as ImagePreviewModal } from './ImagePreviewModal';
+export { default as ImagePreviewGrid } from './ImagePreviewGrid';
 export { default as ASCIILogo } from './ASCIILogo';

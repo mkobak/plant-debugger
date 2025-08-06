@@ -62,7 +62,7 @@ export default function LoadingScreen({
       {line2Complete && aggregatingComplete && (
         <div className="terminal-line">
           <TypingText
-            text="> Generating debugging report..."
+            text="> Generating report..."
             speed={60}
             onComplete={handleLine3Complete}
           />

@@ -5,16 +5,29 @@ import { processFormData, convertImagesToBase64, validateImages } from '@/lib/ap
 import { QUESTIONS_GENERATION_PROMPT } from '@/lib/api/prompts';
 
 export async function POST(request: NextRequest) {
+  console.log('=== GENERATE-QUESTIONS API CALL START ===');
+  
   try {
     const formData = await request.formData();
     const { images } = await processFormData(formData);
     
     validateImages(images);
+    console.log(`[GENERATE-QUESTIONS] Processing ${images.length} images`);
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
+    console.log(`[GENERATE-QUESTIONS] Converted ${imageParts.length} images to base64`);
 
     const tools = getDiagnosisQuestions();
+
+    // Log what we're sending to AI
+    console.log('[GENERATE-QUESTIONS] Sending to AI:', {
+      prompt: QUESTIONS_GENERATION_PROMPT,
+      imageCount: imageParts.length,
+      imageSizes: imageParts.map(img => img.inlineData.data.length),
+      mimeTypes: imageParts.map(img => img.inlineData.mimeType),
+      toolsCount: tools.length
+    });
 
     // Call Gemini API for questions generation
     const result = await models.modelMedium.generateContent({
@@ -34,32 +47,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log('Generate-questions API call completed');
+    console.log('[GENERATE-QUESTIONS] AI response received');
+    console.log('[GENERATE-QUESTIONS] AI response full:', JSON.stringify(result.response, null, 2));
 
     // Handle function calling response
     let questionsData;
     try {
       const response = result.response;
-      console.log('Generate-questions response candidates:', response.candidates?.length);
+      console.log('[GENERATE-QUESTIONS] AI response candidates:', response.candidates?.length);
       
       if (response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
-        console.log('Generate-questions candidate content parts:', candidate.content?.parts?.length);
+        console.log('[GENERATE-QUESTIONS] Candidate content parts:', candidate.content?.parts?.length);
         
         if (candidate.content?.parts) {
           const functionCallPart = candidate.content.parts.find(part => 'functionCall' in part);
           
           if (functionCallPart && 'functionCall' in functionCallPart && functionCallPart.functionCall) {
-            console.log('Generate-questions function call found:', functionCallPart.functionCall.name);
-            console.log('Generate-questions function call args:', JSON.stringify(functionCallPart.functionCall.args, null, 2));
+            console.log('[GENERATE-QUESTIONS] Function call found:', functionCallPart.functionCall.name);
+            console.log('[GENERATE-QUESTIONS] Function call args:', JSON.stringify(functionCallPart.functionCall.args, null, 2));
             questionsData = functionCallPart.functionCall.args;
           } else {
             // Fallback: try to parse text response
             const textPart = candidate.content.parts.find(part => 'text' in part);
             if (textPart && 'text' in textPart && textPart.text) {
-              console.log('Generate-questions fallback to text parsing');
+              console.log('[GENERATE-QUESTIONS] Fallback to text parsing');
               const responseText = textPart.text;
-              console.log('Generate-questions response text:', responseText);
+              console.log('[GENERATE-QUESTIONS] Response text:', responseText);
               
               // Try to extract JSON from text
               const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -79,8 +93,8 @@ export async function POST(request: NextRequest) {
         throw new Error('No candidates found in response');
       }
     } catch (parseError) {
-      console.error('Generate-questions response parsing failed:', parseError);
-      console.error('Generate-questions raw response:', JSON.stringify(result.response, null, 2));
+      console.error('[GENERATE-QUESTIONS] Response parsing failed:', parseError);
+      console.error('[GENERATE-QUESTIONS] Raw response:', JSON.stringify(result.response, null, 2));
       throw new Error('Invalid questions response format');
     }
 
@@ -100,11 +114,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Generate-questions extracted questions:', questions.length);
+    console.log('[GENERATE-QUESTIONS] Extracted questions:', questions.length);
+    console.log('[GENERATE-QUESTIONS] Questions data:', questions);
+    console.log('=== GENERATE-QUESTIONS API CALL SUCCESS ===');
+    
     return NextResponse.json({ questions });
 
   } catch (error) {
-    console.error('Questions generation error:', error);
+    console.error('=== GENERATE-QUESTIONS API CALL ERROR ===');
+    console.error('[GENERATE-QUESTIONS] Error details:', error);
+    console.error('[GENERATE-QUESTIONS] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('=== GENERATE-QUESTIONS API CALL ERROR END ===');
+    
     return NextResponse.json(
       { error: 'Failed to generate questions' },
       { status: 500 }

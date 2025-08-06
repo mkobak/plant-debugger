@@ -1,7 +1,6 @@
 /* Terminal Layout and Container Styles */
 
 .terminal-container {
-  height: 95vh;
   background-color: var(--grey-4);
   border: 2px solid var(--grey-3);
   border-radius: var(--radius-lg);
@@ -10,16 +9,11 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
+  margin: 5vh auto;
+  max-width: 880px;
+  height: 90vh;
 }
 
-/* Large screen constraints */
-@media (min-width: 880px) {
-  .terminal-container {
-    max-width: 880px;
-    height: 90vh;
-    margin: 5vh auto;
-  }
-}
 
 .terminal-header {
   background-color: var(--grey-3);
@@ -72,21 +66,16 @@
 
 .logo-underline {
   color: var(--grey-2);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-xs);
   font-family: monospace;
   font-size: 0.9rem;
   line-height: 1;
-}
-
-.navigation-steps {
-  display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  width: 100%;
 }
 
 .nav-step {
   font-family: var(--font-family);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-xl);
   transition: var(--transition-normal);
 }
 
@@ -105,7 +94,7 @@
 /* ASCII Logo styling */
 .ascii-logo-image {
   display: block;
-  width: auto;
+  width: 100%;
   height: auto;
   image-rendering: crisp-edges;
   image-rendering: -moz-crisp-edges;
@@ -113,32 +102,14 @@
   margin-bottom: 10px;
 }
 
-/* Base Logo sizing */
-.ascii-logo-image.single,
-.ascii-logo-image.single-line {
-  max-width: clamp(250px, 87vw, 810px);
-}
-
-.ascii-logo-image.two-lines {
-  max-width: clamp(200px, 88vw, 500px);
-}
 
 .ascii-logo-image.plant,
 .ascii-logo-image.plant-logo {
+  width: auto;
   max-width: clamp(150px, 35vw, 280px);
 }
 
-/* Responsive logo sizing */
-@media (max-width: 768px) {
-  .ascii-logo-image.single,
-  .ascii-logo-image.single-line {
-    max-width: clamp(150px, 92vw, 800px);
-  }
-  
-  .ascii-logo-image.two-lines {
-    max-width: clamp(150px, 90vw, 550px);
-  }
-  
+@media (max-width: 880px) {
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(110px, 60vw, 250px);
@@ -146,19 +117,41 @@
 }
 
 @media (max-width: 480px) {
-  .ascii-logo-image.single,
-  .ascii-logo-image.single-line {
-    max-width: clamp(140px, 90vw, 600px);
-  }
-  
-  .ascii-logo-image.two-lines {
-    max-width: clamp(120px, 92vw, 600px);
-  }
-  
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(90px, 60vw, 240px);
   }
+}
+
+/* Logo underline using precise character calculation */
+.logo-underline {
+  color: var(--grey-2);
+  margin-bottom: var(--spacing-sm);
+  font-family: monospace;
+  font-size: 0.9rem;
+  line-height: 1;
+  width: 100%;
+}
+
+/* Navigation section styling */
+.navigation-section {
+  width: 100%;
+}
+
+.navigation-steps {
+  justify-content: center;
+  display: flex;
+  gap: var(--spacing-3xl);
+  margin-bottom: var(--spacing-sm);
+}
+
+.navigation-underline {
+  color: var(--grey-2);
+  font-family: monospace;
+  font-size: 0.9rem;
+  line-height: 1;
+  width: 100%;
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Home Page Styles */

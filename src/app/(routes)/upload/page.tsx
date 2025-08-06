@@ -190,7 +190,6 @@ export default function UploadPage() {
         currentImageId={selectedImageId}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onImageRemove={handleImageRemove}
       />
     </TerminalLayout>
   );

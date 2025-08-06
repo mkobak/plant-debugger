@@ -6,7 +6,6 @@
 .results-page {
   display: flex;
   flex-direction: column;
-  min-height: 60vh;
 }
 
 .page-actions {
@@ -15,6 +14,11 @@
   align-items: center;
   margin-top: auto;
   padding-top: var(--spacing-xl);
+}
+
+/* Page Images */
+.page-images {
+  margin-bottom: var(--spacing-lg);
 }
 
 /* Error message styling */
@@ -83,7 +87,7 @@
 }
 
 .plant-identification {
-  margin: var(--spacing-md) 0;
+  margin-bottom: var(--spacing-md);
   color: var(--white);
 }
 
@@ -95,7 +99,7 @@
 .plant-name-input {
   background: transparent;
   border: none;
-  border: 1px solid var(--grey-0);
+  border: 1px solid var(--grey-1);
   color: var(--grey-0);
   font-family: var(--font-family);
   font-size: inherit;
@@ -106,16 +110,16 @@
 }
 
 .plant-name-input:focus {
-  border-color: var(--white);
+  border-color: var(--grey-0);
   color: var(--white);
 }
 
 .questions-section {
-  margin-top: var(--spacing-2xl);
+  margin-top: var(--spacing-xl);
 }
 
 .question-item {
-  margin: var(--spacing-lg) 0;
+  margin: var(--spacing-lg) 0 var(--spacing-lg) 0;
 }
 
 .question-item .typing-text,
@@ -124,9 +128,49 @@
 }
 
 .question-buttons {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin: var(--spacing-sm) auto var(--spacing-lg) auto;
+  min-height: 40px;
+  max-width: 600px;
+}
+
+.answer-buttons-group {
   display: flex;
-  gap: var(--spacing-md);
-  margin: var(--spacing-sm) 0 var(--spacing-lg) var(--spacing-md);
+  gap: var(--spacing-2xl);
+  justify-content: center;
+  grid-column: 2;
+}
+
+.unanswer-button {
+  background: transparent;
+  border: none;
+  color: var(--red);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  padding: var(--spacing-xs);
+  transition: all 0.2s ease-in-out;
+  opacity: 0.6;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  grid-column: 3;
+  justify-self: start;
+  margin-left: var(--spacing-xl);
+}
+
+.unanswer-placeholder {
+  width: 24px;
+  height: 24px;
+  padding: var(--spacing-xs);
+  flex-shrink: 0;
+  grid-column: 3;
+  margin-left: var(--spacing-md);
 }
 
 .answer-button {
@@ -136,7 +180,7 @@
   padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-lg);
   transition: all 0.2s ease-in-out;
 }
 
@@ -153,6 +197,42 @@
   cursor: not-allowed;
 }
 
+.unanswer-button:hover {
+  opacity: 1;
+  color: var(--white);
+}
+
+.additional-comments-section {
+  color: var(--grey-0);
+  margin-top: var(--spacing-xl);
+}
+
+.comments-container {
+  margin-top: var(--spacing-sm);
+}
+
+.comments-textarea {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--grey-1);
+  color: var(--grey-0);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm);
+  outline: none;
+  resize: vertical;
+  min-height: 30px;
+}
+
+.comments-textarea:focus {
+  border-color: var(--grey-0);
+  color: var(--white);
+}
+
+.comments-textarea::placeholder {
+  color: var(--grey-2);
+}
+
 .no-questions {
   margin: var(--spacing-lg) 0;
   color: var(--grey-2);
@@ -160,26 +240,46 @@
 
 /* Results Page Specific Styles */
 .diagnosis-results {
-  margin-top: var(--spacing-lg);
+  margin-top: 0;
 }
 
 .result-section {
+  margin-bottom: var(--spacing-md);
+}
+
+.section-divider {
+  width: 100%;
+  color: var(--grey-2);
   margin: var(--spacing-md) 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  overflow: hidden;
+}
+
+.section-divider::after {
+  content: '────────────────────────────────────────────────────────────────────────────────────────────────';
 }
 
 .confidence-indicator {
-  margin: var(--spacing-xs) 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
+  margin-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-md);
 }
 
 .confidence-text {
+  color: var(--white);
+}
+
+.confidence-value {
+  font-weight: var(--font-weight-bold);
 }
 
 .summary-content {
-  margin: var(--spacing-sm) 0 var(--spacing-md) var(--spacing-md);
+  margin: var(--spacing-sm) 0 var(--spacing-md) 0;
   padding: var(--spacing-sm);
-  background-color: rgba(46, 46, 46, 0.3);
   line-height: 1.5;
+  color: var(--grey-0);
 }
 
 .summary-content ul {
@@ -188,7 +288,43 @@
 }
 
 .summary-content li {
-  margin: var(--spacing-xs) 0;
+  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+}
+
+/* Custom bullet point styling for better text alignment */
+.summary-content .custom-bullet-list,
+.care-section .custom-bullet-list,
+.detailed-section .custom-bullet-list {
+  margin: var(--spacing-sm) 0;
+}
+
+.summary-content .custom-bullet-item,
+.care-section .custom-bullet-item,
+.detailed-section .custom-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+  line-height: 1.6;
+}
+
+.summary-content .bullet-symbol,
+.care-section .bullet-symbol,
+.detailed-section .bullet-symbol {
+  font-weight: bold;
+  color: var(--white);
+  margin-right: var(--spacing-sm);
+  flex-shrink: 0; /* Prevent bullet from shrinking */
+  margin-top: 0.1em; /* Fine-tune vertical alignment */
+  min-width: 1em; /* Ensure consistent bullet spacing */
+}
+
+.summary-content .bullet-content,
+.care-section .bullet-content,
+.detailed-section .bullet-content {
+  flex: 1;
+  /* This ensures text wrapping aligns with the first line */
+  word-wrap: break-word;
+  line-height: inherit;
 }
 
 .result-actions {
@@ -200,7 +336,7 @@
 .detail-button {
   background: transparent;
   border: 1px solid var(--grey-3);
-  color: var(--white);
+  color: var(--grey-0);
   padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
   font-family: var(--font-mono);
@@ -209,8 +345,8 @@
 }
 
 .detail-button:hover {
-  border-color: var(--green);
-  color: var(--green);
+  border-color: var(--grey-2);
+  color: var(--white);
 }
 
 .detailed-section,
@@ -218,7 +354,7 @@
   margin: var(--spacing-lg) 0;
   padding: var(--spacing-md);
   border: 1px solid var(--grey-3);
-  background-color: rgba(46, 46, 46, 0.2);
+  background-color: var(--grey-5);
 }
 
 .detailed-section h3,
@@ -229,7 +365,7 @@
 }
 
 .diagnosis-subsection {
-  margin: var(--spacing-md) 0;
+  margin: 0 0 var(--spacing-md) 0;
 }
 
 .diagnosis-subsection h4 {
@@ -254,5 +390,5 @@
 }
 
 .markdown-content li {
-  margin: var(--spacing-xs) 0;
+  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
 }
