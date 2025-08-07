@@ -47,10 +47,23 @@ export function useImageUpload({
 
   const processFiles = useCallback(
     async (files: FileList) => {
-      if (images.length + files.length > maxFiles) {
-        onError?.(`Maximum ${maxFiles} images allowed`);
+      const fileArray = Array.from(files);
+      console.log(`processFiles called with ${files.length} files:`, fileArray.map(f => `${f.name} (${f.size} bytes)`));
+      
+      // Calculate how many files we can actually process
+      const availableSlots = maxFiles - images.length;
+      const filesToProcess = fileArray.slice(0, availableSlots);
+      
+      if (fileArray.length > availableSlots) {
+        onError?.(`Can only upload ${availableSlots} more image(s). Maximum ${maxFiles} images allowed.`);
+      }
+      
+      if (filesToProcess.length === 0) {
+        onError?.(`Maximum ${maxFiles} images already uploaded.`);
         return;
       }
+
+      console.log(`Will process ${filesToProcess.length} out of ${fileArray.length} selected files`);
 
       setIsUploading(true);
       setUploadProgress(0);
@@ -58,11 +71,13 @@ export function useImageUpload({
       const newImages: PlantImage[] = [];
       
       try {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
+        for (let i = 0; i < filesToProcess.length; i++) {
+          const file = filesToProcess[i];
+          console.log(`Processing file ${i + 1}/${filesToProcess.length}: ${file.name}`);
 
           // Validate file type
           if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+            console.warn(`Invalid file type: ${file.name}`);
             onError?.(`Invalid file type: ${file.name}. Only JPG and PNG files are allowed.`);
             continue;
           }
@@ -72,6 +87,7 @@ export function useImageUpload({
           
           // Final validation after compression
           if (!isValidImageFile(compressedFile)) {
+            console.warn(`File too large after compression: ${file.name}`);
             onError?.(`File ${file.name} is still too large after compression`);
             continue;
           }
@@ -85,16 +101,20 @@ export function useImageUpload({
           };
 
           newImages.push(plantImage);
+          console.log(`Successfully processed ${file.name}, total processed: ${newImages.length}`);
           
           // Update progress
-          const progress = ((i + 1) / files.length) * 100;
+          const progress = ((i + 1) / filesToProcess.length) * 100;
           setUploadProgress(progress);
         }
 
+        console.log(`Finished processing. New images: ${newImages.length}, existing images: ${images.length}`);
         const updatedImages = [...images, ...newImages];
         setImages(updatedImages);
         onUploadComplete?.(updatedImages);
+        console.log(`Final image count: ${updatedImages.length}`);
       } catch (error) {
+        console.error('Error in processFiles:', error);
         onError?.(error instanceof Error ? error.message : 'Upload failed');
       } finally {
         setIsUploading(false);

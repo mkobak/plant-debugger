@@ -411,7 +411,7 @@ export default function ResultsPage() {
 
                   <div className="result-section">
                     <ConditionalTypingText 
-                      text={`> Alternative possible bug: ${currentDiagnosisResult.secondary.condition}`}
+                      text={`> Another possible bug: ${currentDiagnosisResult.secondary.condition}`}
                       speed={60}
                     />
                     <div className="confidence-indicator">

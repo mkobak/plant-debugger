@@ -55,7 +55,13 @@ export default function ImageUpload({
   const handleFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      onFilesSelected(files);
+      // Log for debugging mobile issues
+      console.log(`File input received ${files.length} files:`, Array.from(files).map(f => f.name));
+      
+      // Small delay to ensure FileList is fully populated on mobile browsers
+      setTimeout(() => {
+        onFilesSelected(files);
+      }, 10);
     }
     // Reset input to allow selecting the same files again
     if (fileInputRef.current) {
@@ -72,11 +78,17 @@ export default function ImageUpload({
     handleDragEvents(e);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
+      console.log(`Drop received ${files.length} files:`, Array.from(files).map(f => f.name));
       onFilesSelected(files);
     }
   };
 
   const openFileDialog = () => {
+    // Ensure the file input is properly configured
+    if (fileInputRef.current) {
+      fileInputRef.current.multiple = true;
+      fileInputRef.current.accept = ACCEPTED_IMAGE_TYPES.join(',');
+    }
     fileInputRef.current?.click();
   };
 
@@ -90,6 +102,7 @@ export default function ImageUpload({
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
+        console.log(`Camera input received ${files.length} files:`, Array.from(files).map(f => f.name));
         onFilesSelected(files);
       }
     };
@@ -128,7 +141,7 @@ export default function ImageUpload({
           <input
             ref={fileInputRef}
             type="file"
-            multiple
+            multiple={true}
             accept={ACCEPTED_IMAGE_TYPES.join(',')}
             onChange={handleFileInput}
             className="image-upload__input"

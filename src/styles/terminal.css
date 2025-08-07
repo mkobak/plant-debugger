@@ -12,6 +12,7 @@
   margin: 5vh auto;
   max-width: 880px;
   height: 90vh;
+  font-weight: var(--font-weight-normal);
 }
 
 

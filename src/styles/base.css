@@ -44,8 +44,8 @@
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
-  --font-weight-normal: 400;
-  --font-weight-bold: 700;
+  --font-weight-normal: 520;
+  --font-weight-bold: 900;
 }
 
 /* Reset and base styles */
@@ -56,10 +56,20 @@
 }
 
 body {
+  font-size: var(--font-size-lg);
   font-family: var(--font-family);
+  font-weight: var(--font-weight-normal);
   background-color: var(--grey-5);
   color: var(--white);
   line-height: 1.4;
   height: 100vh;
   overflow: hidden;
+}
+
+/* Ensure all interactive elements inherit the default font-weight */
+button,
+input,
+textarea,
+select {
+  font-weight: inherit;
 }
