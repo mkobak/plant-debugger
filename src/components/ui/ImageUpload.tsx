@@ -58,11 +58,10 @@ export default function ImageUpload({
       // Log for debugging mobile issues
       console.log(`File input received ${files.length} files:`, Array.from(files).map(f => f.name));
       
-      // Small delay to ensure FileList is fully populated on mobile browsers
-      setTimeout(() => {
-        onFilesSelected(files);
-      }, 10);
+      // Process files directly without delay to avoid potential mobile browser issues
+      onFilesSelected(files);
     }
+    
     // Reset input to allow selecting the same files again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
