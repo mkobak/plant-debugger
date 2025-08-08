@@ -330,24 +330,27 @@ export default function QuestionsPage() {
           )}
         </div>
 
-        <div className="page-actions">
-          <ActionButton 
-            variant="reset"
-            onClick={handleReset}
-          >
-            [ Reset ]
-          </ActionButton>
-          
-          <ActionButton 
-            variant="primary"
-            href="/results"
-            disabled={!canProceed}
-            className={canProceed ? 'has-images' : ''}
-            onClick={handleNext}
-          >
-            [ Debug ]
-          </ActionButton>
-        </div>
+        {/* Only show buttons when content is displayed or there's an error */}
+        {(pageState === PageState.SHOWING_CONTENT || pageState === PageState.ERROR) && (
+          <div className="page-actions">
+            <ActionButton 
+              variant="reset"
+              onClick={handleReset}
+            >
+              [ Reset ]
+            </ActionButton>
+            
+            <ActionButton 
+              variant="primary"
+              href="/results"
+              disabled={!canProceed}
+              className={canProceed ? 'has-images' : ''}
+              onClick={handleNext}
+            >
+              [ Debug ]
+            </ActionButton>
+          </div>
+        )}
       </div>
     </TerminalLayout>
   );

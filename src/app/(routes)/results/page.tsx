@@ -490,23 +490,26 @@ export default function ResultsPage() {
           )}
         </div>
 
-        <div className="page-actions">
-          <ActionButton 
-            variant="reset"
-            onClick={handleNewDiagnosis}
-            disabled={isDiagnosing}
-          >
-            [ Reset ]
-          </ActionButton>
-          
-          <ActionButton 
-            variant="primary"
-            disabled={true}
-            className="placeholder-button"
-          >
-            [ Download ]
-          </ActionButton>
-        </div>
+        {/* Only show buttons when not loading or when there's an error */}
+        {(!(isDiagnosing && !loadingComplete) || error) && (
+          <div className="page-actions">
+            <ActionButton 
+              variant="reset"
+              onClick={handleNewDiagnosis}
+              disabled={isDiagnosing}
+            >
+              [ Reset ]
+            </ActionButton>
+            
+            <ActionButton 
+              variant="primary"
+              disabled={true}
+              className="placeholder-button"
+            >
+              [ Download ]
+            </ActionButton>
+          </div>
+        )}
       </div>
     </TerminalLayout>
   );
