@@ -17,7 +17,9 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
   const diagnosisStartedRef = useRef(false);
   const lastDiagnosisAttemptRef = useRef<number>(0);
   const retryCountRef = useRef(0);
-  const maxRetries = 2; // Maximum of 2 retries (total 3 attempts)
+  const maxRetries = 1; // Maximum of 1 retry (total 2 attempts)
+  const abortRef = useRef<AbortController | null>(null);
+  const canceledRef = useRef(false);
 
   const startDiagnosis = useCallback(async () => {
     const now = Date.now();
@@ -53,10 +55,14 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
     
     try {
       console.log('useDiagnosisFlow: Starting diagnosis with images:', images.length);
+      canceledRef.current = false;
+      // Create a new abort controller for this run
+      abortRef.current = new AbortController();
+      const signal = abortRef.current.signal;
       
       // Step 1: Get initial diagnosis from multiple experts
       console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
-      const initialResult = await getInitialDiagnosis(images, questionsAndAnswers);
+  const initialResult = await getInitialDiagnosis(images, questionsAndAnswers, signal);
       
       console.log('useDiagnosisFlow: Initial diagnosis complete:', initialResult);
       setInitialDiagnosisComplete(true);
@@ -64,12 +70,17 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       // Brief delay before final diagnosis
       setTimeout(async () => {
         try {
+          if (canceledRef.current) {
+            console.log('useDiagnosisFlow: Canceled before final diagnosis');
+            return;
+          }
           console.log('useDiagnosisFlow: Calling getFinalDiagnosis...');
           // Step 2: Get final structured diagnosis
           const finalResult = await getFinalDiagnosis(
             images, 
             questionsAndAnswers, 
-            initialResult.rankedDiagnoses
+            initialResult.rankedDiagnoses,
+            abortRef.current?.signal
           );
           
           console.log('useDiagnosisFlow: Final diagnosis complete:', finalResult);
@@ -80,6 +91,10 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
           retryCountRef.current = 0;
         } catch (finalError) {
           console.error('useDiagnosisFlow: Final diagnosis failed:', finalError);
+          if (finalError instanceof Error && finalError.name === 'AbortError') {
+            console.log('useDiagnosisFlow: Final diagnosis aborted by user');
+            return;
+          }
           
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
@@ -99,6 +114,12 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       
     } catch (error) {
       console.error('useDiagnosisFlow: Initial diagnosis failed:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('useDiagnosisFlow: Initial diagnosis aborted by user');
+        setIsDiagnosing(false);
+        diagnosisStartedRef.current = false;
+        return;
+      }
       
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current++;
@@ -115,6 +136,16 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       retryCountRef.current = 0;
     }
   }, [images, questionsAndAnswers, isDiagnosing]);
+
+  const cancelDiagnosis = useCallback(() => {
+    console.log('useDiagnosisFlow: cancelDiagnosis called');
+    canceledRef.current = true;
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    setIsDiagnosing(false);
+    diagnosisStartedRef.current = false;
+  }, []);
 
   const resetDiagnosis = useCallback(() => {
     console.log('useDiagnosisFlow: resetDiagnosis called');
@@ -136,6 +167,7 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
     error,
     startDiagnosis,
     resetDiagnosis,
+  cancelDiagnosis,
     isReady: !diagnosisStartedRef.current && !isDiagnosing
   };
 }

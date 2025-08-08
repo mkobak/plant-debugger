@@ -23,7 +23,9 @@ export default function SharedHeader({
   isHomePage = false
 }: SharedHeaderProps) {
   const { isSmall: isSmallScreen } = useScreenSize();
-  const { canNavigateToStep, goToUpload, goToQuestions, goToResults } = useNavigation();
+  const { goToUpload, goToQuestions, goToResults } = useNavigation();
+  // Directly access context to compute gating
+  const { images, diagnosisResult } = require('@/context/DiagnosisContext').useDiagnosis();
   const underlineRef = useRef<HTMLDivElement>(null);
   const navUnderlineRef = useRef<HTMLDivElement>(null);
   const [logoUnderlineChars, setLogoUnderlineChars] = useState(80);
@@ -51,22 +53,6 @@ export default function SharedHeader({
         const numChars = Math.floor(containerWidth*1.005 / charWidth);
         setLogoUnderlineChars(Math.max(numChars, 10)); // Minimum 10 characters
       }
-
-      if (navUnderlineRef.current) {
-        const containerWidth = navUnderlineRef.current.getBoundingClientRect().width;
-        const tempSpan = document.createElement('span');
-        tempSpan.style.fontFamily = 'monospace';
-        tempSpan.style.fontSize = '0.9rem';
-        tempSpan.style.visibility = 'hidden';
-        tempSpan.style.position = 'absolute';
-        tempSpan.textContent = '#';
-        document.body.appendChild(tempSpan);
-        const charWidth = tempSpan.getBoundingClientRect().width;
-        document.body.removeChild(tempSpan);
-        
-        const numChars = Math.floor(containerWidth*1.005 / charWidth);
-        setNavUnderlineChars(Math.max(numChars, 10)); // Minimum 10 characters
-      }
     };
 
     // Calculate after component mounts
@@ -88,8 +74,15 @@ export default function SharedHeader({
     { step: 3, label: 'Results', route: '/results' },
   ];
 
+  const canGoToStep = (stepNum: number) => {
+    if (stepNum === 1) return true;
+    if (stepNum === 2) return images.length > 0; // Only after images are present
+    if (stepNum === 3) return !!diagnosisResult; // Only after diagnosis completed
+    return false;
+  };
+
   const handleStepClick = (step: NavigationStep) => {
-    if (canNavigateToStep(step.step)) {
+    if (canGoToStep(step.step)) {
       switch (step.step) {
         case 1:
           goToUpload();
@@ -106,7 +99,7 @@ export default function SharedHeader({
 
   const getStepStatus = (step: number) => {
     if (step === currentStep) return 'current';
-    if (canNavigateToStep(step)) return 'completed';
+    if (canGoToStep(step)) return 'completed';
     return 'future';
   };
 
@@ -130,9 +123,7 @@ export default function SharedHeader({
               return (
                 <span 
                   key={step.step}
-                  className={`nav-step nav-step--${status} ${
-                    status === 'completed' || status === 'current' ? 'clickable' : ''
-                  }`}
+                  className={`nav-step nav-step--${status} ${status !== 'future' ? 'clickable' : 'disabled'}`}
                   onClick={() => handleStepClick(step)}
                 >
                   [ {step.step}. ]
@@ -140,8 +131,8 @@ export default function SharedHeader({
               );
             })}
           </div>
-          <div ref={navUnderlineRef} className="navigation-underline">
-            {'#'.repeat(navUnderlineChars)}
+          <div ref={navUnderlineRef} className="logo-underline">
+            {'#'.repeat(logoUnderlineChars)}
           </div>
         </div>
       )}

@@ -7,9 +7,8 @@
 }
 
 .upload-tip {
-  margin-top: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
-  color: var(--grey-1); 
+  color: var(--grey-0); 
 }
 
 /* Image Upload Component Styles */
@@ -41,7 +40,7 @@
 }
 
 .image-upload__text {
-  color: var(--grey-1);
+  color: var(--grey-0);
   font-size: var(--font-size-lg);
   margin-bottom: var(--spacing-sm);
 }
@@ -56,7 +55,7 @@
 }
 
 .image-upload__info {
-  color: var(--grey-2);
+  color: var(--grey-1);
   font-size: var(--font-size-md);
   margin-bottom: var(--spacing-xs);
 }
@@ -196,7 +195,7 @@
 }
 
 .image-preview__info {
-  padding: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
 }
 
 .image-preview__size {

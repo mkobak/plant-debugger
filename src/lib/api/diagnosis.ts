@@ -7,7 +7,7 @@ import { initialDiagnosisCircuitBreaker, finalDiagnosisCircuitBreaker } from '@/
 import { createImageFormData, logFormDataEntries, logImageDetails, validateImages } from './client-utils';
 import { withRetry, withRetryAllowEmpty } from './retry-utils';
 
-export async function identifyPlant(images: PlantImage[]): Promise<PlantIdentification> {
+export async function identifyPlant(images: PlantImage[], signal?: AbortSignal): Promise<PlantIdentification> {
   console.log('identifyPlant called with images:', images.length);
   
   if (!images || images.length === 0) {
@@ -23,6 +23,7 @@ export async function identifyPlant(images: PlantImage[]): Promise<PlantIdentifi
     const response = await fetch('/api/identify-plant', {
       method: 'POST',
       body: formData,
+      signal,
     });
 
     if (!response.ok) {
@@ -38,7 +39,27 @@ export async function identifyPlant(images: PlantImage[]): Promise<PlantIdentifi
   }, 'Plant Identification');
 }
 
-export async function generateQuestions(images: PlantImage[]): Promise<DiagnosticQuestion[]> {
+export async function getNoPlantResponse(images: PlantImage[], signal?: AbortSignal): Promise<string> {
+  console.log('getNoPlantResponse called with images:', images.length);
+  validateImages(images);
+  // Do not retry no-plant messages; duplicates feel jarring and content can vary.
+  return withRetry(async () => {
+    const formData = createImageFormData(images);
+    const response = await fetch('/api/no-plant-response', {
+      method: 'POST',
+      body: formData,
+      signal,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP ${response.status}: Failed to generate message`);
+    }
+    const data = await response.json();
+    return data.message as string;
+  }, 'No-Plant', { maxRetries: 0 });
+}
+
+export async function generateQuestions(images: PlantImage[], signal?: AbortSignal): Promise<DiagnosticQuestion[]> {
   console.log('generateQuestions called with images:', images.length);
   
   if (!images || images.length === 0) {
@@ -54,6 +75,7 @@ export async function generateQuestions(images: PlantImage[]): Promise<Diagnosti
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
       body: formData,
+      signal,
     });
 
     if (!response.ok) {
@@ -69,7 +91,8 @@ export async function generateQuestions(images: PlantImage[]): Promise<Diagnosti
 
 export async function getInitialDiagnosis(
   images: PlantImage[], 
-  questionsAndAnswers: string
+  questionsAndAnswers: string,
+  signal?: AbortSignal
 ): Promise<{ rawDiagnoses: string[], rankedDiagnoses: string }> {
   console.log('getInitialDiagnosis called with images:', images.length);
   
@@ -85,6 +108,7 @@ export async function getInitialDiagnosis(
       const response = await fetch('/api/initial-diagnosis', {
         method: 'POST',
         body: formData,
+        signal,
       });
 
       if (!response.ok) {
@@ -105,7 +129,8 @@ export async function getInitialDiagnosis(
 export async function getFinalDiagnosis(
   images: PlantImage[], 
   questionsAndAnswers: string,
-  rankedDiagnoses: string
+  rankedDiagnoses: string,
+  signal?: AbortSignal
 ): Promise<DiagnosisResult> {
   console.log('getFinalDiagnosis called with images:', images.length);
   
@@ -122,6 +147,7 @@ export async function getFinalDiagnosis(
       const response = await fetch('/api/final-diagnosis', {
         method: 'POST',
         body: formData,
+        signal,
       });
 
       if (!response.ok) {

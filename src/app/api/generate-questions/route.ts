@@ -8,15 +8,32 @@ export async function POST(request: NextRequest) {
   console.log('=== GENERATE-QUESTIONS API CALL START ===');
   
   try {
+    const { signal } = request as unknown as { signal?: AbortSignal };
+    signal?.addEventListener?.('abort', () => {
+      console.warn('[GENERATE-QUESTIONS] Request aborted by client');
+    });
+
+    if (signal?.aborted) {
+      console.warn('[GENERATE-QUESTIONS] Aborted before reading form data');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     const formData = await request.formData();
     const { images } = await processFormData(formData);
     
     validateImages(images);
     console.log(`[GENERATE-QUESTIONS] Processing ${images.length} images`);
 
+    if (signal?.aborted) {
+      console.warn('[GENERATE-QUESTIONS] Aborted before converting images');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
     console.log(`[GENERATE-QUESTIONS] Converted ${imageParts.length} images to base64`);
+
+    console.log(`[GENERATE-QUESTIONS] Using prompt: ${QUESTIONS_GENERATION_PROMPT}`);
 
     const tools = getDiagnosisQuestions();
 
@@ -30,6 +47,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Call Gemini API for questions generation
+    if (signal?.aborted) {
+      console.warn('[GENERATE-QUESTIONS] Aborted before model call');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     const result = await models.modelMedium.generateContent({
       contents: [
         {
@@ -126,6 +148,10 @@ export async function POST(request: NextRequest) {
     console.error('[GENERATE-QUESTIONS] Error stack:', error instanceof Error ? error.stack : 'No stack');
     console.error('=== GENERATE-QUESTIONS API CALL ERROR END ===');
     
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     return NextResponse.json(
       { error: 'Failed to generate questions' },
       { status: 500 }

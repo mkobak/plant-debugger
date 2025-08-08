@@ -174,10 +174,6 @@ export default function ImageUpload({
       {/* Image Previews */}
       {images.length > 0 && (
         <div className="image-upload__previews">
-          <h3 className="image-upload__previews-title">
-            <span className="prompt">plant-debugger:~/upload$</span>{' '}
-            uploaded images ({images.length}/{MAX_FILES})
-          </h3>
           <div className="image-upload__grid">
             {images.map((image) => (
               <div key={image.id} className="image-preview">

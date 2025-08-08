@@ -1,23 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
-import TypingCommand from '@/components/ui/TypingCommand';
 import ASCIILogo from '@/components/ui/ASCIILogo';
 import { useDiagnosis } from '@/context/DiagnosisContext';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
+  const [promptComplete, setPromptComplete] = useState(false);
   const [commandComplete, setCommandComplete] = useState(false);
-  const { setCurrentStep } = useDiagnosis();
-
-  useEffect(() => {
-    // Set current step to 0 for home page
-    setCurrentStep(0);
-  }, [setCurrentStep]);
+  useDiagnosis(); // keep hook for potential future data; no step management
 
   return (
     <TerminalLayout>
@@ -26,30 +22,44 @@ export default function HomePage() {
         <div className="terminal-text home-text">
           <TypingText 
             text="> Is your plant experiencing some compilation issues?" 
-            speed={80}
+            speed={100}
             onComplete={() => setLine1Complete(true)}
           />
           {line1Complete && (
             <TypingText 
               text="> Run the program below to start debugging." 
-              speed={80}
+              speed={100}
               onComplete={() => setLine2Complete(true)}
             />
           )}
           <br />
           {line2Complete && (
             <div className="home-actions">
-              <TypingCommand
-                prompt="plant-debugger:~$"
-                command="start-debugging"
-                href="/upload"
-                speed={80}
-                onComplete={() => setCommandComplete(true)}
-              />
+              <p className="typing-text prompt-line">
+                <TypingText 
+                  as="span"
+                  text="plant-debugger:~$"
+                  speed={100}
+                  onComplete={() => setPromptComplete(true)}
+                />
+                {promptComplete && (
+                  <>
+                    {' '}
+                    <Link href="/upload" className="command-link">
+                      <TypingText 
+                        as="span" 
+                        text="start-debugging" 
+                        speed={100}
+                        onComplete={() => setCommandComplete(true)}
+                      />
+                    </Link>
+                  </>
+                )}
+              </p>
             </div>
           )}
         </div>
-        {commandComplete && (
+  {commandComplete && (
           <div className="plant-logo-container">
             <ASCIILogo variant="plant" className="plant-logo" />
           </div>

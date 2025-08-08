@@ -65,14 +65,6 @@
   width: 100%;
 }
 
-.logo-underline {
-  color: var(--grey-2);
-  margin-bottom: var(--spacing-xs);
-  font-family: monospace;
-  font-size: 0.9rem;
-  line-height: 1;
-  width: 100%;
-}
 
 .nav-step {
   font-family: var(--font-family);
@@ -146,14 +138,6 @@
   margin-bottom: var(--spacing-sm);
 }
 
-.navigation-underline {
-  color: var(--grey-2);
-  font-family: monospace;
-  font-size: 0.9rem;
-  line-height: 1;
-  width: 100%;
-  margin-bottom: var(--spacing-sm);
-}
 
 /* Home Page Styles */
 .home-content {
@@ -186,17 +170,17 @@
 
 .prompt-line {
   margin: 0;
-  color: var(--grey-1);
+  color: var(--grey-0);
 }
 
 /* Terminal text with typing effect */
 .terminal-text {
   width: 100%;
   color: var(--white);
+  line-height: 1.5;
 }
 
 .typing-text {
-  margin-bottom: var(--spacing-sm);
   line-height: 1.5;
 }
 
@@ -211,7 +195,7 @@
 }
 
 .prompt {
-  color: var(--green);
+  color: var(--white);
   font-weight: var(--font-weight-normal);
 }
 

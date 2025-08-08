@@ -122,7 +122,7 @@
   cursor: pointer;
   padding: 6px 12px;
   transition: all 0.2s;
-  font-family: var(--font-mono);
+  font-family: var(--font-family);
 }
 
 .image-preview-close:hover {
@@ -163,7 +163,7 @@
   cursor: pointer;
   padding: 8px 16px;
   transition: all 0.2s;
-  font-family: var(--font-mono);
+  font-family: var(--font-family);
   min-width: 80px;
 }
 
@@ -187,7 +187,7 @@
 .image-preview-counter {
   color: var(--grey-1);
   font-size: var(--font-size-md);
-  font-family: var(--font-mono);
+  font-family: var(--font-family);
   user-select: none;
   min-width: 80px;
   text-align: center;

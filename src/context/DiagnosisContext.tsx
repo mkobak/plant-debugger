@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { typingSession } from '@/lib/typingSession';
 import { 
   PlantImage, 
   PlantIdentification, 
@@ -15,10 +16,6 @@ interface DiagnosisContextType {
   addImage: (image: PlantImage) => void;
   removeImage: (imageId: string) => void;
   clearImages: () => void;
-  currentStep: number;
-  setCurrentStep: (step: number) => void;
-  maxReachedStep: number;
-  setMaxReachedStep: (step: number) => void;
   
   // Plant identification state
   plantIdentification: PlantIdentification | null;
@@ -34,10 +31,20 @@ interface DiagnosisContextType {
   removeAnswer: (questionId: string) => void;
   additionalComments: string;
   setAdditionalComments: (comments: string) => void;
+  // Special case: persisted message when no plant is detected
+  noPlantMessage: string;
+  setNoPlantMessage: (msg: string) => void;
   
   // Results state
   diagnosisResult: DiagnosisResult | null;
   setDiagnosisResult: (result: DiagnosisResult | null) => void;
+  lastDiagnosisSignature: string | null;
+  setLastDiagnosisSignature: (sig: string | null) => void;
+  lastQAImagesSignature: string | null;
+  setLastQAImagesSignature: (sig: string | null) => void;
+  // Guard to prevent duplicate runs per images signature (e.g., StrictMode)
+  qaProcessingSignature: string | null;
+  setQaProcessingSignature: (sig: string | null) => void;
   
   // Loading states
   isIdentifying: boolean;
@@ -59,10 +66,7 @@ interface DiagnosisProviderProps {
 
 export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [images, setImages] = useState<PlantImage[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [maxReachedStep, setMaxReachedStep] = useState(1); // Start with step 1 (upload) reachable
-  
-  console.log('DiagnosisProvider render - images count:', images.length);
+  // Keep the global state focused on domain data; avoid UI/step flags here
   
   // Plant identification state
   const [plantIdentification, setPlantIdentification] = useState<PlantIdentification | null>(null);
@@ -71,32 +75,48 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([]);
   const [answers, setAnswers] = useState<DiagnosticAnswer[]>([]);
   const [additionalComments, setAdditionalComments] = useState<string>('');
+  const [noPlantMessage, setNoPlantMessage] = useState<string>('');
   
   // Results state
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+  const [lastDiagnosisSignature, setLastDiagnosisSignature] = useState<string | null>(null);
+  const [lastQAImagesSignature, setLastQAImagesSignature] = useState<string | null>(null);
+  const [qaProcessingSignature, setQaProcessingSignature] = useState<string | null>(null);
   
   // Loading states
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
-  const setImagesWithLogging = (images: PlantImage[]) => {
-    console.log('setImages called with:', images.length, 'images');
-    setImages(images);
+  const setImagesWithLogging = (newImages: PlantImage[]) => {
+    setImages(prev => {
+      const prevSig = prev.map(i => i.id).join('|');
+      const newSig = newImages.map(i => i.id).join('|');
+      if (prevSig !== newSig) {
+        // Images changed: clear dependent state so flows rerun
+        setPlantIdentification(null);
+        setQuestions([]);
+        setAnswers([]);
+        setAdditionalComments('');
+  setNoPlantMessage('');
+        setDiagnosisResult(null);
+        setLastDiagnosisSignature(null);
+        setLastQAImagesSignature(null);
+  setQaProcessingSignature(null);
+      }
+      return newImages;
+    });
   };
 
   const addImage = (image: PlantImage) => {
-    console.log('addImage called with:', image.id);
     setImages(prev => [...prev, image]);
   };
 
   const removeImage = (imageId: string) => {
-    console.log('removeImage called with:', imageId);
     setImages(prev => prev.filter(img => img.id !== imageId));
   };
 
   const clearImages = () => {
-    console.log('clearImages called');
     setImages([]);
   };
 
@@ -110,10 +130,15 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
       }
       return [...prev, answer];
     });
+    // Answers changed: invalidate any existing diagnosis
+    if (diagnosisResult) setDiagnosisResult(null);
+    if (lastDiagnosisSignature) setLastDiagnosisSignature(null);
   };
 
   const removeAnswer = (questionId: string) => {
     setAnswers(prev => prev.filter(a => a.questionId !== questionId));
+    if (diagnosisResult) setDiagnosisResult(null);
+    if (lastDiagnosisSignature) setLastDiagnosisSignature(null);
   };
 
   const updatePlantSpecies = (species: string) => {
@@ -122,20 +147,32 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
       return { ...prev, species };
     });
   };
+  
+  // When comments change, invalidate diagnosis so it reruns on next Debug
+  useEffect(() => {
+    if (diagnosisResult || lastDiagnosisSignature) {
+      setDiagnosisResult(null);
+      setLastDiagnosisSignature(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [additionalComments]);
 
   const resetAll = () => {
-    console.log('resetAll called - clearing all state');
     setImages([]);
-    setCurrentStep(0);
-    setMaxReachedStep(1); // Reset to only step 1 being reachable
     setPlantIdentification(null);
     setQuestions([]);
     setAnswers([]);
     setAdditionalComments('');
+  setNoPlantMessage('');
     setDiagnosisResult(null);
+  setLastDiagnosisSignature(null);
+  setLastQAImagesSignature(null);
+  setQaProcessingSignature(null);
     setIsIdentifying(false);
     setIsGeneratingQuestions(false);
     setIsDiagnosing(false);
+  // Reset typing animations memory so they play again
+  typingSession.reset();
   };
 
   const value = {
@@ -144,10 +181,6 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     addImage,
     removeImage,
     clearImages,
-    currentStep,
-    setCurrentStep,
-    maxReachedStep,
-    setMaxReachedStep,
     plantIdentification,
     setPlantIdentification,
     updatePlantSpecies,
@@ -159,8 +192,16 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     removeAnswer,
     additionalComments,
     setAdditionalComments,
+  noPlantMessage,
+  setNoPlantMessage,
     diagnosisResult,
     setDiagnosisResult,
+  lastDiagnosisSignature,
+  setLastDiagnosisSignature,
+  lastQAImagesSignature,
+  setLastQAImagesSignature,
+  qaProcessingSignature,
+  setQaProcessingSignature,
     isIdentifying,
     setIsIdentifying,
     isGeneratingQuestions,

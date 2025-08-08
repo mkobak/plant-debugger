@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+// Removed duplicate import of useMemo
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -12,15 +13,16 @@ import { useNavigation } from '@/hooks/useNavigation';
 import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
 
 export default function ResultsPage() {
-  const { goHome, goToUpload, maxReachedStep } = useNavigation();
+  const { goHome, goToUpload, goToQuestions } = useNavigation();
   const {
     images,
-    setCurrentStep,
     questions,
     answers,
     additionalComments,
     diagnosisResult: contextDiagnosisResult,
     setDiagnosisResult: setContextDiagnosisResult,
+  lastDiagnosisSignature,
+  setLastDiagnosisSignature,
   } = useDiagnosis();
 
   const [stepInitialized, setStepInitialized] = useState(false);
@@ -30,6 +32,8 @@ export default function ResultsPage() {
   const [loadingComplete, setLoadingComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [hasShownResultsBefore, setHasShownResultsBefore] = useState(false);
+  // Only type the plant name; rest appears immediately
+  const [plantTitleDone, setPlantTitleDone] = useState(false);
 
   // Format questions and answers for the diagnosis
   const formatQuestionsAndAnswers = () => {
@@ -119,16 +123,36 @@ export default function ResultsPage() {
     error,
     startDiagnosis,
     resetDiagnosis,
+    cancelDiagnosis,
     isReady
   } = useDiagnosisFlow({ images, questionsAndAnswers });
+
+  // Signatures to detect rerun conditions
+  const imagesSignature = useMemo(() => images.map(i => i.id).join('|'), [images]);
+  const qaSignature = useMemo(() => {
+    const answered = questions
+      .map((q: any) => {
+        const a = answers.find((x: any) => x.questionId === q.id);
+        return a && !a.skipped ? `${q.id}:${a.answer}` : '';
+      })
+      .filter(Boolean)
+      .join('|');
+    const comments = (additionalComments || '').trim();
+    return `${answered}#${comments}`;
+  }, [questions, answers, additionalComments]);
+  const diagnosisSignature = `${imagesSignature}__${qaSignature}`;
+  const typingKeyPrefix = `results:${diagnosisSignature}`;
+  // Reset plant title when inputs change (new analysis run)
+  useEffect(() => {
+    setPlantTitleDone(false);
+  }, [diagnosisSignature]);
 
   // Set current step once
   useEffect(() => {
     if (!stepInitialized) {
-      setCurrentStep(3);
       setStepInitialized(true);
     }
-  }, [setCurrentStep, stepInitialized]);
+  }, [stepInitialized]);
 
   // Handle redirects and start diagnosis
   useEffect(() => {
@@ -141,13 +165,13 @@ export default function ResultsPage() {
       return;
     }
 
-    // If we already have a diagnosis result in context, we're navigating back - don't restart the process
+  // If we already have a diagnosis result in context, we're navigating back - don't restart the process
     if (contextDiagnosisResult) {
       console.log('ResultsPage: Context diagnosis result already exists, skipping diagnosis');
       setIsNavigatingBack(true);
       setLoadingComplete(true);
       setHasShownResultsBefore(true); // Skip typing animations when navigating back
-      return;
+  return;
     }
 
     // If we already have a diagnosis result from the hook, we're navigating back - don't restart the process
@@ -160,11 +184,19 @@ export default function ResultsPage() {
     }
 
     // Start diagnosis if ready and step is initialized
-    if (stepInitialized && isReady && !diagnosisResult && !contextDiagnosisResult) {
-      console.log('ResultsPage: Starting diagnosis...');
-      startDiagnosis();
+    if (stepInitialized && isReady) {
+      // If signature changed, clear previous results and rerun
+      if (lastDiagnosisSignature && lastDiagnosisSignature !== diagnosisSignature) {
+        console.log('ResultsPage: Inputs changed, clearing previous diagnosis and restarting');
+        setContextDiagnosisResult(null);
+        setLoadingComplete(false);
+      }
+  if (!contextDiagnosisResult) {
+        console.log('ResultsPage: Starting diagnosis...');
+        startDiagnosis();
+      }
     }
-  }, [images.length, stepInitialized, isReady, diagnosisResult, contextDiagnosisResult, goToUpload, startDiagnosis]);
+  }, [images.length, stepInitialized, isReady, diagnosisResult, contextDiagnosisResult, goToUpload, startDiagnosis, lastDiagnosisSignature, diagnosisSignature, setContextDiagnosisResult]);
 
   // Save diagnosis result to context when it's completed
   useEffect(() => {
@@ -173,6 +205,13 @@ export default function ResultsPage() {
       setContextDiagnosisResult(diagnosisResult);
     }
   }, [diagnosisResult, contextDiagnosisResult, setContextDiagnosisResult]);
+
+  // Persist the signature once we have results so we can detect back navigation vs changes later
+  useEffect(() => {
+    if ((finalDiagnosisComplete || contextDiagnosisResult) && lastDiagnosisSignature !== diagnosisSignature) {
+      setLastDiagnosisSignature(diagnosisSignature);
+    }
+  }, [finalDiagnosisComplete, contextDiagnosisResult, diagnosisSignature, lastDiagnosisSignature, setLastDiagnosisSignature]);
 
   // Set hasShownResultsBefore when results first become available
   useEffect(() => {
@@ -220,18 +259,24 @@ export default function ResultsPage() {
   // Use the diagnosis result from context if available, otherwise from hook
   const currentDiagnosisResult = contextDiagnosisResult || diagnosisResult;
 
-  // Component to conditionally show typing text or instant text
-  const ConditionalTypingText = ({ text, speed = 60 }: { text: string; speed?: number }) => {
-    if (hasShownResultsBefore) {
-      return <span>{text}</span>;
-    }
-    return <TypingText text={text} speed={speed} />;
-  };
 
   return (
     <TerminalLayout title="plant-debugger:~/results$">
       <SharedHeader currentStep={3} showNavigation={true} />
       
+                <div className="prompt-line">
+                  {!isNavigatingBack ? (
+                    <TypingText
+                      text="plant-debugger:~/results$"
+                      speed={100}
+                    />
+                  ) : (
+                    <div>plant-debugger:~/results$</div>
+                  )
+                }
+                </div>
+                <br />
+
       {/* Image Preview Grid */}
       {images.length > 0 && (
         <div className="page-images">
@@ -249,6 +294,7 @@ export default function ResultsPage() {
               isGeneratingTreatment={initialDiagnosisComplete && !finalDiagnosisComplete}
               aggregatingComplete={initialDiagnosisComplete}
               finalDiagnosisComplete={finalDiagnosisComplete}
+              onceKeyPrefix={typingKeyPrefix}
               onComplete={() => setLoadingComplete(true)} 
             />
           )}
@@ -279,17 +325,22 @@ export default function ResultsPage() {
           )}
 
           {/* Show results only when diagnosis is complete */}
-          {(finalDiagnosisComplete || contextDiagnosisResult) && (diagnosisResult || contextDiagnosisResult) && (loadingComplete || !isDiagnosing) && (
+      {(finalDiagnosisComplete || contextDiagnosisResult) && (diagnosisResult || contextDiagnosisResult) && (loadingComplete || !isDiagnosing) && (
             <div className="diagnosis-results">
               {/* Plant Information */}
               {currentDiagnosisResult?.plant && (
                 <div className="result-section">
-                  <ConditionalTypingText text={`> Plant: ${currentDiagnosisResult.plant}`} speed={60} />
+                  <TypingText 
+                    text={`> Plant name: ${currentDiagnosisResult.plant}`} 
+                    speed={60}
+                    onceKey={`${typingKeyPrefix}|plant`}
+                    onComplete={() => setPlantTitleDone(true)}
+                  />
                 </div>
               )}
 
-              {/* Care Tips Section - Right after plant name */}
-              {currentDiagnosisResult && (
+        {/* Care Tips Section - appears immediately after plant name is typed */}
+        {currentDiagnosisResult && plantTitleDone && (
                 <div className="result-section">
                   <button 
                     className="detail-button"
@@ -300,7 +351,7 @@ export default function ResultsPage() {
                   
                   {showCare && (
                     <div className="care-section" style={{ marginTop: '-1px' }}>
-                       {'> Care Tips:'} 
+                      <div className="summary-content-title"> {'> Care Tips:'} </div>
                       <div className="summary-content">
                         <div 
                           dangerouslySetInnerHTML={{ 
@@ -321,13 +372,10 @@ export default function ResultsPage() {
               )}
 
               {/* Primary Diagnosis */}
-              {currentDiagnosisResult && (
+        {currentDiagnosisResult && plantTitleDone && (
                 <div className="result-section">
-                  <ConditionalTypingText 
-                    text={`> Bug detected: ${currentDiagnosisResult.primary.condition}`}
-                    speed={60}
-                  />
-                  <div className="confidence-indicator">
+          <div>{`> Bug detected: ${currentDiagnosisResult.primary.condition}`}</div>
+          <div className="confidence-indicator">
                     <span className="confidence-text">
                       {'> Confidence: '} 
                     </span>
@@ -342,9 +390,9 @@ export default function ResultsPage() {
               )}
 
               {/* Primary Summary */}
-              {currentDiagnosisResult && (
+              {currentDiagnosisResult && plantTitleDone && (
                 <div className="result-section">
-                  <ConditionalTypingText text="> Summary:" speed={60} />
+                  <div>{'> Summary:'}</div>
                   <div className="summary-content">
                     <div 
                       dangerouslySetInnerHTML={{ 
@@ -352,7 +400,6 @@ export default function ResultsPage() {
                       }}
                     />
                   </div>
-                  
                   {/* Primary Details Button */}
                   <button 
                     className="detail-button"
@@ -365,7 +412,7 @@ export default function ResultsPage() {
                   {showPrimaryDetails && (
                     <div className="detailed-section" style={{ marginTop: '-1px' }}>
                       <div className="diagnosis-subsection">
-                        {'> Reasoning:'}
+                        <div className="summary-content-title">{'> Reasoning:'}</div>
                         <div className="summary-content">
                           <div 
                             dangerouslySetInnerHTML={{ 
@@ -376,7 +423,7 @@ export default function ResultsPage() {
                       </div>
                       
                       <div className="diagnosis-subsection">
-                        {'> Treatment Plan:'}
+                        <div className="summary-content-title">{'> Treatment Plan:'}</div>
                         <div className="summary-content">
                           <div 
                             dangerouslySetInnerHTML={{ 
@@ -387,7 +434,7 @@ export default function ResultsPage() {
                       </div>
                       
                       <div className="diagnosis-subsection">
-                        {'> Prevention Tips:'}
+                        <div className="summary-content-title">{'> Prevention Tips:'}</div>
                         <div className="summary-content">
                           <div 
                             dangerouslySetInnerHTML={{ 
@@ -402,7 +449,7 @@ export default function ResultsPage() {
               )}
 
               {/* Secondary Diagnosis */}
-              {currentDiagnosisResult?.secondary && (
+              {currentDiagnosisResult?.secondary && plantTitleDone && (
                 <>
                   {/* Visual Divider */}
                   <div className="result-section">
@@ -410,10 +457,7 @@ export default function ResultsPage() {
                   </div>
 
                   <div className="result-section">
-                    <ConditionalTypingText 
-                      text={`> Another possible bug: ${currentDiagnosisResult.secondary.condition}`}
-                      speed={60}
-                    />
+                    <div>{`> Another possible bug: ${currentDiagnosisResult.secondary.condition}`}</div>
                     <div className="confidence-indicator">
                       <span className="confidence-text" style={{ color: 'var(--text-primary)' }}>
                         {'> Confidence: '} 
@@ -429,7 +473,7 @@ export default function ResultsPage() {
 
                   {/* Secondary Summary */}
                   <div className="result-section">
-                    <ConditionalTypingText text="> Summary:" speed={60} />
+                    <div>{'> Summary:'}</div>
                     <div className="summary-content">
                       <div 
                         dangerouslySetInnerHTML={{ 
@@ -437,7 +481,6 @@ export default function ResultsPage() {
                         }}
                       />
                     </div>
-                    
                     {/* Secondary Details Button */}
                     <button 
                       className="detail-button"
@@ -450,7 +493,7 @@ export default function ResultsPage() {
                     {showSecondaryDetails && (
                       <div className="detailed-section" style={{ marginTop: '-1px' }}>
                         <div className="diagnosis-subsection">
-                          {'> Reasoning:'}
+                          <div className="summary-content-title">{'> Reasoning:'}</div>
                           <div className="summary-content">
                             <div 
                               dangerouslySetInnerHTML={{ 
@@ -461,7 +504,7 @@ export default function ResultsPage() {
                         </div>
                         
                         <div className="diagnosis-subsection">
-                          {'> Treatment Plan:'}
+                          <div className="summary-content-title">{'> Treatment Plan:'}</div>
                           <div className="summary-content">
                             <div 
                               dangerouslySetInnerHTML={{ 
@@ -472,7 +515,7 @@ export default function ResultsPage() {
                         </div>
                         
                         <div className="diagnosis-subsection">
-                          {'> Prevention Tips:'}
+                          <div className="summary-content-title">{'> Prevention Tips:'}</div>
                           <div className="summary-content">
                             <div 
                               dangerouslySetInnerHTML={{ 
@@ -486,9 +529,30 @@ export default function ResultsPage() {
                   </div>
                 </>
               )}
+              {/* Visual Divider */}
+              <div className="result-section">
+                <div className="section-divider"></div>
+              </div>
             </div>
           )}
         </div>
+        {/* Cancel button shown only during loading */}
+        {(isDiagnosing && !loadingComplete && !error) && (
+          <div className="page-actions page-actions--center">
+            <ActionButton 
+              variant="reset"
+              onClick={() => {
+                // Abort and go back to questions
+                cancelDiagnosis();
+                setHasShownResultsBefore(false);
+                setLoadingComplete(false);
+                goToQuestions();
+              }}
+            >
+              [ Cancel ]
+            </ActionButton>
+          </div>
+        )}
 
         {/* Only show buttons when not loading or when there's an error */}
         {(!(isDiagnosing && !loadingComplete) || error) && (

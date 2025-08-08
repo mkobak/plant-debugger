@@ -11,6 +11,8 @@ interface LoadingScreenProps {
   aggregatingComplete?: boolean;
   finalDiagnosisComplete?: boolean;
   onComplete?: () => void;
+  // When provided, the 3 typing lines will be keyed to this prefix so they retype when the prefix changes
+  onceKeyPrefix?: string;
 }
 
 export default function LoadingScreen({ 
@@ -19,7 +21,8 @@ export default function LoadingScreen({
   isGeneratingTreatment = false,
   aggregatingComplete = false,
   finalDiagnosisComplete = false, 
-  onComplete 
+  onComplete,
+  onceKeyPrefix
 }: LoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -45,6 +48,7 @@ export default function LoadingScreen({
         <TypingText
           text="> Processing answers..."
           speed={60}
+          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
           onComplete={() => setLine1Complete(true)}
         />
       </div>
@@ -53,6 +57,7 @@ export default function LoadingScreen({
           <TypingText
             text="> Investigating possible bugs..."
             speed={60}
+            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
           />
           {isAggregating && <LoadingSpinner />}
@@ -64,6 +69,7 @@ export default function LoadingScreen({
           <TypingText
             text="> Generating report..."
             speed={60}
+            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}
           />
           {isGeneratingTreatment && <LoadingSpinner />}

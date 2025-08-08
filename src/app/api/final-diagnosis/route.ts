@@ -15,6 +15,11 @@ export async function POST(request: NextRequest) {
   console.log('=== FINAL-DIAGNOSIS API CALL START ===');
   
   try {
+    const { signal } = request as unknown as { signal?: AbortSignal };
+    signal?.addEventListener?.('abort', () => {
+      console.warn('[FINAL-DIAGNOSIS] Request aborted by client');
+    });
+
     // Rate limiting check
     const clientId = getClientId(request);
     
@@ -24,6 +29,11 @@ export async function POST(request: NextRequest) {
         { error: 'Too many requests. Please wait before trying again.' },
         { status: 429 }
       );
+    }
+
+    if (signal?.aborted) {
+      console.warn('[FINAL-DIAGNOSIS] Aborted before reading form data');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
     const formData = await request.formData();
@@ -37,12 +47,17 @@ export async function POST(request: NextRequest) {
     // Additional protection: if there are multiple rapid requests, add a delay
     await addRateLimitDelay(clientId);
 
+    if (signal?.aborted) {
+      console.warn('[FINAL-DIAGNOSIS] Aborted before converting images');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
     console.log(`[FINAL-DIAGNOSIS] Converted ${imageParts.length} images to base64`);
 
     const MAIN_DIAGNOSIS_PROMPT = createFinalDiagnosisPrompt(questionsAndAnswers || '', rankedDiagnoses || '');
-    console.log(`[FINAL-DIAGNOSIS] Generated diagnosis prompt (first 500 chars):`, MAIN_DIAGNOSIS_PROMPT.substring(0, 500) + '...');
+    console.log(`[FINAL-DIAGNOSIS] Generated diagnosis prompt:`, MAIN_DIAGNOSIS_PROMPT);
 
     const tools = getDiagnosisTools();
     
@@ -58,8 +73,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Call Gemini API for final structured diagnosis
+    if (signal?.aborted) {
+      console.warn('[FINAL-DIAGNOSIS] Aborted before model call');
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     console.log('[FINAL-DIAGNOSIS] Calling Gemini API...');
-    const result = await models.modelHigh.generateContent({
+    const genPromise = models.modelHigh.generateContent({
       contents: [
         {
           role: 'user',
@@ -74,6 +94,25 @@ export async function POST(request: NextRequest) {
         temperature: 0.1,
         topP: 0.5,
       },
+    });
+    // Race with abort to stop further processing early if canceled
+    const result = await new Promise<typeof genPromise extends Promise<infer R> ? R : never>((resolve, reject) => {
+      if (signal?.aborted) return reject(new Error('aborted'));
+      const onAbort = () => reject(new Error('aborted'));
+      signal?.addEventListener?.('abort', onAbort, { once: true });
+      genPromise.then(r => {
+        signal?.removeEventListener?.('abort', onAbort);
+        resolve(r);
+      }).catch(err => {
+        signal?.removeEventListener?.('abort', onAbort);
+        reject(err);
+      });
+    }).catch(err => {
+      if ((err as Error)?.message === 'aborted') {
+        console.warn('[FINAL-DIAGNOSIS] Aborted during model call');
+        throw new Error('aborted');
+      }
+      throw err;
     });
 
     // Parse the function call response
@@ -165,6 +204,10 @@ export async function POST(request: NextRequest) {
     console.error('[FINAL-DIAGNOSIS] Error stack:', error instanceof Error ? error.stack : 'No stack');
     console.error('=== FINAL-DIAGNOSIS API CALL ERROR END ===');
     
+    if (error instanceof Error && error.message === 'aborted') {
+      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
+    }
+
     return NextResponse.json(
       { error: 'Failed to generate final diagnosis' },
       { status: 500 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -14,12 +13,12 @@ import { useNavigation } from '@/hooks/useNavigation';
 import { PlantImage } from '@/types';
 
 export default function UploadPage() {
-  const router = useRouter();
-  const { goHome, goToQuestions, maxReachedStep } = useNavigation();
+  const { goHome, goToQuestions } = useNavigation();
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [titleComplete, setTitleComplete] = useState(false);
+  const [codeComplete, setCodeComplete] = useState(false);
   const [tipComplete, setTipComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   
@@ -28,8 +27,6 @@ export default function UploadPage() {
   const { 
     images: contextImages, 
     setImages: setContextImages, 
-    setCurrentStep, 
-    setMaxReachedStep,
   } = useDiagnosis();
 
   const {
@@ -54,29 +51,26 @@ export default function UploadPage() {
   });
 
   useEffect(() => {
-    setCurrentStep(1);
-    
-    // Check if we're navigating back (if step 2 or higher has been reached)
-    if (maxReachedStep >= 2) {
+    // If there are already images in context, assume user navigated back
+    if (contextImages.length > 0) {
       setIsNavigatingBack(true);
       setTitleComplete(true);
+      setCodeComplete(true);
       setTipComplete(true);
     }
-  }, [setCurrentStep, maxReachedStep]);
+  }, [contextImages.length]);
 
   // Handle navigation after context images are updated
   useEffect(() => {
     if (shouldNavigate && contextImages.length > 0) {
       console.log('Context images updated, navigating to questions...');
       setShouldNavigate(false);
-      setMaxReachedStep(Math.max(maxReachedStep, 2));
-      
       // Use a small delay to ensure context is fully updated
       setTimeout(() => {
         goToQuestions();
       }, 100);
     }
-  }, [shouldNavigate, contextImages, maxReachedStep, goToQuestions, setMaxReachedStep]);
+  }, [shouldNavigate, contextImages, goToQuestions]);
 
   const handleImagePreview = (image: PlantImage) => {
     setSelectedImageId(image.id);
@@ -108,7 +102,7 @@ export default function UploadPage() {
 
   const handleReset = () => {
     console.log('handleReset called');
-    goHome();
+  goHome();
   };
 
   const canProceed = images.length > 0 && !isUploading;
@@ -117,8 +111,23 @@ export default function UploadPage() {
     <TerminalLayout title="plant-debugger:~/upload$">
       <SharedHeader currentStep={1} showNavigation={true} />
       <div className="upload-page">
+        
         <div className="terminal-text">
-          {!isNavigatingBack ? (
+          <div className="prompt-line">
+            {!isNavigatingBack ? (
+              <TypingText
+                text="plant-debugger:~/upload$"
+                speed={100}
+                onComplete={() => setCodeComplete(true)}
+              />
+            ) : (
+              <div>plant-debugger:~/upload$</div>
+            )
+          }
+          </div>
+          <br />
+          {codeComplete && (
+            !isNavigatingBack ? (
             <TypingText
               text="> Upload photos of your plant."
               speed={100}
@@ -126,6 +135,7 @@ export default function UploadPage() {
             />
           ) : (
             <div>&gt; Upload photos of your plant.</div>
+          )
           )}
           {error && (
             <div className="error-message">
@@ -140,7 +150,7 @@ export default function UploadPage() {
               {!isNavigatingBack ? (
                 <TypingText
                   text="> Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts."
-                  speed={200}
+                  speed={150}
                   onComplete={() => setTipComplete(true)}
                 />
               ) : (

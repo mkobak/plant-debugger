@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useTyping } from '@/hooks/useTyping';
 
 interface TypingCommandProps {
   prompt: string;
@@ -20,59 +21,22 @@ export default function TypingCommand({
   speed = 60,
   onComplete,
 }: TypingCommandProps) {
-  const [displayedPrompt, setDisplayedPrompt] = useState('');
-  const [displayedCommand, setDisplayedCommand] = useState('');
-  const [isPromptComplete, setIsPromptComplete] = useState(false);
-  const hasStarted = useRef(false);
-
-  useEffect(() => {
-    if (hasStarted.current) return;
-
-    const startTimer = setTimeout(() => {
-      hasStarted.current = true;
-      
-      let currentIndex = 0;
-      const typeSpeed = 1000 / speed;
-
-      const typePrompt = setInterval(() => {
-        if (currentIndex <= prompt.length) {
-          setDisplayedPrompt(prompt.slice(0, currentIndex));
-          currentIndex++;
-        } else {
-          clearInterval(typePrompt);
-          setIsPromptComplete(true);
-          // Start typing command
-          let commandIndex = 0;
-          const typeCommand = setInterval(() => {
-            if (commandIndex <= command.length) {
-              setDisplayedCommand(command.slice(0, commandIndex));
-              commandIndex++;
-            } else {
-              clearInterval(typeCommand);
-              if (onComplete) onComplete();
-            }
-          }, typeSpeed);
-        }
-      }, typeSpeed);
-    }, delay);
-
-    return () => clearTimeout(startTimer);
-  }, []); // Empty dependency array
-
-  const showPromptCursor = hasStarted.current && displayedPrompt.length < prompt.length;
-  const showCommandCursor = isPromptComplete && displayedCommand.length < command.length;
+  const promptTyping = useTyping({ text: prompt, delay, cps: speed });
+  const commandTyping = useTyping({ text: command, delay: delay + Math.max(0, prompt.length) * (1000 / speed), cps: speed, onComplete });
+  const showPromptCursor = promptTyping.started && !promptTyping.complete;
+  const showCommandCursor = commandTyping.started && !commandTyping.complete;
 
   return (
     <p className="typing-text prompt-line">
       <span className="prompt">
-        {displayedPrompt}
+        {promptTyping.display}
         {showPromptCursor && <span className="typing-cursor">|</span>}
       </span>
-      {isPromptComplete && (
+      {promptTyping.complete && (
         <>
           {' '}
           <Link href={href} className="command-link">
-            {displayedCommand}
+            {commandTyping.display}
             {showCommandCursor && <span className="typing-cursor">|</span>}
           </Link>
         </>

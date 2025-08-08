@@ -3,12 +3,14 @@
  */
 
 export const PLANT_IDENTIFICATION_PROMPT = `
-Identify the plant in the provided image(s). Only reply with the plant name, nothing else. 
+Identify the plant in the provided image(s), focusing on the plant in the foreground. Only reply with the plant name, nothing else. 
 Use the name that an average person somewhat familiar with plants would use.
 E.g., for Monstera Deliciosa, reply 'Monstera Deliciosa' and not 'Swiss Cheese Plant', since the scientific name is commonly known. 
 E.g., For a ZZ plant, reply 'ZZ Plant' and not 'Zamioculcas zamiifolia', since the scientific name is not commonly known.
 If you are unsure which name to use, use the format 'common name (scientific name)'.
-If no plant is detected, or there are clearly multiple plants on the pictures, or the plant name cannot be identified with high certainty, reply with a blank string ''.
+If you can identify multiple different plants on each image or it is unclear which one is meant to be identified, reply with 'No plant detected'.
+If for example two images show two completely different plants, reply with 'No plant detected'.
+If no plant is detected, or the plant name cannot be identified with high certainty, reply with 'No plant detected'.
 `;
 
 export const YES_NO_QUESTIONS = `
@@ -132,4 +134,16 @@ Consider this ranked list in your answer, but use your own judgment as well.
 Do not mention directly the other experts in your response.
 
 Please provide a diagnosis using the 'plant_diagnosis' function call.
+`;
+
+export const NO_PLANT_PROMPT = `
+You are an expert botanist and plant pathologist specializing in diagnosing plant issues from images.
+The user was asked to submit image(s) of a sick plant, but no single plant could be reliably detected on the image(s). Please respond to the user, by:
+
+1) Briefly describing the image(s) at a very high level.
+2) Stating clearly that there is no plant in these images or that there are multiple plants or that the plant is not clearly visible, depending on the situation.
+3) Encouraging the user to provide clearer images or more specific information.
+4) Including subtle programming references.
+
+Avoid using quotes. Keep it concise and to the point. Avoid being overly friendly.
 `;

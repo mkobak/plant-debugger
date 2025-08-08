@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { typingSession } from '@/lib/typingSession';
 
 interface TypingTextProps {
   text: string;
-  delay?: number;
+  delay?: number; // ms before starting
   className?: string;
   onComplete?: () => void;
-  speed?: number; // Characters per second
+  speed?: number; // characters per second
+  as?: 'p' | 'span'; // wrapper element
+  onceKey?: string; // use to group re-renders of the same logical text
 }
 
 export default function TypingText({
@@ -15,51 +18,96 @@ export default function TypingText({
   delay = 300,
   className = '',
   onComplete,
-  speed = 60, 
+  speed = 60,
+  as = 'p',
+  onceKey,
 }: TypingTextProps) {
-  const [displayedText, setDisplayedText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-  const hasStarted = useRef(false);
+  const [display, setDisplay] = useState('');
+  const [complete, setComplete] = useState(false);
+  const [started, setStarted] = useState(false);
+  const intervalRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  const key = useMemo(() => (onceKey ?? text), [onceKey, text]);
 
   useEffect(() => {
-    if (!text || hasStarted.current) return;
+    // Reset local state when text changes
+    setDisplay('');
+    setComplete(false);
+    setStarted(false);
 
-    const startTimer = setTimeout(() => {
-      hasStarted.current = true;
-      let currentIndex = 0;
-      const typeSpeed = 1000 / speed; // Convert to milliseconds per character
+    // If we've already typed this text once this session, render instantly
+  if (typingSession.has(key)) {
+      setDisplay(text);
+      setComplete(true);
+      setStarted(true);
+      // Ensure any chaining still fires
+      const id = window.setTimeout(() => onComplete?.(), 0);
+      timeoutRef.current = id;
+      return () => {
+        if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+      };
+    }
 
-      const typeTimer = setInterval(() => {
-        if (currentIndex <= text.length) {
-          setDisplayedText(text.slice(0, currentIndex));
-          currentIndex++;
+    // Otherwise, type it out
+    const startId = window.setTimeout(() => {
+      setStarted(true);
+      let i = 0;
+      const interval = Math.max(1, Math.floor(1000 / speed));
+  const id = window.setInterval(() => {
+        if (i <= text.length) {
+          setDisplay(text.slice(0, i));
+          i++;
         } else {
-          clearInterval(typeTimer);
-          setIsComplete(true);
-          // Small delay before completing to ensure cursor shows briefly
-          setTimeout(() => {
-            onComplete?.();
-          }, 100);
+          if (intervalRef.current) window.clearInterval(intervalRef.current);
+      typingSession.add(key);
+          setComplete(true);
+          // small delay to allow cursor to blink once
+          const completeId = window.setTimeout(() => onComplete?.(), 100);
+          timeoutRef.current = completeId;
         }
-      }, typeSpeed);
-
-      return () => clearInterval(typeTimer);
+      }, interval);
+      intervalRef.current = id;
     }, delay);
 
-    return () => clearTimeout(startTimer);
-  }, []); // Empty dependency array to prevent re-running
+    timeoutRef.current = startId;
+
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, [text, delay, speed, onComplete, key]);
+
+  // If a global typing reset happens, allow re-typing next render
+  useEffect(() => {
+    const handler = () => {
+      setDisplay('');
+      setComplete(false);
+      setStarted(false);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('typing:reset', handler);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('typing:reset', handler);
+      }
+    };
+  }, []);
 
   const baseClasses = 'typing-text';
   const classes = [baseClasses, className]
     .filter(Boolean)
     .join(' ');
 
-  const showCursor = hasStarted.current && !isComplete;
+  const showCursor = started && !complete;
+
+  const Element = as === 'span' ? 'span' : 'p';
 
   return (
-    <p className={classes}>
-      {displayedText}
+    <Element className={classes}>
+      {display}
       {showCursor && <span className="typing-cursor">|</span>}
-    </p>
+    </Element>
   );
 }

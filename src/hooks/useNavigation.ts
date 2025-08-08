@@ -3,45 +3,35 @@ import { useDiagnosis } from '@/context/DiagnosisContext';
 
 export function useNavigation() {
   const router = useRouter();
-  const { 
-    setCurrentStep, 
-    setMaxReachedStep, 
-    maxReachedStep, 
-    resetAll 
-  } = useDiagnosis();
+  const { images, resetAll } = useDiagnosis();
 
-  const navigateToStep = (step: number, route: string) => {
-    // Only allow navigation to steps that have been reached or are directly next
-    if (step <= maxReachedStep || step === maxReachedStep + 1) {
-      setCurrentStep(step);
-      // Update max reached step if we're moving forward
-      if (step > maxReachedStep) {
-        setMaxReachedStep(step);
-      }
-      router.push(route);
-    }
-  };
+  // Guarded navigation: Only rely on presence of data, not a separate step machine
+  const push = (path: string) => router.push(path);
 
   const goHome = () => {
     resetAll();
-    setCurrentStep(0);
     router.push('/');
   };
 
   const goToUpload = () => {
-    navigateToStep(1, '/upload');
+    push('/upload');
   };
 
   const goToQuestions = () => {
-    navigateToStep(2, '/questions');
+    if (images.length > 0) push('/questions');
+    else push('/upload');
   };
 
   const goToResults = () => {
-    navigateToStep(3, '/results');
+    if (images.length > 0) push('/results');
+    else push('/upload');
   };
 
+  // Navigation UI helper: enable steps based on available data only
   const canNavigateToStep = (step: number) => {
-    return step <= maxReachedStep;
+    if (step === 1) return true;
+    if (step >= 2) return images.length > 0;
+    return false;
   };
 
   return {
@@ -50,6 +40,5 @@ export function useNavigation() {
     goToQuestions,
     goToResults,
     canNavigateToStep,
-    maxReachedStep,
   };
 }

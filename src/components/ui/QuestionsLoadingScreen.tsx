@@ -10,6 +10,8 @@ interface QuestionsLoadingScreenProps {
   identificationComplete: boolean;
   questionsGenerated: boolean;
   onComplete?: () => void;
+  // Optional key to retrigger typing when input changes
+  onceKeyPrefix?: string;
 }
 
 export default function QuestionsLoadingScreen({ 
@@ -17,7 +19,8 @@ export default function QuestionsLoadingScreen({
   isGeneratingQuestions, 
   identificationComplete, 
   questionsGenerated,
-  onComplete 
+  onComplete,
+  onceKeyPrefix
 }: QuestionsLoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -40,6 +43,7 @@ export default function QuestionsLoadingScreen({
         <TypingText
           text="> Analyzing images..."
           speed={60}
+          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
           onComplete={() => {
             console.log('QuestionsLoadingScreen: Line 1 complete');
             setLine1Complete(true);
@@ -52,6 +56,7 @@ export default function QuestionsLoadingScreen({
           <TypingText
             text="> Identifying plant..."
             speed={60}
+            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => {
               console.log('QuestionsLoadingScreen: Line 2 complete');
               setLine2Complete(true);
@@ -66,6 +71,7 @@ export default function QuestionsLoadingScreen({
           <TypingText
             text="> Generating questions..."
             speed={60}
+            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={() => {
               console.log('QuestionsLoadingScreen: Line 3 complete');
               setLine3Complete(true);
