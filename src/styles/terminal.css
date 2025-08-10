@@ -56,7 +56,7 @@
 
 /* Shared Header Styles */
 .shared-header {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-xs);
   width: 100%;
 }
 
@@ -118,7 +118,7 @@
 
 /* Logo underline using precise character calculation */
 .logo-underline {
-  color: var(--grey-2);
+  color: var(--grey-3);
   margin-bottom: var(--spacing-sm);
   font-family: monospace;
   font-size: 0.9rem;
@@ -153,6 +153,7 @@
   text-align: left !important;
   width: 100%;
   margin-bottom: var(--spacing-xl);
+  margin-top: var(--spacing-md);
 }
 
 .plant-logo-container {
@@ -170,7 +171,7 @@
 
 .prompt-line {
   margin: 0;
-  color: var(--grey-0);
+  color: var(--grey-2);
 }
 
 /* Terminal text with typing effect */

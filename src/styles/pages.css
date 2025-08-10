@@ -159,6 +159,7 @@
   cursor: pointer;
   font-family: var(--font-family);
   font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
   padding: var(--spacing-xs);
   transition: all 0.2s ease-in-out;
   opacity: 0.6;
@@ -372,6 +373,21 @@
   color: var(--white);
 }
 
+/* Ensure bold text stands out in results markdown content */
+.summary-content strong,
+.care-section strong,
+.detailed-section strong {
+  font-weight: var(--font-weight-bold);
+  color: var(--white);
+}
+
+/* Make the first bold token at the start of bullet items extra prominent */
+.summary-content .custom-bullet-item .bullet-content > strong:first-child,
+.care-section .custom-bullet-item .bullet-content > strong:first-child,
+.detailed-section .custom-bullet-item .bullet-content > strong:first-child {
+  font-weight: var(--font-weight-bold);
+}
+
 .markdown-content {
   line-height: 1.6;
   color: var(--grey-1);
@@ -379,14 +395,17 @@
 
 .markdown-content strong {
   color: var(--white);
+  font-weight: var(--font-weight-bold);
 }
 
 .markdown-content ul,
 .markdown-content ol {
+  color: var(--grey-0);
   margin: var(--spacing-sm) 0;
   padding-left: var(--spacing-lg);
 }
 
 .markdown-content li {
   margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+  color: var(--grey-0);
 }

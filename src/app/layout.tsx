@@ -10,8 +10,8 @@ import '@/styles/responsive.css';
 
 export const metadata: Metadata = {
   title: 'Plant Debugger',
-  description: 'AI-powered plant health diagnostic tool',
-  keywords: ['plant', 'diagnosis', 'AI', 'health', 'gardening'],
+  description: 'Debug your plants',
+  keywords: ['plant', 'diagnosis', 'health'],
 };
 
 export default function RootLayout({

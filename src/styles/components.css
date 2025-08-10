@@ -205,7 +205,7 @@
   aspect-ratio: 1;
   cursor: pointer;
   overflow: hidden;
-  border: 1px solid var(--grey-2);
+  border: 0px;
   transition: var(--transition-normal);
 }
 

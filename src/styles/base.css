@@ -4,8 +4,8 @@
 :root {
   /* Text Colors */
   --white: #ffffff;
-  --grey-0: #bbbbbb;
-  --grey-1: #8b8b8b;
+  --grey-0: #afafaf;
+  --grey-1: #808080;
   --grey-2: #575757;
   --green: #6dcf43;
   --orange: #ffcf00;
@@ -45,7 +45,7 @@
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
-  --font-weight-normal: 520;
+  --font-weight-normal: 550;
   --font-weight-bold: 900;
 }
 
