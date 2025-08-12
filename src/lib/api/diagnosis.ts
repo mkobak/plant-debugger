@@ -4,8 +4,10 @@
 
 import { PlantImage, PlantIdentification, DiagnosticQuestion, DiagnosisResult } from '@/types';
 import { initialDiagnosisCircuitBreaker, finalDiagnosisCircuitBreaker } from '@/utils/circuitBreaker';
-import { createImageFormData, logFormDataEntries, logImageDetails, validateImages } from './client-utils';
+import { createImageFormData, logFormDataEntries, logImageDetails, validateImages, getClientHeaders } from './client-utils';
 import { withRetry, withRetryAllowEmpty } from './retry-utils';
+import { costTracker } from '@/lib/costTracker';
+import type { ModelKey } from '@/lib/api/modelConfig';
 
 export async function identifyPlant(images: PlantImage[], signal?: AbortSignal): Promise<PlantIdentification> {
   console.log('identifyPlant called with images:', images.length);
@@ -23,6 +25,7 @@ export async function identifyPlant(images: PlantImage[], signal?: AbortSignal):
     const response = await fetch('/api/identify-plant', {
       method: 'POST',
       body: formData,
+      headers: getClientHeaders(),
       signal,
     });
 
@@ -33,8 +36,15 @@ export async function identifyPlant(images: PlantImage[], signal?: AbortSignal):
 
     const data = await response.json();
     console.log('identifyPlant response:', data);
+    if (data?.usage?.usage) {
+      costTracker.record({
+        modelKey: (data.usage.modelKey || 'modelLow') as ModelKey,
+        usage: data.usage.usage,
+        route: 'identify-plant',
+      });
+    }
     
-    // Allow empty species as per user requirements
+  // Allow empty species if not identified
     return data.identification;
   }, 'Plant Identification');
 }
@@ -42,12 +52,13 @@ export async function identifyPlant(images: PlantImage[], signal?: AbortSignal):
 export async function getNoPlantResponse(images: PlantImage[], signal?: AbortSignal): Promise<string> {
   console.log('getNoPlantResponse called with images:', images.length);
   validateImages(images);
-  // Do not retry no-plant messages; duplicates feel jarring and content can vary.
+  // No retries for no-plant messages to avoid duplicate/jarring responses
   return withRetry(async () => {
     const formData = createImageFormData(images);
     const response = await fetch('/api/no-plant-response', {
       method: 'POST',
       body: formData,
+      headers: getClientHeaders(),
       signal,
     });
     if (!response.ok) {
@@ -55,6 +66,13 @@ export async function getNoPlantResponse(images: PlantImage[], signal?: AbortSig
       throw new Error(error.error || `HTTP ${response.status}: Failed to generate message`);
     }
     const data = await response.json();
+    if (data?.usage?.usage) {
+      costTracker.record({
+        modelKey: (data.usage.modelKey || 'modelLow') as ModelKey,
+        usage: data.usage.usage,
+        route: 'no-plant-response',
+      });
+    }
     return data.message as string;
   }, 'No-Plant', { maxRetries: 0 });
 }
@@ -75,6 +93,7 @@ export async function generateQuestions(images: PlantImage[], signal?: AbortSign
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
       body: formData,
+      headers: getClientHeaders(),
       signal,
     });
 
@@ -85,6 +104,13 @@ export async function generateQuestions(images: PlantImage[], signal?: AbortSign
 
     const data = await response.json();
     console.log('generateQuestions response:', data);
+    if (data?.usage?.usage) {
+      costTracker.record({
+        modelKey: (data.usage.modelKey || 'modelMedium') as ModelKey,
+        usage: data.usage.usage,
+        route: 'generate-questions',
+      });
+    }
     return data.questions;
   }, 'Question Generation');
 }
@@ -108,6 +134,7 @@ export async function getInitialDiagnosis(
       const response = await fetch('/api/initial-diagnosis', {
         method: 'POST',
         body: formData,
+        headers: getClientHeaders(),
         signal,
       });
 
@@ -121,6 +148,16 @@ export async function getInitialDiagnosis(
       
       const data = await response.json();
       console.log('getInitialDiagnosis response:', data);
+      if (Array.isArray(data?.usage)) {
+  // Record usage for multiple calls
+        costTracker.recordMany(
+          data.usage.map((u: any) => ({
+            modelKey: (u.modelKey || 'modelLow') as ModelKey,
+            usage: u.usage,
+            route: 'initial-diagnosis',
+          }))
+        );
+      }
       return data;
     }, 'Initial Diagnosis');
   });
@@ -147,6 +184,7 @@ export async function getFinalDiagnosis(
       const response = await fetch('/api/final-diagnosis', {
         method: 'POST',
         body: formData,
+        headers: getClientHeaders(),
         signal,
       });
 
@@ -160,6 +198,15 @@ export async function getFinalDiagnosis(
 
       const data = await response.json();
       console.log('getFinalDiagnosis response:', data);
+      if (data?.usage?.usage) {
+        costTracker.record({
+          modelKey: (data.usage.modelKey || 'modelHigh') as ModelKey,
+          usage: data.usage.usage,
+          route: 'final-diagnosis',
+        });
+      }
+  // Print cost summary after final diagnosis
+      costTracker.printSummary('Plant Debugger');
       return data.diagnosisResult;
     }, 'Final Diagnosis');
   });

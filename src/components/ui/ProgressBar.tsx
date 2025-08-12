@@ -1,5 +1,5 @@
 interface ProgressBarProps {
-  progress: number; // 0-100
+  progress: number; // Progress value (0-100)
   className?: string;
   showPercentage?: boolean;
   size?: 'sm' | 'md' | 'lg';

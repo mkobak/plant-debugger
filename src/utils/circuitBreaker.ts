@@ -1,4 +1,4 @@
-// Circuit breaker utility to prevent API spam
+// Circuit breaker utility to prevent API abuse and excessive retries
 class CircuitBreaker {
   private failureCount = 0;
   private isOpen = false;
@@ -10,8 +10,8 @@ class CircuitBreaker {
 
   constructor(
     failureThreshold = 3,
-    resetTimeout = 30000, // 30 seconds
-    callInterval = 5000     // 5 seconds minimum between calls
+  resetTimeout = 30000, // 30 seconds before closing circuit
+  callInterval = 5000     // 5 seconds minimum between calls
   ) {
     this.failureThreshold = failureThreshold;
     this.resetTimeout = resetTimeout;
@@ -21,17 +21,17 @@ class CircuitBreaker {
   async call<T>(fn: () => Promise<T>): Promise<T> {
     const now = Date.now();
     
-    // Check if we're calling too frequently
+  // Throttle: check if calls are too frequent
     if (now - this.lastCallTime < this.callInterval) {
       throw new Error(`Too frequent calls. Please wait ${Math.ceil((this.callInterval - (now - this.lastCallTime)) / 1000)} seconds.`);
     }
 
-    // Check if circuit is open
+  // If circuit is open, block calls until resetTimeout passes
     if (this.isOpen) {
       if (now - this.lastFailureTime < this.resetTimeout) {
         throw new Error(`Circuit breaker is open. Try again in ${Math.ceil((this.resetTimeout - (now - this.lastFailureTime)) / 1000)} seconds.`);
       } else {
-        // Try to close the circuit
+  // Try to close the circuit after timeout
         this.isOpen = false;
         this.failureCount = 0;
       }
@@ -41,7 +41,7 @@ class CircuitBreaker {
 
     try {
       const result = await fn();
-      // Success - reset failure count
+  // On success, reset failure count
       this.failureCount = 0;
       return result;
     } catch (error) {

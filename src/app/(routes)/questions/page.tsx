@@ -12,7 +12,10 @@ import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import { identifyPlant, generateQuestions, getNoPlantResponse } from '@/lib/api/diagnosis';
 
-// Simplified page states
+// Prevent duplicate QA runs across React StrictMode remounts
+const qaRunLocks = new Set<string>();
+
+// Page state machine for loading, content, and error
 enum PageState {
   LOADING = 'loading',
   SHOWING_CONTENT = 'showing_content',
@@ -31,6 +34,7 @@ export default function QuestionsPage() {
   const processStartedRef = useRef(false);
   const initialRenderRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
+  // Avoid aborting on unmount to prevent React StrictMode remounts from canceling in-flight requests
   const { goHome, goToResults, goToUpload } = useNavigation();
   const {
     images,
@@ -56,7 +60,7 @@ export default function QuestionsPage() {
   setIsGeneratingQuestions: setCtxIsGeneratingQuestions,
   } = useDiagnosis();
 
-  // Simplified state management
+  // Local UI state for loading and animation
   const [pageState, setPageState] = useState<PageState>(PageState.LOADING);
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>(LoadingPhase.ANALYZING);
   const [editablePlantName, setEditablePlantName] = useState<string>('');
@@ -69,13 +73,13 @@ export default function QuestionsPage() {
 
   const computeImagesSignature = () => images.map(i => i.id).join('|');
   const imagesSignature = computeImagesSignature();
-  // Session key for typing animations on this page; changes when images change
+  // Key for typing animation session, changes when images change
   const typingSessionKey = `qa:${imagesSignature}`;
 
-  // Initialize page - runs once on mount
+  // On mount: redirect to home if no images are present
   useEffect(() => {
     console.log('QuestionsPage mounting');
-    // Check if we have images, if not redirect after a brief delay
+  // Redirect if no images are present
     if (images.length === 0) {
       const timeout = setTimeout(() => {
     console.log('No images found, redirecting to home');
@@ -85,7 +89,7 @@ export default function QuestionsPage() {
     }
   }, [images.length, router, goHome]);
 
-  // Handle navigation back detection and start flow once
+  // Detect navigation back and restore state if possible
   useEffect(() => {
     console.log('Navigation check useEffect triggered');
     console.log('- questions.length:', questions.length);
@@ -95,10 +99,10 @@ export default function QuestionsPage() {
     
     const imgSig = computeImagesSignature();
 
-  // If images changed since last QA generation, rerun the whole flow
+  // If images changed, rerun the QA flow
   const signatureChanged = !!lastQAImagesSignature && lastQAImagesSignature !== imgSig;
 
-    // If we have data but haven't started the process, we're navigating back (and signature unchanged)
+  // Restore state if navigating back and data is present
     if (!signatureChanged && questions.length > 0 && plantIdentification && !processStartedRef.current) {
       console.log('DETECTING NAVIGATION BACK - setting states');
       setIsNavigatingBack(true);
@@ -111,7 +115,7 @@ export default function QuestionsPage() {
       return;
     }
 
-    // If we previously detected no-plant for these images, restore state without re-running
+  // Restore state if previously detected no-plant for these images
     if (!signatureChanged && noPlantMessage && !processStartedRef.current) {
       console.log('DETECTING NAVIGATION BACK (no-plant) - restoring content without rerun');
       setIsNavigatingBack(true);
@@ -119,27 +123,31 @@ export default function QuestionsPage() {
       return;
     }
 
-    // Start the identification and question generation process if not started
+  // Start the identification and question generation process if not already started
     if (
       images.length > 0 &&
       (signatureChanged || (!processStartedRef.current && pageState === PageState.LOADING && !ctxIsIdentifying && !ctxIsGeneratingQuestions)) &&
-      // Don't start if we already completed this signature
+  // Skip if already completed for this signature
       (signatureChanged || lastQAImagesSignature !== imgSig) &&
-      // Don't start if a run for this signature is already in progress (StrictMode safety)
-      qaProcessingSignature !== imgSig
+  // Skip if a run for this signature is already in progress (StrictMode safety)
+      qaProcessingSignature !== imgSig &&
+  // Extra guard: global lock for remounts
+      !qaRunLocks.has(imgSig)
     ) {
       console.log('Starting identification and question generation process');
       processStartedRef.current = true;
-      // Clear old data if signature changed
+  // Clear old data if signature changed
       if (signatureChanged) {
         setPlantIdentification(null);
         setQuestions([]);
         setNoPlantMessage('');
         setPageState(PageState.LOADING);
       }
-      // Mark as identifying immediately to guard against duplicate starts (e.g., StrictMode remount)
+  // Mark as identifying to guard against duplicate starts
       setCtxIsIdentifying(true);
       setQaProcessingSignature(imgSig);
+  // Acquire global lock synchronously
+      qaRunLocks.add(imgSig);
       startDiagnosisProcess();
     }
   }, [questions.length, plantIdentification, pageState, images.length, lastQAImagesSignature, qaProcessingSignature, ctxIsIdentifying, ctxIsGeneratingQuestions, noPlantMessage]);
@@ -153,7 +161,7 @@ export default function QuestionsPage() {
   abortRef.current = new AbortController();
   const signal = abortRef.current.signal;
 
-      // Step 1: Identify plant
+  // Step 1: Identify plant
       console.log('Step 1: Identifying plant...');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
   // identifying flag already set true before calling this
@@ -178,9 +186,10 @@ export default function QuestionsPage() {
           setNoPlantMessage('404 plant not found. Looks like our classifier threw a null pointer on foliage.');
         }
         // Record signature so we know this run is complete for these images
-        const imgSig = computeImagesSignature();
+  const imgSig = computeImagesSignature();
         setLastQAImagesSignature(imgSig);
         setQaProcessingSignature(null);
+  qaRunLocks.delete(imgSig);
         setLoadingPhase(LoadingPhase.COMPLETE);
         setPageState(PageState.SHOWING_CONTENT);
         setCtxIsGeneratingQuestions(false);
@@ -198,6 +207,8 @@ export default function QuestionsPage() {
   // Record signature so we can detect changes next time
   const imgSig = computeImagesSignature();
   setLastQAImagesSignature(imgSig);
+      // Release lock now that this run finished
+      qaRunLocks.delete(imgSig);
       setLoadingPhase(LoadingPhase.COMPLETE);
 
       // Show content after a brief delay
@@ -221,19 +232,21 @@ export default function QuestionsPage() {
         console.log('QuestionsPage: aborted by user');
         setCtxIsIdentifying(false);
         setCtxIsGeneratingQuestions(false);
+        const imgSig = computeImagesSignature();
+        qaRunLocks.delete(imgSig);
         processStartedRef.current = false;
         return;
       }
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
       setPageState(PageState.ERROR);
+      const imgSig = computeImagesSignature();
+      qaRunLocks.delete(imgSig);
       processStartedRef.current = false;
     }
   };
 
-  // Cleanup: abort on unmount if still running
   useEffect(() => {
     return () => {
-      if (abortRef.current) abortRef.current.abort();
       setCtxIsIdentifying(false);
       setCtxIsGeneratingQuestions(false);
       processStartedRef.current = false;
@@ -253,7 +266,6 @@ export default function QuestionsPage() {
   };
 
   const handleReset = () => {
-  // Full reset (including no-plant message) happens at home
   goHome();
   };
 

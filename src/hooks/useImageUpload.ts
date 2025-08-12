@@ -23,7 +23,7 @@ export function useImageUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Update images when initialImages changes
+  // Sync images state with initialImages prop
   useEffect(() => {
     setImages(initialImages);
   }, [initialImages]);
@@ -31,7 +31,7 @@ export function useImageUpload({
   const compressImage = useCallback(async (file: File): Promise<File> => {
     try {
       const options = {
-        maxSizeMB: maxFileSize / (1024 * 1024), // Convert bytes to MB
+  maxSizeMB: maxFileSize / (1024 * 1024), // Convert bytes to MB
         maxWidthOrHeight: 1920,
         useWebWorker: true,
         fileType: file.type as 'image/jpeg' | 'image/png',
@@ -54,7 +54,7 @@ export function useImageUpload({
       setUploadProgress(0);
 
       try {
-        // Process files and update state atomically
+  // Process files and update state atomically
         const result = await new Promise<PlantImage[]>((resolve, reject) => {
           setImages((currentImages) => {
             // Calculate available slots based on current state
@@ -73,7 +73,7 @@ export function useImageUpload({
 
             console.log(`Will process ${filesToProcess.length} out of ${fileArray.length} selected files`);
             
-            // Process files asynchronously but don't update state until complete
+            // Process files asynchronously, update state after all complete
             (async () => {
               try {
                 const newImages: PlantImage[] = [];

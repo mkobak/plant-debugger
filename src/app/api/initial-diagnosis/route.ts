@@ -9,22 +9,25 @@ import {
   validateImages 
 } from '@/lib/api/shared';
 import { createInitialDiagnosisPrompt, createAggregationPrompt } from '@/lib/api/prompts';
+import { recordUsageForRequest } from '@/lib/api/costServer';
+import { printPrompt } from '@/lib/api/logging';
 
 export async function POST(request: NextRequest) {
-  console.log('=== INITIAL-DIAGNOSIS API CALL START ===');
+  const requestId = Math.random().toString(36).slice(2, 8);
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] START`);
   
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     // Log when client disconnects/aborts
     signal?.addEventListener?.('abort', () => {
-      console.warn('[INITIAL-DIAGNOSIS] Request aborted by client');
+      console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Request aborted by client`);
     });
 
     // Rate limiting check
-    const clientId = getClientId(request);
+  const clientId = getClientId(request);
     
     if (!checkRateLimit(clientId)) {
-      console.warn(`[INITIAL-DIAGNOSIS] Rate limit exceeded for client: ${clientId}`);
+  console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Rate limit exceeded for client: ${clientId}`);
       return NextResponse.json(
         { error: 'Too many requests. Please wait before trying again.' },
         { status: 429 }
@@ -32,41 +35,33 @@ export async function POST(request: NextRequest) {
     }
 
     if (signal?.aborted) {
-      console.warn('[INITIAL-DIAGNOSIS] Aborted before reading form data');
+  console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Aborted before reading form data`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
     const formData = await request.formData();
     const { images, questionsAndAnswers } = await processFormData(formData);
     
-    validateImages(images);
-    console.log(`[INITIAL-DIAGNOSIS] Processing ${images.length} images for client: ${clientId}`);
-    console.log(`[INITIAL-DIAGNOSIS] Questions and answers:`, questionsAndAnswers);
+  validateImages(images);
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] client: ${clientId} | images: ${images.length} | Q&A len: ${questionsAndAnswers?.length || 0}`);
 
     // Additional protection: if there are multiple rapid requests, add a delay
     await addRateLimitDelay(clientId);
 
     if (signal?.aborted) {
-      console.warn('[INITIAL-DIAGNOSIS] Aborted before converting images');
+      console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Aborted before converting images`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
-    console.log(`[INITIAL-DIAGNOSIS] Converted ${imageParts.length} images to base64`);
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] Converted ${imageParts.length} images to base64`);
 
-    const INITIAL_DIAGNOSIS_PROMPT = createInitialDiagnosisPrompt(questionsAndAnswers || '');
+  const INITIAL_DIAGNOSIS_PROMPT = createInitialDiagnosisPrompt(questionsAndAnswers || '');
+  // Print prompt exactly once (gated)
+  printPrompt(`[INITIAL-DIAGNOSIS:${requestId}]`, INITIAL_DIAGNOSIS_PROMPT);
 
-    console.log(`[INITIAL-DIAGNOSIS] Using prompt: ${INITIAL_DIAGNOSIS_PROMPT}`);
-
-    // Log what we're sending to AI
-    console.log('[INITIAL-DIAGNOSIS] Sending to AI:', {
-      prompt: INITIAL_DIAGNOSIS_PROMPT,
-      questionsAndAnswers: questionsAndAnswers || 'None',
-      imageCount: imageParts.length,
-      imageSizes: imageParts.map(img => img.inlineData.data.length),
-      mimeTypes: imageParts.map(img => img.inlineData.mimeType)
-    });
+  // Removed old verbose payload dump (prompt already printed once)
 
     if (signal?.aborted) {
       console.warn('[INITIAL-DIAGNOSIS] Aborted before starting model calls');
@@ -74,15 +69,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Run 3 parallel diagnosis calls for consensus with slight sampling variation
-    console.log('[INITIAL-DIAGNOSIS] Starting 3 parallel diagnosis calls...');
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] Starting 3 parallel diagnosis calls...`);
     const temperatures = [0.4, 0.5, 0.6];
     const topPs = [0.6, 0.8, 1];
-    const diagnosisPromises = Array.from({ length: 3 }, async (_, index) => {
+  const diagnosisPromises = Array.from({ length: 3 }, async (_, index) => {
       if (signal?.aborted) {
         console.warn(`[INITIAL-DIAGNOSIS] Abort detected before call ${index + 1}, skipping`);
         return Promise.reject(new Error('aborted'));
       }
-      console.log(`[INITIAL-DIAGNOSIS] Starting diagnosis call ${index + 1}/3 with temperature=${temperatures[index]}, topP=${topPs[index]}`);
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 | temp=${temperatures[index]} topP=${topPs[index]}`);
       const genPromise = models.modelLow.generateContent({
         contents: [
           {
@@ -113,29 +108,36 @@ export async function POST(request: NextRequest) {
           reject(err);
         });
       });
-      const response = result.response.text().trim();
-      console.log(`[INITIAL-DIAGNOSIS] Diagnosis call ${index + 1}/3 completed`);
-      return response;
+  const response = result.response.text().trim();
+  const usage = result.response?.usageMetadata || {};
+  recordUsageForRequest(request, 'modelLow', usage);
+  console.log(`[INITIAL-DIAGNOSIS] Diagnosis call ${index + 1}/3 completed`);
+  return { text: response, usage };
     });
 
-    let diagnosisResults: string[];
+  let diagnosisResults: { text: string; usage: any }[];
     try {
       diagnosisResults = await Promise.all(diagnosisPromises);
     } catch (e) {
       if (signal?.aborted) {
-        console.warn('[INITIAL-DIAGNOSIS] Aborted during diagnosis calls');
+        console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Aborted during diagnosis calls`);
         return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
       }
       throw e;
     }
-    console.log('[INITIAL-DIAGNOSIS] All 3 diagnosis calls completed:', diagnosisResults);
+  // Print the 3 individual responses in full exactly once
+  diagnosisResults.forEach((d, i) => {
+    console.log(`[INITIAL-DIAGNOSIS:${requestId}] RESPONSE ${i+1}/3 FULL:`);
+    console.log(d.text);
+  });
 
     // Aggregate the diagnoses
-    const AGGREGATION_PROMPT = createAggregationPrompt(diagnosisResults);
-    console.log('[INITIAL-DIAGNOSIS] Starting aggregation with prompt:', AGGREGATION_PROMPT.substring(0, 200) + '...');
+  const AGGREGATION_PROMPT = createAggregationPrompt(diagnosisResults.map(d => d.text));
+  // Print aggregation prompt exactly once
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] AGG PROMPT:\n${AGGREGATION_PROMPT}`);
 
     if (signal?.aborted) {
-      console.warn('[INITIAL-DIAGNOSIS] Aborted before aggregation');
+  console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Aborted before aggregation`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
@@ -151,7 +153,7 @@ export async function POST(request: NextRequest) {
         topP: 0.5,
       },
     });
-    const aggregationResult = await new Promise<typeof aggPromise extends Promise<infer R> ? R : never>((resolve, reject) => {
+  const aggregationResult = await new Promise<typeof aggPromise extends Promise<infer R> ? R : never>((resolve, reject) => {
       if (signal?.aborted) return reject(new Error('aborted'));
       const onAbort = () => reject(new Error('aborted'));
       signal?.addEventListener?.('abort', onAbort, { once: true });
@@ -164,30 +166,37 @@ export async function POST(request: NextRequest) {
       });
     }).catch(err => {
       if ((err as Error)?.message === 'aborted') {
-        console.warn('[INITIAL-DIAGNOSIS] Aborted during aggregation');
+  console.warn(`[INITIAL-DIAGNOSIS:${requestId}] Aborted during aggregation`);
         throw new Error('aborted');
       }
       throw err;
     });
 
-    const rankedDiagnoses = aggregationResult.response.text().trim();
-    console.log('[INITIAL-DIAGNOSIS] Aggregation completed:', rankedDiagnoses);
+  const rankedDiagnoses = aggregationResult.response.text().trim();
+  const aggregationUsage = aggregationResult.response?.usageMetadata || {};
+  recordUsageForRequest(request, 'modelLow', aggregationUsage);
+  // Print aggregation response exactly once
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] AGG RESPONSE FULL:`);
+  console.log(rankedDiagnoses);
 
     const result = { 
-      rawDiagnoses: diagnosisResults,
-      rankedDiagnoses 
-    };
+      rawDiagnoses: diagnosisResults.map(d => d.text),
+      rankedDiagnoses,
+      usage: [
+        ...diagnosisResults.map(d => ({ modelKey: 'modelLow', usage: d.usage })),
+        { modelKey: 'modelLow', usage: aggregationUsage },
+      ]
+    } as const;
     
-    console.log('[INITIAL-DIAGNOSIS] Final result:', result);
-    console.log('=== INITIAL-DIAGNOSIS API CALL SUCCESS ===');
+  console.log(`[INITIAL-DIAGNOSIS:${requestId}] SUCCESS`);
 
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error('=== INITIAL-DIAGNOSIS API CALL ERROR ===');
-    console.error('[INITIAL-DIAGNOSIS] Error details:', error);
-    console.error('[INITIAL-DIAGNOSIS] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    console.error('=== INITIAL-DIAGNOSIS API CALL ERROR END ===');
+    console.error(`[INITIAL-DIAGNOSIS:${requestId}] ERROR`, error);
+    if (error instanceof Error && error.stack) {
+      console.error(`[INITIAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
+    }
     
     return NextResponse.json(
       { error: 'Failed to generate initial diagnosis' },

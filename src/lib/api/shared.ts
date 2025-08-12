@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server';
 
-// Rate limiting utilities
+// In-memory rate limiting for API routes
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute
@@ -15,7 +15,7 @@ export function checkRateLimit(clientId: string): boolean {
   
   const clientData = rateLimitMap.get(clientId) || { count: 0, lastReset: now };
   
-  // Reset if window has passed
+  // Reset count if window has passed
   if (clientData.lastReset < windowStart) {
     clientData.count = 0;
     clientData.lastReset = now;
@@ -28,9 +28,16 @@ export function checkRateLimit(clientId: string): boolean {
 }
 
 export function getClientId(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for') || 
-         request.headers.get('x-real-ip') || 
-         'unknown';
+  // Prefer explicit per-client header first (set by client fetches)
+  const cid = request.headers.get('x-pb-client-id');
+  if (cid && cid.trim().length > 0) return cid;
+  // Fallback to proxy-provided headers
+  const xf = request.headers.get('x-forwarded-for');
+  if (xf && xf.trim().length > 0) return xf;
+  const xr = request.headers.get('x-real-ip');
+  if (xr && xr.trim().length > 0) return xr;
+  // Fallback to localhost id in dev environments
+  return '::1';
 }
 
 export async function addRateLimitDelay(clientId: string): Promise<void> {
@@ -54,27 +61,19 @@ export async function processFormData(formData: FormData): Promise<ProcessedForm
   let rankedDiagnoses = '';
   
   const formDataEntries = Array.from(formData.entries());
-  console.log('FormData entries:', formDataEntries.map(([key, value]) => ({
-    key,
-    valueType: typeof value,
-    isFile: value instanceof File,
-    fileName: value instanceof File ? value.name : 'N/A',
-    fileSize: value instanceof File ? value.size : 'N/A'
-  })));
-  
+  let totalImageBytes = 0;
   for (const [key, value] of formDataEntries) {
-    console.log(`Processing entry: ${key}, isFile: ${value instanceof File}, startsWithImages: ${key.startsWith('images[')}`);
     if (key.startsWith('images[') && value instanceof File) {
-      console.log(`Adding file: ${value.name} (${value.size} bytes)`);
       images.push(value);
+      totalImageBytes += value.size || 0;
     } else if (key === 'questionsAndAnswers') {
       questionsAndAnswers = value.toString();
     } else if (key === 'rankedDiagnoses') {
       rankedDiagnoses = value.toString();
     }
   }
-
-  console.log('Extracted images count:', images.length);
+  // Log concise summary for debugging
+  console.log('[FormData] images:', images.length, `(~${Math.round(totalImageBytes / 1024)} KB)`, '| Q&A len:', questionsAndAnswers?.length || 0, '| ranked len:', rankedDiagnoses?.length || 0);
   return { images, questionsAndAnswers, rankedDiagnoses };
 }
 

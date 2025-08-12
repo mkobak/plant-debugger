@@ -33,8 +33,10 @@
 
   /* Common Transitions */
   --transition-fast: 0.1s ease;
-  --transition-normal: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  /*
+    Core CSS Variables and Base Styles
+    - Color palette, spacing, font, and resets for Plant Debugger
+  */
 
   /* Font */
   --font-family: 'Courier New', Courier, monospace;

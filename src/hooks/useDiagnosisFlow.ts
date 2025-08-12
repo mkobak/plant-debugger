@@ -60,15 +60,15 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
       
-      // Step 1: Get initial diagnosis from multiple experts
+  // Step 1: Get initial diagnosis from multiple experts
       console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
   const initialResult = await getInitialDiagnosis(images, questionsAndAnswers, signal);
       
       console.log('useDiagnosisFlow: Initial diagnosis complete:', initialResult);
       setInitialDiagnosisComplete(true);
       
-      // Brief delay before final diagnosis
-      setTimeout(async () => {
+  // Step 2: Try final diagnosis; if it fails, retry only the final step.
+  const runFinal = async () => {
         try {
           if (canceledRef.current) {
             console.log('useDiagnosisFlow: Canceled before final diagnosis');
@@ -99,18 +99,23 @@ export function useDiagnosisFlow({ images, questionsAndAnswers }: UseDiagnosisFl
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
             console.log(`useDiagnosisFlow: Will retry final diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`);
-            diagnosisStartedRef.current = false; // Allow retry
-            setTimeout(() => startDiagnosis(), 3000); // Retry after 3 seconds
+    // Only retry the final step, not the initial step
+    setTimeout(() => runFinal(), 3000);
             return;
           }
           
           setError(`Failed to complete final diagnosis after ${maxRetries + 1} attempts: ${finalError instanceof Error ? finalError.message : 'Unknown error'}`);
-          diagnosisStartedRef.current = false;
-          retryCountRef.current = 0;
+      diagnosisStartedRef.current = false;
+      retryCountRef.current = 0;
         } finally {
-          setIsDiagnosing(false);
+          // Keep loading state during scheduled retries; only stop when done or giving up
+          if (!(retryCountRef.current > 0 && retryCountRef.current <= maxRetries)) {
+            setIsDiagnosing(false);
+          }
         }
-      }, 2000);
+  };
+  // Brief delay before final diagnosis
+  setTimeout(() => { runFinal(); }, 2000);
       
     } catch (error) {
       console.error('useDiagnosisFlow: Initial diagnosis failed:', error);

@@ -1,4 +1,4 @@
-// Common types for the Plant Debugger application
+// Shared types for the Plant Debugger application
 
 export interface PlantImage {
   id: string;

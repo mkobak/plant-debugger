@@ -22,7 +22,7 @@ export default function ImagePreviewModal({
     ? images.find((img) => img.id === currentImageId)
     : null;
 
-  // Update current index when currentImageId changes
+  // Update current image index when currentImageId changes
   React.useEffect(() => {
     if (currentImageId) {
       const index = images.findIndex((img) => img.id === currentImageId);

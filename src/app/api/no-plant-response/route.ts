@@ -1,31 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
 import { processFormData, convertImagesToBase64, validateImages } from '@/lib/api/shared';
+import { recordUsageForRequest, printAndResetForRequest } from '@/lib/api/costServer';
 import { NO_PLANT_PROMPT } from '@/lib/api/prompts';
+import { printPrompt, printResponse } from '@/lib/api/logging';
 
 export async function POST(request: NextRequest) {
-  console.log('=== NO-PLANT API CALL START ===');
+  const requestId = Math.random().toString(36).slice(2, 8);
+  console.log(`[NO-PLANT:${requestId}] START`);
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     signal?.addEventListener?.('abort', () => {
-      console.warn('[NO-PLANT] Request aborted by client');
+      console.warn(`[NO-PLANT:${requestId}] Request aborted by client`);
     });
 
     if (signal?.aborted) {
-      console.warn('[NO-PLANT] Aborted before reading form data');
+  console.warn(`[NO-PLANT:${requestId}] Aborted before reading form data`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
     const formData = await request.formData();
     const { images } = await processFormData(formData);
 
-    validateImages(images);
-    console.log(`[NO-PLANT] Processing ${images.length} images`);
+  validateImages(images);
+  const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
+  console.log(`[NO-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes/1024)} KB)`);
 
-    const imageParts = await convertImagesToBase64(images);
-    console.log(`[NO-PLANT] Converted ${imageParts.length} images to base64`);
+  const imageParts = await convertImagesToBase64(images);
+  console.log(`[NO-PLANT:${requestId}] Converted ${imageParts.length} images to base64`);
 
-    console.log('[NO-PLANT] Sending to AI with prompt');
+  // Print prompt exactly once (gated)
+  printPrompt(`[NO-PLANT:${requestId}]`, NO_PLANT_PROMPT);
+  console.log(`[NO-PLANT:${requestId}] Sending to AI`);
     const genPromise = models.modelLow.generateContent({
       contents: [
         {
@@ -55,16 +61,26 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    const message = result.response.text().trim();
-    console.log('[NO-PLANT] AI response length:', message.length);
-    console.log('=== NO-PLANT API CALL SUCCESS ===');
+  // Print full response exactly once (gated)
+  printResponse(`[NO-PLANT:${requestId}]`, result.response);
+  const message = result.response.text().trim();
+  const usage = result.response?.usageMetadata || {};
+  recordUsageForRequest(request, 'modelLow', usage);
+    console.log(`[NO-PLANT:${requestId}] AI response length: ${message.length}`);
+    console.log(`[NO-PLANT:${requestId}] SUCCESS`);
 
-    return NextResponse.json({ message });
+  // Print a server-side summary for this early-termination path
+  printAndResetForRequest(request, 'Plant Debugger (no plant)');
+
+    return NextResponse.json({ 
+      message,
+      usage: { modelKey: 'modelLow', usage }
+    });
   } catch (error) {
-    console.error('=== NO-PLANT API CALL ERROR ===');
-    console.error('[NO-PLANT] Error details:', error);
-    console.error('[NO-PLANT] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    console.error('=== NO-PLANT API CALL ERROR END ===');
+    console.error(`[NO-PLANT:${requestId}] ERROR`, error);
+    if (error instanceof Error && error.stack) {
+      console.error(`[NO-PLANT:${requestId}] STACK`, error.stack);
+    }
 
     if (error instanceof Error && error.message === 'aborted') {
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
