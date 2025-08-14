@@ -11,7 +11,8 @@ If you are unsure which name to use, use the format 'common name (scientific nam
 If you can identify multiple different plants on each image or it is unclear which one is meant to be identified, reply with 'No plant detected'.
 If for example two images show two completely different plants, reply with 'No plant detected'.
 If the image shows a plastic plant, reply with 'No plant detected'.
-If no plant is detected, or the plant name cannot be identified with high certainty, reply with 'No plant detected'.
+If no plant is detected, reply with 'No plant detected'.
+If only a part of a plant is visible, e.g., just the stem, make a best guess and reply with the plant name.
 `;
 
 export const QUESTIONS_GENERATION_PROMPT = `

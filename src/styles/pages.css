@@ -13,7 +13,7 @@
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  padding-top: var(--spacing-lg);
+  padding-top: var(--spacing-xl);
 }
 
 .page-actions--center {
@@ -22,7 +22,7 @@
 
 /* Page Images */
 .page-images {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Error message styling */
@@ -152,65 +152,33 @@
   grid-column: 2;
 }
 
-.unanswer-button {
-  background: transparent;
-  border: none;
-  color: var(--red);
+
+ .answer-button {
+  background: var(--grey-4);
+  border: 0px;
+  color: var(--grey-0);
+  padding: var(--spacing-2xs) var(--spacing-md);
   cursor: pointer;
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  padding: var(--spacing-xs);
   transition: all 0.2s ease-in-out;
-  opacity: 0.6;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  grid-column: 3;
-  justify-self: start;
-  margin-left: var(--spacing-xl);
-}
+  line-height: 1.2;
+ }
 
-.unanswer-placeholder {
-  width: 24px;
-  height: 24px;
-  padding: var(--spacing-xs);
-  flex-shrink: 0;
-  grid-column: 3;
-  margin-left: var(--spacing-md);
-}
-
-.answer-button {
-  background: transparent;
-  border: none;
-  color: var(--grey-0);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  font-family: var(--font-family);
-  font-size: var(--font-size-lg);
-  transition: all 0.2s ease-in-out;
-}
-
-.answer-button:hover {
+ .answer-button:hover {
   color: var(--white);
-}
+ }
 
-.answer-button.selected {
+ .answer-button.selected {
   color: var(--green);
-}
+  text-shadow: 0 0 2px var(--green), 0 0 2px var(--green);
+ }
 
-.answer-button:disabled {
-  opacity: 0.6;
+ .answer-button:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
-}
+ }
 
-.unanswer-button:hover {
-  opacity: 1;
-  color: var(--white);
-}
 
 .additional-comments-section {
   color: var(--grey-0);
@@ -287,8 +255,7 @@
 
 .summary-content {
   margin: 0;
-  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md)
-    var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md) var(--spacing-md);
   line-height: 1.5;
   color: var(--white);
 }
@@ -299,7 +266,8 @@
 }
 
 .summary-content li {
-  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+  margin: var(--spacing-sm) 0;
+  /* Increased spacing between bullet points */
 }
 
 /* Custom bullet point styling for better text alignment */
@@ -314,7 +282,8 @@
 .detailed-section .custom-bullet-item {
   display: flex;
   align-items: flex-start;
-  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+  margin: var(--spacing-sm) 0;
+  /* Increased spacing between bullet points */
   line-height: 1.6;
 }
 
@@ -324,9 +293,12 @@
   font-weight: bold;
   color: var(--white);
   margin-right: var(--spacing-sm);
-  flex-shrink: 0; /* Prevent bullet from shrinking */
-  margin-top: 0.1em; /* Fine-tune vertical alignment */
-  min-width: 1em; /* Ensure consistent bullet spacing */
+  flex-shrink: 0;
+  /* Prevent bullet from shrinking */
+  margin-top: 0.1em;
+  /* Fine-tune vertical alignment */
+  min-width: 1em;
+  /* Ensure consistent bullet spacing */
 }
 
 .summary-content .bullet-content,
@@ -383,9 +355,9 @@
 }
 
 /* Make the first bold token at the start of bullet items extra prominent */
-.summary-content .custom-bullet-item .bullet-content > strong:first-child,
-.care-section .custom-bullet-item .bullet-content > strong:first-child,
-.detailed-section .custom-bullet-item .bullet-content > strong:first-child {
+.summary-content .custom-bullet-item .bullet-content>strong:first-child,
+.care-section .custom-bullet-item .bullet-content>strong:first-child,
+.detailed-section .custom-bullet-item .bullet-content>strong:first-child {
   font-weight: var(--font-weight-bold);
 }
 
@@ -407,6 +379,7 @@
 }
 
 .markdown-content li {
-  margin: var(--spacing-sm) 0; /* Increased spacing between bullet points */
+  margin: var(--spacing-sm) 0;
+  /* Increased spacing between bullet points */
   color: var(--grey-0);
 }

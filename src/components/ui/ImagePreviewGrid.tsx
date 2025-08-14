@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PlantImage } from '@/types';
 import ImagePreviewModal from './ImagePreviewModal';
 
@@ -26,11 +26,25 @@ export default function ImagePreviewGrid({
     setSelectedImageId(null);
   };
 
+  // Dynamically compute a frame width that adapts to number of images (max 3 columns typical)
+  const frameStyle = useMemo(() => {
+    const count = images.length;
+    // Base thumbnail size (matches CSS 80px) + gap (var spacing-sm ~ 8px) approximated inline (we'll rely on CSS variable if available)
+    const thumb = 80;
+    const gap = 8; // fallback
+    const cols = Math.min(count, 3); // cap at 3 columns visual frame
+    const width = cols * thumb + (cols - 1) * gap + 16; // + padding inside frame
+    return { maxWidth: width, width: 'fit-content' } as React.CSSProperties;
+  }, [images.length]);
+
   if (images.length === 0) return null;
 
   return (
     <>
-      <div className={`image-preview-grid ${className}`}>
+      <div
+        className={`image-preview-grid ascii-frame ${className}`}
+        style={frameStyle}
+      >
         {images.map((image) => (
           <div
             key={image.id}
@@ -49,7 +63,6 @@ export default function ImagePreviewGrid({
           </div>
         ))}
       </div>
-
       <ImagePreviewModal
         images={images}
         currentImageId={selectedImageId}
