@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
-import { getDiagnosisTools } from '@/lib/api/utils';
+import { finalDiagnosisSchema } from '@/lib/api/schemas';
 import {
   checkRateLimit,
   getClientId,
@@ -79,11 +79,9 @@ export async function POST(request: NextRequest) {
     // Print prompt exactly once (gated by PB_DEBUG_VERBOSE)
     printPrompt(`[FINAL-DIAGNOSIS:${requestId}]`, MAIN_DIAGNOSIS_PROMPT);
 
-    const tools = getDiagnosisTools();
-
     // Concise request summary
     console.log(
-      `[FINAL-DIAGNOSIS:${requestId}] Sending to AI | prompt len: ${MAIN_DIAGNOSIS_PROMPT.length} | images: ${imageParts.length} | tools: ${tools.length}`
+      `[FINAL-DIAGNOSIS:${requestId}] Sending to AI | prompt len: ${MAIN_DIAGNOSIS_PROMPT.length} | images: ${imageParts.length} | schema: finalDiagnosis`
     );
 
     // Call Gemini API for final structured diagnosis
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
-    console.log(`[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API...`);
+    console.log(`[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`);
     const genPromise = models.modelHigh.generateContent({
       contents: [
         {
@@ -100,10 +98,11 @@ export async function POST(request: NextRequest) {
           parts: [{ text: MAIN_DIAGNOSIS_PROMPT }, ...imageParts],
         },
       ],
-      tools,
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
+        responseMimeType: 'application/json',
+        responseSchema: finalDiagnosisSchema as any,
       },
     });
     // Race with abort to stop further processing early if canceled
@@ -146,103 +145,24 @@ export async function POST(request: NextRequest) {
       throw new Error('No response candidates received from AI');
     }
 
-    const candidate = response.candidates[0];
-    // Minimal candidate summary
-    const finishReason = (candidate as any)?.finishReason || 'unknown';
-    const partsSummary =
-      (candidate as any)?.content?.parts
-        ?.map((p: any) => Object.keys(p))
-        .flat() || [];
-    console.log(
-      `[FINAL-DIAGNOSIS:${requestId}] Candidate summary | finish: ${finishReason} | parts: ${partsSummary.join(',')}`
-    );
-
-    if (!candidate.content || !candidate.content.parts) {
-      const fallbackText = response.text();
-      console.error(
-        `[FINAL-DIAGNOSIS:${requestId}] No content parts in response`
-      );
-      console.error(
-        `[FINAL-DIAGNOSIS:${requestId}] Raw text (excerpt):`,
-        typeof fallbackText === 'string'
-          ? fallbackText.slice(0, 4000)
-          : String(fallbackText)
-      );
-      throw new Error('No content parts in response');
-    }
-
-    let diagnosisData;
-
-    // Look for function calls in the response parts
-    const functionCallPart = candidate.content.parts.find(
-      (part) => part.functionCall
-    );
-    if (functionCallPart && functionCallPart.functionCall) {
-      console.log(
-        `[FINAL-DIAGNOSIS:${requestId}] Function call found: ${functionCallPart.functionCall.name}`
-      );
-
-      if (functionCallPart.functionCall.name === 'plant_diagnosis') {
-        diagnosisData = functionCallPart.functionCall.args;
-        console.log(
-          `[FINAL-DIAGNOSIS:${requestId}] Extracted args keys: ${Object.keys(diagnosisData || {}).join(', ')}`
-        );
-      } else {
-        throw new Error(
-          `Unexpected function call: ${functionCallPart.functionCall.name}`
-        );
+    // In JSON mode the SDK exposes text() which will already be valid JSON string
+    let diagnosisData: any;
+    try {
+      const jsonText = response.text();
+      if (typeof jsonText !== 'string' || !jsonText.trim()) {
+        throw new Error('Empty JSON response text');
       }
-    } else {
-      // Fallback: try to parse as text response if no function call
-      const responseText = response.text();
+      diagnosisData = JSON.parse(jsonText);
       console.log(
-        `[FINAL-DIAGNOSIS:${requestId}] No function call found, trying to parse text as JSON`
+        `[FINAL-DIAGNOSIS:${requestId}] Parsed JSON keys: ${Object.keys(diagnosisData || {}).join(', ')}`
       );
-
-      try {
-        // Extract JSON from response
-        const jsonMatch =
-          typeof responseText === 'string'
-            ? responseText.match(/\{[\s\S]*\}/)
-            : null;
-        if (jsonMatch) {
-          diagnosisData = JSON.parse(jsonMatch[0]);
-          console.log(
-            `[FINAL-DIAGNOSIS:${requestId}] Parsed JSON from text with keys: ${Object.keys(diagnosisData || {}).join(', ')}`
-          );
-        } else {
-          throw new Error('No JSON found in response and no function call');
-        }
-      } catch (parseError) {
-        console.error(
-          `[FINAL-DIAGNOSIS:${requestId}] Failed to parse JSON from text:`,
-          parseError
-        );
-        if (typeof responseText === 'string') {
-          console.error(
-            `[FINAL-DIAGNOSIS:${requestId}] Raw text (excerpt):`,
-            responseText.slice(0, 4000)
-          );
-        }
-        // Provide compact candidate parts overview for debugging
-        const partsOverview =
-          response.candidates?.map((c: any, i: number) => ({
-            i,
-            partKinds: (c.content?.parts || [])
-              .map((p: any) => Object.keys(p))
-              .flat(),
-          })) || [];
-        console.error(
-          `[FINAL-DIAGNOSIS:${requestId}] Candidates overview:`,
-          safeStringify(partsOverview)
-        );
-        throw new Error('Invalid diagnosis response format');
-      }
+    } catch (e) {
+      console.error(
+        `[FINAL-DIAGNOSIS:${requestId}] Failed to parse structured JSON response`,
+        e
+      );
+      throw new Error('Invalid structured diagnosis response');
     }
-
-    console.log(
-      `[FINAL-DIAGNOSIS:${requestId}] Parsed diagnosis keys: ${Object.keys(diagnosisData || {}).join(', ')}`
-    );
 
     // Format the response according to our DiagnosisResult interface
     const diagnosisResult = {
