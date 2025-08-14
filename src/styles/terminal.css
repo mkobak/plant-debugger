@@ -269,10 +269,17 @@
 .questions-loading-screen.compact,
 .loading-screen.compact {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--spacing-sm);
   color: var(--grey-1);
   margin: var(--spacing-md) 0;
+}
+
+/* Fine tune spinner vertical position in compact mode if needed */
+.questions-loading-screen.compact .terminal-spinner,
+.loading-screen.compact .terminal-spinner {
+  position: relative;
+  top: -1px;
 }
 
 .questions-loading-screen.compact .typing-text,

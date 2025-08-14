@@ -166,6 +166,9 @@
 .loading-spinner {
   display: inline-block;
   animation: spin 1s linear infinite;
+  vertical-align: -0.5em;
+  line-height: 1;
+  font-size: 1em; /* inherit sizing context */
 }
 
 @keyframes spin {
@@ -278,7 +281,7 @@
 .terminal-spinner {
   display: inline-block;
   color: var(--grey-0);
-  vertical-align: baseline;
+  vertical-align: -0.5em;
   line-height: 1;
 }
 
