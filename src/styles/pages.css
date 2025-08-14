@@ -152,7 +152,7 @@
 }
 
 .answer-button {
-  background: var(--grey-4);
+  background: none;
   border: 0px;
   color: var(--grey-0);
   padding: var(--spacing-2xs) var(--spacing-md);
@@ -282,9 +282,9 @@
 .detailed-section .custom-bullet-item {
   display: flex;
   align-items: flex-start;
-  margin: var(--spacing-sm) 0;
+  margin: var(--spacing-md) 0;
   /* Increased spacing between bullet points */
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .summary-content .bullet-symbol,
@@ -342,7 +342,7 @@
 .care-section {
   padding: var(--spacing-sm) var(--spacing-md) 0 var(--spacing-lg);
   border: 1px solid var(--grey-2);
-  background-color: var(--grey-3);
+  background-color: var(--grey-4);
   color: var(--white);
 }
 

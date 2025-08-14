@@ -1,8 +1,8 @@
 /* Terminal Layout and Container Styles */
 
 .terminal-container {
-  background-color: var(--grey-4);
-  border: 2px solid var(--grey-3);
+  background-color: var(--grey-6);
+  border: 2px solid var(--grey-4);
   border-radius: var(--radius-lg);
   margin: var(--spacing-lg);
   overflow: hidden;
@@ -16,7 +16,7 @@
 }
 
 .terminal-header {
-  background-color: var(--grey-3);
+  background-color: var(--grey-4);
   padding: var(--spacing-sm) var(--spacing-lg);
   display: flex;
   align-items: center;
