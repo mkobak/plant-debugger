@@ -28,23 +28,21 @@ export default function ActionButton({
       e.preventDefault();
       return;
     }
-    
+
     // If there's an onClick handler, call it first
     if (onClick) {
       onClick();
     }
-    
+
     // Then navigate if href is provided
     if (href && !disabled) {
       router.push(href);
     }
   };
 
-  const classes = [
-    'action-button',
-    `action-button--${variant}`,
-    className
-  ].filter(Boolean).join(' ');
+  const classes = ['action-button', `action-button--${variant}`, className]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <button

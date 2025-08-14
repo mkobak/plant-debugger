@@ -28,75 +28,93 @@ export function useImageUpload({
     setImages(initialImages);
   }, [initialImages]);
 
-  const compressImage = useCallback(async (file: File): Promise<File> => {
-    try {
-      const options = {
-  maxSizeMB: maxFileSize / (1024 * 1024), // Convert bytes to MB
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-        fileType: file.type as 'image/jpeg' | 'image/png',
-      };
+  const compressImage = useCallback(
+    async (file: File): Promise<File> => {
+      try {
+        const options = {
+          maxSizeMB: maxFileSize / (1024 * 1024), // Convert bytes to MB
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: file.type as 'image/jpeg' | 'image/png',
+        };
 
-      const compressedFile = await imageCompression(file, options);
-      return compressedFile;
-    } catch (error) {
-      console.error('Image compression failed:', error);
-      throw new Error('Failed to compress image');
-    }
-  }, [maxFileSize]);
+        const compressedFile = await imageCompression(file, options);
+        return compressedFile;
+      } catch (error) {
+        console.error('Image compression failed:', error);
+        throw new Error('Failed to compress image');
+      }
+    },
+    [maxFileSize]
+  );
 
   const processFiles = useCallback(
     async (files: FileList) => {
       const fileArray = Array.from(files);
-      console.log(`processFiles called with ${files.length} files:`, fileArray.map(f => `${f.name} (${f.size} bytes)`));
-      
+      console.log(
+        `processFiles called with ${files.length} files:`,
+        fileArray.map((f) => `${f.name} (${f.size} bytes)`)
+      );
+
       setIsUploading(true);
       setUploadProgress(0);
 
       try {
-  // Process files and update state atomically
+        // Process files and update state atomically
         const result = await new Promise<PlantImage[]>((resolve, reject) => {
           setImages((currentImages) => {
             // Calculate available slots based on current state
             const availableSlots = maxFiles - currentImages.length;
             const filesToProcess = fileArray.slice(0, availableSlots);
-            
+
             if (fileArray.length > availableSlots) {
-              onError?.(`Can only upload ${availableSlots} more image(s). Maximum ${maxFiles} images allowed.`);
+              onError?.(
+                `Can only upload ${availableSlots} more image(s). Maximum ${maxFiles} images allowed.`
+              );
             }
-            
+
             if (filesToProcess.length === 0) {
               onError?.(`Maximum ${maxFiles} images already uploaded.`);
               resolve(currentImages);
               return currentImages;
             }
 
-            console.log(`Will process ${filesToProcess.length} out of ${fileArray.length} selected files`);
-            
+            console.log(
+              `Will process ${filesToProcess.length} out of ${fileArray.length} selected files`
+            );
+
             // Process files asynchronously, update state after all complete
             (async () => {
               try {
                 const newImages: PlantImage[] = [];
-                
+
                 for (let i = 0; i < filesToProcess.length; i++) {
                   const file = filesToProcess[i];
-                  console.log(`Processing file ${i + 1}/${filesToProcess.length}: ${file.name}`);
+                  console.log(
+                    `Processing file ${i + 1}/${filesToProcess.length}: ${file.name}`
+                  );
 
                   try {
                     // Validate file type
                     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
                       console.warn(`Invalid file type: ${file.name}`);
-                      onError?.(`Invalid file type: ${file.name}. Only JPG and PNG files are allowed.`);
+                      onError?.(
+                        `Invalid file type: ${file.name}. Only JPG and PNG files are allowed.`
+                      );
                       continue;
                     }
 
                     // Compress the image regardless of original size
                     const compressedFile = await compressImage(file);
-                    
+
                     // Final validation after compression
                     if (!isValidImageFile(compressedFile)) {
-                      console.warn(`File too large after compression: ${file.name}`);
-                      onError?.(`File ${file.name} is still too large after compression`);
+                      console.warn(
+                        `File too large after compression: ${file.name}`
+                      );
+                      onError?.(
+                        `File ${file.name} is still too large after compression`
+                      );
                       continue;
                     }
 
@@ -109,35 +127,42 @@ export function useImageUpload({
                     };
 
                     newImages.push(plantImage);
-                    console.log(`Successfully processed ${file.name}, total processed: ${newImages.length}`);
-                    
+                    console.log(
+                      `Successfully processed ${file.name}, total processed: ${newImages.length}`
+                    );
+
                     // Update progress
                     const progress = ((i + 1) / filesToProcess.length) * 100;
                     setUploadProgress(progress);
                   } catch (error) {
                     console.error(`Error processing ${file.name}:`, error);
-                    onError?.(error instanceof Error ? error.message : `Failed to process ${file.name}`);
+                    onError?.(
+                      error instanceof Error
+                        ? error.message
+                        : `Failed to process ${file.name}`
+                    );
                   }
                 }
-                
+
                 // Final result
                 const updatedImages = [...currentImages, ...newImages];
-                console.log(`Finished processing. New images: ${newImages.length}, existing images: ${currentImages.length}`);
+                console.log(
+                  `Finished processing. New images: ${newImages.length}, existing images: ${currentImages.length}`
+                );
                 console.log(`Final image count: ${updatedImages.length}`);
                 resolve(updatedImages);
               } catch (error) {
                 reject(error);
               }
             })();
-            
+
             return currentImages; // Don't change state yet
           });
         });
-        
+
         // Update state with final result
         setImages(result);
         onUploadComplete?.(result);
-        
       } catch (error) {
         console.error('Error in processFiles:', error);
         onError?.(error instanceof Error ? error.message : 'Upload failed');
@@ -149,17 +174,20 @@ export function useImageUpload({
     [maxFiles, compressImage, onUploadComplete, onError]
   );
 
-  const removeImage = useCallback((imageId: string) => {
-    setImages((prevImages) => {
-      const imageToRemove = prevImages.find((img) => img.id === imageId);
-      if (imageToRemove) {
-        URL.revokeObjectURL(imageToRemove.url);
-      }
-      const updatedImages = prevImages.filter((img) => img.id !== imageId);
-      onUploadComplete?.(updatedImages);
-      return updatedImages;
-    });
-  }, [onUploadComplete]);
+  const removeImage = useCallback(
+    (imageId: string) => {
+      setImages((prevImages) => {
+        const imageToRemove = prevImages.find((img) => img.id === imageId);
+        if (imageToRemove) {
+          URL.revokeObjectURL(imageToRemove.url);
+        }
+        const updatedImages = prevImages.filter((img) => img.id !== imageId);
+        onUploadComplete?.(updatedImages);
+        return updatedImages;
+      });
+    },
+    [onUploadComplete]
+  );
 
   const clearAllImages = useCallback(() => {
     setImages((prevImages) => {

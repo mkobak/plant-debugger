@@ -15,7 +15,6 @@
   font-weight: var(--font-weight-normal);
 }
 
-
 .terminal-header {
   background-color: var(--grey-3);
   padding: var(--spacing-sm) var(--spacing-lg);
@@ -38,9 +37,17 @@
   display: block;
 }
 
-.control.close { background-color: var(--red); }
-.control.minimize { background-color: var(--orange); }
-.control.maximize { background-color: var(--green); }
+.control.close {
+  background-color: var(--red);
+}
+
+.control.minimize {
+  background-color: var(--orange);
+}
+
+.control.maximize {
+  background-color: var(--green);
+}
 
 .terminal-title {
   color: var(--grey-1);
@@ -65,7 +72,6 @@
   width: 100%;
 }
 
-
 .nav-step {
   font-family: var(--font-family);
   font-size: var(--font-size-xl);
@@ -80,9 +86,24 @@
   color: var(--white);
 }
 
-.nav-step--completed { color: var(--grey-0); }
-.nav-step--current { color: var(--green); }
-.nav-step--future { color: var(--grey-2); }
+.nav-step--completed {
+  color: var(--grey-0);
+}
+
+.nav-step--current {
+  color: var(--green);
+}
+
+.nav-step--future {
+  color: var(--grey-2);
+}
+
+/* Temporarily disabled (e.g., during processing) */
+.nav-step--temporarily-disabled {
+  opacity: 0.8;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
 
 /* ASCII Logo styling */
 .ascii-logo-image {
@@ -95,7 +116,6 @@
   margin-bottom: 10px;
 }
 
-
 .ascii-logo-image.plant,
 .ascii-logo-image.plant-logo {
   width: auto;
@@ -103,6 +123,7 @@
 }
 
 @media (max-width: 880px) {
+
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(110px, 60vw, 250px);
@@ -110,6 +131,7 @@
 }
 
 @media (max-width: 480px) {
+
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(90px, 60vw, 240px);
@@ -118,7 +140,7 @@
 
 /* Logo underline using precise character calculation */
 .logo-underline {
-  color: var(--grey-3);
+  color: var(--grey-2);
   margin-bottom: var(--spacing-sm);
   font-family: monospace;
   font-size: 0.9rem;
@@ -137,7 +159,6 @@
   gap: var(--spacing-3xl);
   margin-bottom: var(--spacing-sm);
 }
-
 
 /* Home Page Styles */
 .home-content {
@@ -171,7 +192,7 @@
 
 .prompt-line {
   margin: 0;
-  color: var(--grey-2);
+  color: var(--grey-1);
 }
 
 /* Terminal text with typing effect */
@@ -191,8 +212,16 @@
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .prompt {
@@ -209,6 +238,3 @@
 .command-link:hover {
   color: var(--white);
 }
-
-
-

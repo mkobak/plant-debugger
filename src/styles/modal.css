@@ -198,34 +198,34 @@
   .image-preview-backdrop {
     padding: 10px;
   }
-  
+
   .image-preview-modal {
     padding: 15px;
     max-width: 95vw;
     max-height: 95vh;
   }
-  
+
   .image-preview-img {
     max-height: 50vh;
   }
-  
+
   .image-preview-controls {
     gap: 15px;
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .image-preview-arrow {
     font-size: var(--font-size-sm);
     padding: 6px 12px;
     min-width: 70px;
   }
-  
+
   .image-preview-counter {
     font-size: var(--font-size-sm);
     min-width: 70px;
   }
-  
+
   .image-preview-close {
     font-size: 1.2rem;
     padding: 6px 10px;

@@ -36,18 +36,23 @@ export default function ImageUpload({
   useEffect(() => {
     // Detect if we're on a mobile device
     const checkMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-      return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase()) ||
-             (window.matchMedia && window.matchMedia('(max-width: 880px)').matches);
+      const userAgent =
+        navigator.userAgent || navigator.vendor || (window as any).opera;
+      return (
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent.toLowerCase()
+        ) ||
+        (window.matchMedia && window.matchMedia('(max-width: 880px)').matches)
+      );
     };
-    
+
     setIsMobile(checkMobile());
-    
+
     // Listen for window resize to update mobile detection
     const handleResize = () => {
       setIsMobile(checkMobile());
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -56,12 +61,15 @@ export default function ImageUpload({
     const files = e.target.files;
     if (files && files.length > 0) {
       // Log for debugging mobile issues
-      console.log(`File input received ${files.length} files:`, Array.from(files).map(f => f.name));
-      
+      console.log(
+        `File input received ${files.length} files:`,
+        Array.from(files).map((f) => f.name)
+      );
+
       // Process files directly without delay to avoid potential mobile browser issues
       onFilesSelected(files);
     }
-    
+
     // Reset input to allow selecting the same files again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -77,7 +85,10 @@ export default function ImageUpload({
     handleDragEvents(e);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      console.log(`Drop received ${files.length} files:`, Array.from(files).map(f => f.name));
+      console.log(
+        `Drop received ${files.length} files:`,
+        Array.from(files).map((f) => f.name)
+      );
       onFilesSelected(files);
     }
   };
@@ -101,7 +112,10 @@ export default function ImageUpload({
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
-        console.log(`Camera input received ${files.length} files:`, Array.from(files).map(f => f.name));
+        console.log(
+          `Camera input received ${files.length} files:`,
+          Array.from(files).map((f) => f.name)
+        );
         onFilesSelected(files);
       }
     };
@@ -130,7 +144,9 @@ export default function ImageUpload({
         >
           <div className="image-upload__content">
             <p className="image-upload__text">
-              {isMobile ? 'Tap to select or take photos' : 'Click to select or drop photos here'}
+              {isMobile
+                ? 'Tap to select or take photos'
+                : 'Click to select or drop photos here'}
             </p>
             <p className="image-upload__info">
               {remainingSlots} of {MAX_FILES} slots remaining
@@ -146,7 +162,10 @@ export default function ImageUpload({
             className="image-upload__input"
             disabled={isUploading}
           />
-          <div className="image-upload__click-overlay" onClick={openFileDialog} />
+          <div
+            className="image-upload__click-overlay"
+            onClick={openFileDialog}
+          />
         </div>
       )}
 
@@ -181,6 +200,7 @@ export default function ImageUpload({
                   className="image-preview__thumbnail"
                   onClick={() => onImagePreview(image)}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url}
                     alt="Plant"
@@ -190,7 +210,7 @@ export default function ImageUpload({
                     <span>View</span>
                   </div>
                 </div>
-                
+
                 <div className="image-preview__info">
                   <p className="image-preview__size">
                     {formatFileSize(image.size)}

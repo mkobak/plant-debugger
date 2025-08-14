@@ -5,24 +5,30 @@ This automated system converts ASCII art from `constants.ts` into cross-browser 
 ## Usage
 
 ### Automatic Update (Recommended)
+
 ```bash
 npm run update-ascii
 ```
+
 This command:
+
 1. Extracts ASCII art from `src/lib/constants.ts`
 2. Extracts colors from `src/styles/base.css`
 3. Generates optimized SVG files
 4. Updates dimensions automatically
 
 ### Manual Generation Only
+
 ```bash
 npm run generate-svgs
 ```
+
 This only generates SVGs using current script configuration.
 
 ## Workflow
 
 ### Method 1: Fully Automated (Recommended)
+
 1. Edit ASCII art in `src/lib/constants.ts`:
    - `ASCII_LOGO_SINGLE`
    - `ASCII_LOGO_TWO_LINES`
@@ -31,6 +37,7 @@ This only generates SVGs using current script configuration.
 3. Done! Everything is automatically updated.
 
 ### Method 2: Manual (Not Recommended)
+
 1. Edit the fallback `ASCII_ART` object in `scripts/generateAsciiSvgs.js`
 2. Run `npm run generate-svgs`
 3. Manually update dimensions in `ASCIILogo.tsx`
@@ -49,12 +56,14 @@ This only generates SVGs using current script configuration.
 The system automatically extracts colors from `base.css`, but you can customize other settings in `scripts/generateAsciiSvgs.js`:
 
 ### Colors (Auto-extracted from CSS)
+
 ```javascript
 LOGO_COLOR: cssColors.green || '#6dcf43',           // --color-green
 PLANT_COLOR: cssColors['grey-2'] || '#575757',      // --color-grey-2
 ```
 
 ### Font Settings
+
 ```javascript
 FONT_FAMILY: "'Courier New', 'Lucida Console', 'Monaco', monospace",
 FONT_SIZE: 10,            // Base font size in pixels
@@ -62,6 +71,7 @@ LINE_HEIGHT: 1.0,         // Line height multiplier
 ```
 
 ### Padding (Optimized)
+
 ```javascript
 PADDING: {
   top: 1,       // Minimal top padding
@@ -70,9 +80,11 @@ PADDING: {
   left: 4       // Side padding
 }
 ```
-FONT_SIZE: 10,            // Base font size in pixels
-LINE_HEIGHT: 1.0,         // Line height multiplier
-```
+
+FONT_SIZE: 10, // Base font size in pixels
+LINE_HEIGHT: 1.0, // Line height multiplier
+
+````
 
 ### Padding
 ```javascript
@@ -82,16 +94,17 @@ PADDING: {
   bottom: 2,
   left: 2
 }
-```
+````
 
 ## Output
 
 The system generates three optimized SVG files in `/public/images/`:
+
 - `ascii-logo-single.svg` - Single-line logo (752x69px)
 - `ascii-logo-two-lines.svg` - Two-line logo (416x149px)
 - `ascii-plant-logo.svg` - Plant ASCII art (338x429px)
 
-*Dimensions are automatically calculated and may change based on content.*
+_Dimensions are automatically calculated and may change based on content._
 
 ## How It Works
 

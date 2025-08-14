@@ -75,6 +75,7 @@ export default function ImagePreviewModal({
 
         {/* Image and controls */}
         <div className="image-preview-content">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={displayImage.url}
             alt={`Plant image ${currentIndex + 1}`}
@@ -91,11 +92,11 @@ export default function ImagePreviewModal({
             >
               &lt;- prev
             </button>
-            
+
             <div className="image-preview-counter">
               {currentIndex + 1} / {images.length}
             </div>
-            
+
             <button
               className="image-preview-arrow"
               onClick={navigateToNext}

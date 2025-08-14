@@ -1,0 +1,16 @@
+# Build outputs
+.next
+out
+coverage
+node_modules
+package-lock.json
+
+# Env and local files
+.env*
+
+# Generated assets
+public/images/*.svg
+scripts/*.log
+
+# Misc
+.DS_Store

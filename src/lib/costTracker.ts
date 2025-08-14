@@ -1,7 +1,10 @@
 'use client';
 import { BUCKET_BY_KEY, PRICES, type ModelKey } from '@/lib/api/modelConfig';
 
-const ENABLE_LOGS = (process.env.NEXT_PUBLIC_ENABLE_CLIENT_COST_LOGS ?? 'true').toString().toLowerCase() !== 'false';
+const ENABLE_LOGS =
+  (process.env.NEXT_PUBLIC_ENABLE_CLIENT_COST_LOGS ?? 'true')
+    .toString()
+    .toLowerCase() !== 'false';
 
 export interface UsageMetadata {
   promptTokenCount?: number;
@@ -15,15 +18,27 @@ export interface UsageEntry {
   route?: string; // Optional: for debugging
 }
 
-function rateFor(modelKey: ModelKey, kind: 'input' | 'output', promptTokens: number | undefined): number {
+function rateFor(
+  modelKey: ModelKey,
+  kind: 'input' | 'output',
+  promptTokens: number | undefined
+): number {
   const bucket = BUCKET_BY_KEY[modelKey];
   if (bucket === 'pro') {
     const above = (promptTokens ?? 0) > PRICES.pro.threshold;
-    return kind === 'input' ? (above ? PRICES.pro.input.high : PRICES.pro.input.low)
-                            : (above ? PRICES.pro.output.high : PRICES.pro.output.low);
+    return kind === 'input'
+      ? above
+        ? PRICES.pro.input.high
+        : PRICES.pro.input.low
+      : above
+        ? PRICES.pro.output.high
+        : PRICES.pro.output.low;
   }
-  if (bucket === 'flash') return kind === 'input' ? PRICES.flash.input : PRICES.flash.output;
-  return kind === 'input' ? PRICES['flash-lite'].input : PRICES['flash-lite'].output;
+  if (bucket === 'flash')
+    return kind === 'input' ? PRICES.flash.input : PRICES.flash.output;
+  return kind === 'input'
+    ? PRICES['flash-lite'].input
+    : PRICES['flash-lite'].output;
 }
 
 function dollars(tokens: number | undefined, perMillion: number): number {
@@ -37,25 +52,27 @@ class CostTracker {
   record(entry: UsageEntry | null | undefined) {
     if (!entry || !entry.usage) return;
     this.entries.push(entry);
-  // Log each call for debugging and cost tracking
-  const pt = entry.usage.promptTokenCount ?? 0;
-  const ct = entry.usage.candidatesTokenCount ?? 0;
-  const inCost = dollars(pt, rateFor(entry.modelKey, 'input', pt));
-  const outCost = dollars(ct, rateFor(entry.modelKey, 'output', pt));
-  const route = entry.route ? ` [${entry.route}]` : '';
+    // Log each call for debugging and cost tracking
+    const pt = entry.usage.promptTokenCount ?? 0;
+    const ct = entry.usage.candidatesTokenCount ?? 0;
+    const inCost = dollars(pt, rateFor(entry.modelKey, 'input', pt));
+    const outCost = dollars(ct, rateFor(entry.modelKey, 'output', pt));
+    const route = entry.route ? ` [${entry.route}]` : '';
     if (ENABLE_LOGS) {
-      console.log(`(CostTracker) ${entry.modelKey}${route}: input ${pt}, output ${ct}, cost ~$${(inCost + outCost).toFixed(4)}`);
+      console.log(
+        `(CostTracker) ${entry.modelKey}${route}: input ${pt}, output ${ct}, cost ~$${(inCost + outCost).toFixed(4)}`
+      );
     }
   }
 
   recordMany(entries: UsageEntry[] | null | undefined) {
     if (!entries) return;
-    entries.forEach(e => this.record(e));
+    entries.forEach((e) => this.record(e));
   }
 
   reset() {
     this.entries = [];
-  // Log reset for debugging
+    // Log reset for debugging
     console.log('[CostTracker] reset');
   }
 
@@ -64,7 +81,10 @@ class CostTracker {
     let outputTokens = 0;
     let inputCost = 0;
     let outputCost = 0;
-    const byModel: Record<ModelKey, { calls: number; input: number; output: number; cost: number }> = {
+    const byModel: Record<
+      ModelKey,
+      { calls: number; input: number; output: number; cost: number }
+    > = {
       modelHigh: { calls: 0, input: 0, output: 0, cost: 0 },
       modelMedium: { calls: 0, input: 0, output: 0, cost: 0 },
       modelLow: { calls: 0, input: 0, output: 0, cost: 0 },
@@ -111,7 +131,7 @@ class CostTracker {
       `Total cost: $${t.totalCost.toFixed(4)}`,
       '====================================',
     ];
-  // Log summary as a single message block for readability
+    // Log summary as a single message block for readability
     if (ENABLE_LOGS) {
       console.log(lines.join('\n'));
     }

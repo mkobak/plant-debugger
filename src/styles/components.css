@@ -23,11 +23,25 @@
   cursor: not-allowed;
 }
 
-.terminal-button--primary { color: var(--green); }
-.terminal-button--secondary { color: var(--grey-1); }
-.terminal-button--secondary:hover:not(:disabled) { color: var(--grey-4); }
-.terminal-button--danger { color: var(--red); }
-.terminal-button--danger:hover:not(:disabled) { color: var(--white); }
+.terminal-button--primary {
+  color: var(--green);
+}
+
+.terminal-button--secondary {
+  color: var(--grey-1);
+}
+
+.terminal-button--secondary:hover:not(:disabled) {
+  color: var(--grey-4);
+}
+
+.terminal-button--danger {
+  color: var(--red);
+}
+
+.terminal-button--danger:hover:not(:disabled) {
+  color: var(--white);
+}
 
 .terminal-button--sm {
   font-size: var(--font-size-xs);
@@ -88,12 +102,12 @@
 }
 
 .action-button:disabled {
-  opacity: 0.5;
+  opacity: 0.8;
   cursor: not-allowed;
 }
 
 .action-button.placeholder-button {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -104,11 +118,25 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(90deg); }
-  50% { transform: rotate(180deg); }
-  75% { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(90deg);
+  }
+
+  50% {
+    transform: rotate(180deg);
+  }
+
+  75% {
+    transform: rotate(270deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Card Component */
@@ -162,8 +190,13 @@
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-20px); }
-  100% { transform: translateX(20px); }
+  0% {
+    transform: translateX(-20px);
+  }
+
+  100% {
+    transform: translateX(20px);
+  }
 }
 
 .terminal-progress__percentage {
@@ -174,10 +207,21 @@
 }
 
 /* Progress Bar Sizes */
-.terminal-progress--sm .terminal-progress__track { height: 2px; }
-.terminal-progress--sm .terminal-progress__percentage { font-size: var(--font-size-xs); }
-.terminal-progress--lg .terminal-progress__track { height: 6px; }
-.terminal-progress--lg .terminal-progress__percentage { font-size: var(--font-size-md); }
+.terminal-progress--sm .terminal-progress__track {
+  height: 2px;
+}
+
+.terminal-progress--sm .terminal-progress__percentage {
+  font-size: var(--font-size-xs);
+}
+
+.terminal-progress--lg .terminal-progress__track {
+  height: 6px;
+}
+
+.terminal-progress--lg .terminal-progress__percentage {
+  font-size: var(--font-size-md);
+}
 
 /* Terminal Spinner Component */
 .terminal-spinner {
@@ -187,9 +231,17 @@
   line-height: 1;
 }
 
-.terminal-spinner--sm { font-size: var(--font-size-sm); }
-.terminal-spinner--md { font-size: var(--font-size-md); }
-.terminal-spinner--lg { font-size: var(--font-size-lg); }
+.terminal-spinner--sm {
+  font-size: var(--font-size-sm);
+}
+
+.terminal-spinner--md {
+  font-size: var(--font-size-md);
+}
+
+.terminal-spinner--lg {
+  font-size: var(--font-size-lg);
+}
 
 /* Image Preview Grid Component */
 .image-preview-grid {

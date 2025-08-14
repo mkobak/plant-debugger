@@ -14,11 +14,11 @@
     height: auto;
     min-height: 100vh;
   }
-  
+
   .terminal-header {
     display: none;
   }
-  
+
   .terminal-content {
     padding: var(--spacing-xl);
     overflow-y: visible;
@@ -30,15 +30,15 @@
     grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-md);
   }
-  
+
   .image-preview-modal__controls {
     flex-direction: column;
   }
-  
+
   .image-upload__dropzone {
     padding: var(--spacing-lg);
   }
-  
+
   .image-upload__icon {
     font-size: 36px;
   }
@@ -57,7 +57,7 @@
   .image-upload__camera-section {
     display: flex;
   }
-  
+
   .image-upload__camera-button {
     font-size: var(--font-size-sm);
     padding: var(--spacing-sm) var(--spacing-lg);

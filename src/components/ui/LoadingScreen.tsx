@@ -15,14 +15,14 @@ interface LoadingScreenProps {
   onceKeyPrefix?: string;
 }
 
-export default function LoadingScreen({ 
-  isDiagnosing = true, 
+export default function LoadingScreen({
+  isDiagnosing = true,
   isAggregating = true,
   isGeneratingTreatment = false,
   aggregatingComplete = false,
-  finalDiagnosisComplete = false, 
+  finalDiagnosisComplete = false,
   onComplete,
-  onceKeyPrefix
+  onceKeyPrefix,
 }: LoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -63,7 +63,7 @@ export default function LoadingScreen({
           {isAggregating && <LoadingSpinner />}
         </div>
       )}
-      
+
       {line2Complete && aggregatingComplete && (
         <div className="terminal-line">
           <TypingText

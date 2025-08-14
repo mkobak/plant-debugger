@@ -10,11 +10,11 @@ export function generateId(): string {
 // Format file size as human-readable string
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -22,7 +22,7 @@ export function formatFileSize(bytes: number): string {
 export function isValidImageFile(file: File): boolean {
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
   const maxSize = 1024 * 1024; // 1MB
-  
+
   return validTypes.includes(file.type) && file.size <= maxSize;
 }
 

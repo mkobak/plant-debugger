@@ -3,7 +3,8 @@
  */
 
 export function isVerbose(): boolean {
-  const v = process.env.PB_DEBUG_VERBOSE || process.env.NEXT_PUBLIC_PB_DEBUG_VERBOSE;
+  const v =
+    process.env.PB_DEBUG_VERBOSE || process.env.NEXT_PUBLIC_PB_DEBUG_VERBOSE;
   if (!v) return false;
   return ['1', 'true', 'yes', 'on'].includes(String(v).toLowerCase());
 }

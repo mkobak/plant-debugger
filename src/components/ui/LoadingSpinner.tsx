@@ -33,8 +33,6 @@ export default function LoadingSpinner({
     .join(' ');
 
   return (
-    <span className={spinnerClasses}>
-      {LOADING_SPINNER_CHARS[charIndex]}
-    </span>
+    <span className={spinnerClasses}>{LOADING_SPINNER_CHARS[charIndex]}</span>
   );
 }

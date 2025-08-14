@@ -14,13 +14,13 @@ interface QuestionsLoadingScreenProps {
   onceKeyPrefix?: string;
 }
 
-export default function QuestionsLoadingScreen({ 
-  isIdentifying, 
-  isGeneratingQuestions, 
-  identificationComplete, 
+export default function QuestionsLoadingScreen({
+  isIdentifying,
+  isGeneratingQuestions,
+  identificationComplete,
   questionsGenerated,
   onComplete,
-  onceKeyPrefix
+  onceKeyPrefix,
 }: QuestionsLoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -29,7 +29,9 @@ export default function QuestionsLoadingScreen({
   // Call onComplete when everything is done
   useEffect(() => {
     if (questionsGenerated && line3Complete && onComplete) {
-      console.log('QuestionsLoadingScreen: All steps complete, calling onComplete');
+      console.log(
+        'QuestionsLoadingScreen: All steps complete, calling onComplete'
+      );
       const timer = setTimeout(() => {
         onComplete();
       }, 300);
@@ -50,7 +52,7 @@ export default function QuestionsLoadingScreen({
           }}
         />
       </div>
-      
+
       {line1Complete && (
         <div className="terminal-line">
           <TypingText
@@ -65,7 +67,7 @@ export default function QuestionsLoadingScreen({
           {isIdentifying && <LoadingSpinner />}
         </div>
       )}
-      
+
       {line2Complete && identificationComplete && (
         <div className="terminal-line">
           <TypingText

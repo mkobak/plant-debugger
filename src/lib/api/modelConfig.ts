@@ -17,7 +17,11 @@ export const BUCKET_BY_KEY: Record<ModelKey, ModelBucket> = {
 
 // Pricing per 1M tokens in USD (Paid Tier)
 export const PRICES = {
-  pro: { input: { low: 1.25, high: 2.5 }, output: { low: 10, high: 15 }, threshold: 200_000 },
+  pro: {
+    input: { low: 1.25, high: 2.5 },
+    output: { low: 10, high: 15 },
+    threshold: 200_000,
+  },
   flash: { input: 0.3, output: 2.5 },
   'flash-lite': { input: 0.1, output: 0.4 },
 } as const;

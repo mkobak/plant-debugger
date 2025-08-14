@@ -22,7 +22,12 @@ export default function TypingCommand({
   onComplete,
 }: TypingCommandProps) {
   const promptTyping = useTyping({ text: prompt, delay, cps: speed });
-  const commandTyping = useTyping({ text: command, delay: delay + Math.max(0, prompt.length) * (1000 / speed), cps: speed, onComplete });
+  const commandTyping = useTyping({
+    text: command,
+    delay: delay + Math.max(0, prompt.length) * (1000 / speed),
+    cps: speed,
+    onComplete,
+  });
   const showPromptCursor = promptTyping.started && !promptTyping.complete;
   const showCommandCursor = commandTyping.started && !commandTyping.complete;
 

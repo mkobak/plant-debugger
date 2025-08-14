@@ -8,7 +8,7 @@
 
 .upload-tip {
   margin-bottom: var(--spacing-xl);
-  color: var(--grey-0); 
+  color: var(--grey-0);
 }
 
 /* Image Upload Component Styles */
@@ -30,7 +30,9 @@
   margin-top: var(--spacing-2xl);
 }
 
-.image-upload__dropzone:hover:not(.image-upload--uploading .image-upload__dropzone) {
+.image-upload__dropzone:hover:not(
+    .image-upload--uploading .image-upload__dropzone
+  ) {
   border-color: var(--green);
   background-color: var(--grey-3);
 }
@@ -195,7 +197,8 @@
 }
 
 .image-preview__info {
-  padding: var(--spacing-md) var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-xs) var(--spacing-xs)
+    var(--spacing-xs);
 }
 
 .image-preview__size {

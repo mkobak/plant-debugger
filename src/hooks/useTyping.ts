@@ -9,7 +9,12 @@ interface UseTypingOptions {
   onComplete?: () => void;
 }
 
-export function useTyping({ text, delay = 300, cps = 60, onComplete }: UseTypingOptions) {
+export function useTyping({
+  text,
+  delay = 300,
+  cps = 60,
+  onComplete,
+}: UseTypingOptions) {
   const [display, setDisplay] = useState('');
   const [complete, setComplete] = useState(false);
   const startedRef = useRef(false);

@@ -21,13 +21,10 @@ export default function UploadPage() {
   const [codeComplete, setCodeComplete] = useState(false);
   const [tipComplete, setTipComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  
+
   const [shouldNavigate, setShouldNavigate] = useState(false);
 
-  const { 
-    images: contextImages, 
-    setImages: setContextImages, 
-  } = useDiagnosis();
+  const { images: contextImages, setImages: setContextImages } = useDiagnosis();
 
   const {
     images,
@@ -40,7 +37,11 @@ export default function UploadPage() {
   } = useImageUpload({
     initialImages: contextImages,
     onUploadComplete: (uploadedImages: PlantImage[]) => {
-      console.log('onUploadComplete called with', uploadedImages.length, 'images');
+      console.log(
+        'onUploadComplete called with',
+        uploadedImages.length,
+        'images'
+      );
       setContextImages(uploadedImages);
       setError('');
     },
@@ -84,13 +85,13 @@ export default function UploadPage() {
 
   const handleImageRemove = (imageId: string) => {
     removeImage(imageId);
-    const updatedImages = images.filter(img => img.id !== imageId);
+    const updatedImages = images.filter((img) => img.id !== imageId);
     setContextImages(updatedImages);
   };
 
   const handleNext = async () => {
     console.log('handleNext called, images length:', images.length);
-    
+
     if (images.length > 0) {
       console.log('Setting context images and preparing to navigate...');
       setContextImages(images);
@@ -102,7 +103,7 @@ export default function UploadPage() {
 
   const handleReset = () => {
     console.log('handleReset called');
-  goHome();
+    goHome();
   };
 
   const canProceed = images.length > 0 && !isUploading;
@@ -111,7 +112,6 @@ export default function UploadPage() {
     <TerminalLayout title="plant-debugger:~/upload$">
       <SharedHeader currentStep={1} showNavigation={true} />
       <div className="upload-page">
-        
         <div className="terminal-text">
           <div className="prompt-line">
             {!isNavigatingBack ? (
@@ -122,27 +122,22 @@ export default function UploadPage() {
               />
             ) : (
               <div>plant-debugger:~/upload$</div>
-            )
-          }
+            )}
           </div>
           <br />
-          {codeComplete && (
-            !isNavigatingBack ? (
-            <TypingText
-              text="> Upload photos of your plant."
-              speed={100}
-              onComplete={() => setTitleComplete(true)}
-            />
-          ) : (
-            <div>&gt; Upload photos of your plant.</div>
-          )
-          )}
+          {codeComplete &&
+            (!isNavigatingBack ? (
+              <TypingText
+                text="> Upload photos of your plant."
+                speed={100}
+                onComplete={() => setTitleComplete(true)}
+              />
+            ) : (
+              <div>&gt; Upload photos of your plant.</div>
+            ))}
           {error && (
             <div className="error-message">
-              <TypingText
-                text={`ERROR: ${error}`}
-                className="error-text"
-              />
+              <TypingText text={`ERROR: ${error}`} className="error-text" />
             </div>
           )}
           {titleComplete && (
@@ -154,7 +149,10 @@ export default function UploadPage() {
                   onComplete={() => setTipComplete(true)}
                 />
               ) : (
-                <div>&gt; Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts.</div>
+                <div>
+                  &gt; Tip: For best results, upload clear, well-lit photos
+                  showing the whole plant and close-ups of any affected parts.
+                </div>
               )}
             </div>
           )}
@@ -171,7 +169,7 @@ export default function UploadPage() {
                 onImagePreview={handleImagePreview}
               />
               <div className="page-actions">
-                <button 
+                <button
                   className="action-button action-button--reset"
                   onClick={() => {
                     console.log('Reset button clicked');

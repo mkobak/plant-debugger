@@ -16,9 +16,7 @@ export interface DiagnosisStep {
 }
 
 export interface PlantIdentification {
-  species: string;
-  commonName?: string;
-  scientificName?: string;
+  name: string; // empty string means not identified / no plant
 }
 
 export interface DiagnosticQuestion {

@@ -13,21 +13,35 @@ export function createImageFormData(images: PlantImage[]): FormData {
   return formData;
 }
 
-export function logFormDataEntries(formData: FormData, context: string = 'FormData'): void {
+export function logFormDataEntries(
+  formData: FormData,
+  context: string = 'FormData'
+): void {
   console.log(`${context} created, entries:`);
   const entries = Array.from(formData.entries());
   entries.forEach(([key, value]) => {
-    console.log(`  ${key}:`, value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value);
+    console.log(
+      `  ${key}:`,
+      value instanceof File
+        ? `File: ${value.name} (${value.size} bytes)`
+        : value
+    );
   });
 }
 
-export function logImageDetails(images: PlantImage[], context: string = 'Images'): void {
-  console.log(`${context} details:`, images.map(img => ({
-    id: img.id,
-    fileName: img.file.name,
-    fileSize: img.file.size,
-    fileType: img.file.type
-  })));
+export function logImageDetails(
+  images: PlantImage[],
+  context: string = 'Images'
+): void {
+  console.log(
+    `${context} details:`,
+    images.map((img) => ({
+      id: img.id,
+      fileName: img.file.name,
+      fileSize: img.file.size,
+      fileType: img.file.type,
+    }))
+  );
 }
 
 export function validateImages(images: PlantImage[]): void {
@@ -41,11 +55,11 @@ const PB_CLIENT_ID_KEY = 'pbClientId';
 
 export function getStableClientId(): string {
   try {
-  // Only access localStorage in the browser
+    // Only access localStorage in the browser
     if (typeof window === 'undefined') return 'ssr';
     let id: string | null = window.localStorage.getItem(PB_CLIENT_ID_KEY);
     if (!id) {
-  // Prefer crypto.randomUUID when available
+      // Prefer crypto.randomUUID when available
       if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
         id = (crypto as any).randomUUID() as string;
       } else {

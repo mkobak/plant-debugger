@@ -39,11 +39,7 @@ export default function Button({
     .join(' ');
 
   return (
-    <button
-      className={buttonClasses}
-      disabled={disabled || loading}
-      {...props}
-    >
+    <button className={buttonClasses} disabled={disabled || loading} {...props}>
       {loading ? (
         <span className="loading-spinner">
           <span className="spinner-char">|</span>

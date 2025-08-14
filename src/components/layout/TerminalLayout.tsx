@@ -25,10 +25,8 @@ export default function TerminalLayout({
         )}
         <span className="terminal-title">{title}</span>
       </div>
-      
-      <div className="terminal-content">
-        {children}
-      </div>
+
+      <div className="terminal-content">{children}</div>
     </main>
   );
 }

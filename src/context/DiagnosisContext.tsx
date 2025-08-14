@@ -1,13 +1,19 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from 'react';
 import { typingSession } from '@/lib/typingSession';
-import { 
-  PlantImage, 
-  PlantIdentification, 
-  DiagnosticQuestion, 
+import {
+  PlantImage,
+  PlantIdentification,
+  DiagnosticQuestion,
   DiagnosticAnswer,
-  DiagnosisResult 
+  DiagnosisResult,
 } from '@/types';
 import { costTracker } from '@/lib/costTracker';
 
@@ -17,12 +23,12 @@ interface DiagnosisContextType {
   addImage: (image: PlantImage) => void;
   removeImage: (imageId: string) => void;
   clearImages: () => void;
-  
+
   // Plant identification state
   plantIdentification: PlantIdentification | null;
   setPlantIdentification: (identification: PlantIdentification | null) => void;
-  updatePlantSpecies: (species: string) => void;
-  
+  updatePlantName: (name: string) => void;
+
   // Diagnostic questions and answers
   questions: DiagnosticQuestion[];
   setQuestions: (questions: DiagnosticQuestion[]) => void;
@@ -35,7 +41,7 @@ interface DiagnosisContextType {
   // Persisted message for 'no plant detected' case
   noPlantMessage: string;
   setNoPlantMessage: (msg: string) => void;
-  
+
   // Diagnosis result and related state
   diagnosisResult: DiagnosisResult | null;
   setDiagnosisResult: (result: DiagnosisResult | null) => void;
@@ -46,7 +52,7 @@ interface DiagnosisContextType {
   // Guard to prevent duplicate runs per images signature (e.g., React StrictMode)
   qaProcessingSignature: string | null;
   setQaProcessingSignature: (sig: string | null) => void;
-  
+
   // Loading flags for async operations
   isIdentifying: boolean;
   setIsIdentifying: (loading: boolean) => void;
@@ -54,12 +60,14 @@ interface DiagnosisContextType {
   setIsGeneratingQuestions: (loading: boolean) => void;
   isDiagnosing: boolean;
   setIsDiagnosing: (loading: boolean) => void;
-  
+
   // Reset all diagnosis state
   resetAll: () => void;
 }
 
-const DiagnosisContext = createContext<DiagnosisContextType | undefined>(undefined);
+const DiagnosisContext = createContext<DiagnosisContextType | undefined>(
+  undefined
+);
 
 interface DiagnosisProviderProps {
   children: ReactNode;
@@ -68,53 +76,61 @@ interface DiagnosisProviderProps {
 export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [images, setImages] = useState<PlantImage[]>([]);
   // Only domain data is stored here; UI/step flags are local to components
-  
+
   // Plant identification state
-  const [plantIdentification, setPlantIdentification] = useState<PlantIdentification | null>(null);
-  
+  const [plantIdentification, setPlantIdentification] =
+    useState<PlantIdentification | null>(null);
+
   // Diagnostic questions and answers
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([]);
   const [answers, setAnswers] = useState<DiagnosticAnswer[]>([]);
   const [additionalComments, setAdditionalComments] = useState<string>('');
   const [noPlantMessage, setNoPlantMessage] = useState<string>('');
-  
+
   // Diagnosis result and related state
-  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
-  const [lastDiagnosisSignature, setLastDiagnosisSignature] = useState<string | null>(null);
-  const [lastQAImagesSignature, setLastQAImagesSignature] = useState<string | null>(null);
-  const [qaProcessingSignature, setQaProcessingSignature] = useState<string | null>(null);
-  
+  const [diagnosisResult, setDiagnosisResult] =
+    useState<DiagnosisResult | null>(null);
+  const [lastDiagnosisSignature, setLastDiagnosisSignature] = useState<
+    string | null
+  >(null);
+  const [lastQAImagesSignature, setLastQAImagesSignature] = useState<
+    string | null
+  >(null);
+  const [qaProcessingSignature, setQaProcessingSignature] = useState<
+    string | null
+  >(null);
+
   // Loading flags for async operations
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   const setImagesWithLogging = (newImages: PlantImage[]) => {
-    setImages(prev => {
-      const prevSig = prev.map(i => i.id).join('|');
-      const newSig = newImages.map(i => i.id).join('|');
+    setImages((prev) => {
+      const prevSig = prev.map((i) => i.id).join('|');
+      const newSig = newImages.map((i) => i.id).join('|');
       if (prevSig !== newSig) {
-  // If images change, clear dependent state so flows rerun
+        // If images change, clear dependent state so flows rerun
         setPlantIdentification(null);
         setQuestions([]);
         setAnswers([]);
         setAdditionalComments('');
-  setNoPlantMessage('');
+        setNoPlantMessage('');
         setDiagnosisResult(null);
         setLastDiagnosisSignature(null);
         setLastQAImagesSignature(null);
-  setQaProcessingSignature(null);
+        setQaProcessingSignature(null);
       }
       return newImages;
     });
   };
 
   const addImage = (image: PlantImage) => {
-    setImages(prev => [...prev, image]);
+    setImages((prev) => [...prev, image]);
   };
 
   const removeImage = (imageId: string) => {
-    setImages(prev => prev.filter(img => img.id !== imageId));
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
   };
 
   const clearImages = () => {
@@ -122,8 +138,10 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   };
 
   const addAnswer = (answer: DiagnosticAnswer) => {
-    setAnswers(prev => {
-      const existingIndex = prev.findIndex(a => a.questionId === answer.questionId);
+    setAnswers((prev) => {
+      const existingIndex = prev.findIndex(
+        (a) => a.questionId === answer.questionId
+      );
       if (existingIndex >= 0) {
         const newAnswers = [...prev];
         newAnswers[existingIndex] = answer;
@@ -131,31 +149,31 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
       }
       return [...prev, answer];
     });
-  // Invalidate diagnosis if answers change
+    // Invalidate diagnosis if answers change
     if (diagnosisResult) setDiagnosisResult(null);
     if (lastDiagnosisSignature) setLastDiagnosisSignature(null);
   };
 
   const removeAnswer = (questionId: string) => {
-    setAnswers(prev => prev.filter(a => a.questionId !== questionId));
+    setAnswers((prev) => prev.filter((a) => a.questionId !== questionId));
     if (diagnosisResult) setDiagnosisResult(null);
     if (lastDiagnosisSignature) setLastDiagnosisSignature(null);
   };
 
-  const updatePlantSpecies = (species: string) => {
-    setPlantIdentification(prev => {
+  const updatePlantName = (name: string) => {
+    setPlantIdentification((prev) => {
       if (!prev) return null;
-      return { ...prev, species };
+      return { ...prev, name };
     });
   };
-  
+
   // Invalidate diagnosis if comments change
   useEffect(() => {
     if (diagnosisResult || lastDiagnosisSignature) {
       setDiagnosisResult(null);
       setLastDiagnosisSignature(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [additionalComments]);
 
   const resetAll = () => {
@@ -164,22 +182,22 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setQuestions([]);
     setAnswers([]);
     setAdditionalComments('');
-  setNoPlantMessage('');
+    setNoPlantMessage('');
     setDiagnosisResult(null);
-  setLastDiagnosisSignature(null);
-  setLastQAImagesSignature(null);
-  setQaProcessingSignature(null);
+    setLastDiagnosisSignature(null);
+    setLastQAImagesSignature(null);
+    setQaProcessingSignature(null);
     setIsIdentifying(false);
     setIsGeneratingQuestions(false);
     setIsDiagnosing(false);
-  // Reset typing animation memory
-  typingSession.reset();
-  // Reset the cost tracker for a fresh run
-  costTracker.reset();
-  // Inform server to reset server-side cost totals (best-effort)
-  try {
-    fetch('/api/reset-costs', { method: 'POST' });
-  } catch {}
+    // Reset typing animation memory
+    typingSession.reset();
+    // Reset the cost tracker for a fresh run
+    costTracker.reset();
+    // Inform server to reset server-side cost totals (best-effort)
+    try {
+      fetch('/api/reset-costs', { method: 'POST' });
+    } catch { }
   };
 
   const value = {
@@ -190,7 +208,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     clearImages,
     plantIdentification,
     setPlantIdentification,
-    updatePlantSpecies,
+    updatePlantName,
     questions,
     setQuestions,
     answers,
@@ -199,16 +217,16 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     removeAnswer,
     additionalComments,
     setAdditionalComments,
-  noPlantMessage,
-  setNoPlantMessage,
+    noPlantMessage,
+    setNoPlantMessage,
     diagnosisResult,
     setDiagnosisResult,
-  lastDiagnosisSignature,
-  setLastDiagnosisSignature,
-  lastQAImagesSignature,
-  setLastQAImagesSignature,
-  qaProcessingSignature,
-  setQaProcessingSignature,
+    lastDiagnosisSignature,
+    setLastDiagnosisSignature,
+    lastQAImagesSignature,
+    setLastQAImagesSignature,
+    qaProcessingSignature,
+    setQaProcessingSignature,
     isIdentifying,
     setIsIdentifying,
     isGeneratingQuestions,

@@ -15,17 +15,20 @@ interface SharedHeaderProps {
   currentStep?: number;
   showNavigation?: boolean;
   isHomePage?: boolean;
+  disableNavigation?: boolean; // new prop to disable step navigation (e.g., during loading)
 }
 
-export default function SharedHeader({ 
-  currentStep = 0, 
+export default function SharedHeader({
+  currentStep = 0,
   showNavigation = false,
-  isHomePage = false
+  isHomePage = false,
+  disableNavigation = false,
 }: SharedHeaderProps) {
   const { isSmall: isSmallScreen } = useScreenSize();
   const { goToUpload, goToQuestions, goToResults } = useNavigation();
   // Directly access context to compute gating
-  const { images, diagnosisResult } = require('@/context/DiagnosisContext').useDiagnosis();
+  const { images, diagnosisResult } =
+    require('@/context/DiagnosisContext').useDiagnosis();
   const underlineRef = useRef<HTMLDivElement>(null);
   const navUnderlineRef = useRef<HTMLDivElement>(null);
   const [logoUnderlineChars, setLogoUnderlineChars] = useState(80);
@@ -38,7 +41,8 @@ export default function SharedHeader({
   useEffect(() => {
     const calculateChars = () => {
       if (underlineRef.current) {
-        const containerWidth = underlineRef.current.getBoundingClientRect().width;
+        const containerWidth =
+          underlineRef.current.getBoundingClientRect().width;
         // Use a more precise character width measurement
         const tempSpan = document.createElement('span');
         tempSpan.style.fontFamily = 'monospace';
@@ -50,18 +54,18 @@ export default function SharedHeader({
         const charWidth = tempSpan.getBoundingClientRect().width;
         document.body.removeChild(tempSpan);
 
-        const numChars = Math.floor(containerWidth*1.005 / charWidth);
+        const numChars = Math.floor((containerWidth * 1.005) / charWidth);
         setLogoUnderlineChars(Math.max(numChars, 10)); // Minimum 10 characters
       }
     };
 
     // Calculate after component mounts
     const timer = setTimeout(calculateChars, 50);
-    
+
     // Recalculate on window resize
     const handleResize = () => calculateChars();
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
@@ -75,6 +79,7 @@ export default function SharedHeader({
   ];
 
   const canGoToStep = (stepNum: number) => {
+    if (disableNavigation) return false;
     if (stepNum === 1) return true;
     if (stepNum === 2) return images.length > 0; // Only after images are present
     if (stepNum === 3) return !!diagnosisResult; // Only after diagnosis completed
@@ -106,7 +111,7 @@ export default function SharedHeader({
   return (
     <div className="shared-header">
       <div className="logo-section">
-        <ASCIILogo 
+        <ASCIILogo
           variant={logoVariant}
           className={`${logoVariant} ${isHomePage ? 'home-page' : 'other-page'}`}
         />
@@ -114,17 +119,22 @@ export default function SharedHeader({
           {'#'.repeat(logoUnderlineChars)}
         </div>
       </div>
-      
+
       {showNavigation && (
         <div className="navigation-section">
           <div className="navigation-steps">
             {navigationSteps.map((step) => {
               const status = getStepStatus(step.step);
+              const isDisabled = disableNavigation || status === 'future';
               return (
-                <span 
+                <span
                   key={step.step}
-                  className={`nav-step nav-step--${status} ${status !== 'future' ? 'clickable' : 'disabled'}`}
-                  onClick={() => handleStepClick(step)}
+                  className={`nav-step nav-step--${status} ${!isDisabled ? 'clickable' : 'disabled'} ${disableNavigation ? 'nav-step--temporarily-disabled' : ''}`}
+                  onClick={() => {
+                    if (!isDisabled) handleStepClick(step);
+                  }}
+                  aria-disabled={isDisabled}
+                  title={disableNavigation ? 'Navigation disabled during processing' : undefined}
                 >
                   [ {step.step}. ]
                 </span>

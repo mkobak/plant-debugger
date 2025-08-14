@@ -6,7 +6,7 @@
   --white: #ffffff;
   --grey-0: #afafaf;
   --grey-1: #808080;
-  --grey-2: #575757;
+  --grey-2: #4d4d4d;
   --green: #6dcf43;
   --orange: #ffcf00;
   --red: #ff3333;
@@ -33,10 +33,8 @@
 
   /* Common Transitions */
   --transition-fast: 0.1s ease;
-  /*
-    Core CSS Variables and Base Styles
-    - Color palette, spacing, font, and resets for Plant Debugger
-  */
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
 
   /* Font */
   --font-family: 'Courier New', Courier, monospace;
@@ -47,8 +45,8 @@
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
-  --font-weight-normal: 550;
-  --font-weight-bold: 900;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
 }
 
 /* Reset and base styles */

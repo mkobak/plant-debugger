@@ -28,7 +28,7 @@ export default function TypingText({
   const intervalRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
-  const key = useMemo(() => (onceKey ?? text), [onceKey, text]);
+  const key = useMemo(() => onceKey ?? text, [onceKey, text]);
 
   useEffect(() => {
     // Reset local state when text changes
@@ -37,7 +37,7 @@ export default function TypingText({
     setStarted(false);
 
     // If we've already typed this text once this session, render instantly
-  if (typingSession.has(key)) {
+    if (typingSession.has(key)) {
       setDisplay(text);
       setComplete(true);
       setStarted(true);
@@ -54,13 +54,13 @@ export default function TypingText({
       setStarted(true);
       let i = 0;
       const interval = Math.max(1, Math.floor(1000 / speed));
-  const id = window.setInterval(() => {
+      const id = window.setInterval(() => {
         if (i <= text.length) {
           setDisplay(text.slice(0, i));
           i++;
         } else {
           if (intervalRef.current) window.clearInterval(intervalRef.current);
-      typingSession.add(key);
+          typingSession.add(key);
           setComplete(true);
           // small delay to allow cursor to blink once
           const completeId = window.setTimeout(() => onComplete?.(), 100);
@@ -96,9 +96,7 @@ export default function TypingText({
   }, []);
 
   const baseClasses = 'typing-text';
-  const classes = [baseClasses, className]
-    .filter(Boolean)
-    .join(' ');
+  const classes = [baseClasses, className].filter(Boolean).join(' ');
 
   const showCursor = started && !complete;
 

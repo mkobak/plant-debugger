@@ -1,190 +1,138 @@
 # Plant Debugger
 
-An AI-powered plant health diagnostic tool that helps users identify plant diseases, pest infestations, and care issues through image analysis and contextual information.
+Great at debugging code but struggling to keep plants alive?
+Plant Debugger makes plant care as easy as debugging, with terminal-style UX and plant concepts explained in programming terms.
 
 ## Features
 
-- **Terminal-style UI** with cross-browser compatible ASCII art branding
-- **Multi-step diagnosis flow**: Upload → Questions → Results  
-- **AI-powered plant identification** and health analysis
-- **Interactive diagnostic questions** to refine diagnosis
-- **Comprehensive treatment recommendations** with prevention tips
-- **PDF export functionality** for complete diagnosis reports
-- **Responsive design** optimized for mobile and desktop
-- **Automated ASCII art system** with SVG generation for universal browser support
+- Terminal-style UX
+- Multi-step AI diagnosis: identify plant → initial analysis → targeted questions → final structured diagnosis
+- Plant identification from one or more photos (drag & drop, file picker, mobile camera support)
+- Practical treatment guidance and next steps
+- Responsive layout for mobile and desktop
+- Cost tracking summary for Gemini API usage (toggleable)
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: CSS Modules with custom terminal theme
-- **Testing**: Jest + React Testing Library
-- **Image Processing**: browser-image-compression
-- **Code Quality**: ESLint + Prettier
+- Framework: Next.js 14 (App Router)
+- Language: TypeScript
+- Styling: vanilla CSS with a custom terminal theme (see `src/styles`)
+- Testing: Jest + React Testing Library
+- Image processing: `browser-image-compression`
+- Code quality: ESLint + Prettier, TypeScript type checks
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
+- Node.js 18.17+ (<= 20.x)
+- npm
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/plant-debugger.git
-   cd plant-debugger
-   ```
+1) Clone the repository
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```powershell
+git clone https://github.com/mkobak/plant-debugger.git
+cd plant-debugger
+```
 
-3. Set up environment variables:
-   ```bash
-   cp .env.local.example .env.local
-   ```
-   
-   Add your API keys:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key_here
-   ```
+2) Install dependencies
 
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+```powershell
+npm install
+```
 
-5. Open [http://localhost:3000](http://localhost:3000) to view the application.
+3) Configure environment variables
+
+- Copy the example file and edit values:
+
+```powershell
+Copy-Item .env.local.example .env.local
+```
+
+Required:
+
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+Optional (debug/logging toggles):
+
+```
+PB_DEBUG_VERBOSE=0                      # set to 1/true to print prompts/responses
+NEXT_PUBLIC_PB_DEBUG_VERBOSE=0          # client-side verbose logging
+NEXT_PUBLIC_ENABLE_CLIENT_COST_LOGS=1   # log cost summaries in the browser
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+4) Start the dev server
+
+```powershell
+npm run dev
+```
+
+Then open http://localhost:3000
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── (routes)/          # Route groups for multi-step flow
-│   │   ├── upload/        # Image upload step
-│   │   ├── questions/     # Diagnostic questions step
-│   │   └── results/       # Results and recommendations
-│   ├── api/               # API routes for AI integration
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # Reusable UI components
-│   ├── ui/               # Atomic UI elements
-│   └── layout/           # Layout components
-├── features/             # Feature-specific logic and state
-│   ├── upload/           # Upload functionality
-│   ├── diagnosis/        # Diagnosis logic
-│   └── questions/        # Question handling
-├── lib/                  # Shared utilities and API clients
-├── types/                # TypeScript type definitions
-├── hooks/                # Custom React hooks
-├── context/              # React context providers
-├── utils/                # General utility functions
-└── styles/               # Global and component styles
+.
+├── src/
+│   ├── app/                      # Next.js App Router
+│   │   ├── (routes)/
+│   │   │   ├── upload/           # Image upload step
+│   │   │   ├── questions/        # Diagnostic questions step
+│   │   │   └── results/          # Results + recommendations
+│   │   ├── api/                  # Route handlers (AI pipeline)
+│   │   │   ├── identify-plant/
+│   │   │   ├── initial-diagnosis/
+│   │   │   ├── generate-questions/
+│   │   │   ├── final-diagnosis/
+│   │   │   ├── no-plant-response/
+│   │   │   └── reset-costs/
+│   │   ├── layout.tsx            # Root layout
+│   │   └── page.tsx              # Home page
+│   ├── components/
+│   │   ├── layout/               # Layout + header
+│   │   └── ui/                   # Buttons, modals, upload, loaders, etc.
+│   ├── context/                  # React context providers
+│   ├── hooks/                    # Custom React hooks
+│   ├── lib/
+│   │   ├── api/                  # Gemini client, prompts, pricing, retries, logging
+│   │   ├── constants.ts          # Upload limits, MIME types, etc.
+│   │   ├── costTracker.ts        # Client-side cost tracking summary
+│   │   └── typingSession.ts      # Typing effects
+│   ├── styles/                   # Global CSS (terminal theme)
+│   ├── types/                    # Shared TypeScript types
+│   └── utils/                    # Helpers (circuit breaker, formatters)
+├── public/
+│   └── images/                   # ASCII SVG assets
+├── scripts/                      # Utility scripts (ASCII generation)
+├── __mocks__/next/navigation.ts  # Next.js navigation mock for tests
+├── jest.config.js, jest.setup.js # Testing config
+└── vercel.json                   # Deployment config (optional)
 ```
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run test` - Run Jest tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run generate-svgs` - Generate SVG files from ASCII art in constants.ts
-- `npm run update-ascii` - Extract ASCII art from constants.ts and regenerate SVGs
+- `dev` — Start development server
+- `build` — Build for production
+- `start` — Start production server
+- `lint` — Run ESLint
+- `typecheck` — TypeScript type checks
+- `format` — Prettier write
+- `format:check` — Prettier check
+- `test` — Run Jest tests
+- `test:watch` — Jest watch mode
+- `test:coverage` — Jest with coverage
+- `generate-svgs` — Generate ASCII SVGs under `public/images`
+- `update-ascii` — Sync ASCII from constants and regenerate SVGs
 
-## ASCII Art System
+## Notes and Tips
 
-The application uses a custom SVG generation system for cross-browser compatible ASCII art logos:
+- Gemini models are configured in `src/lib/api/modelConfig.ts`.
+- Required env: `GEMINI_API_KEY`. Optional toggles control verbose logging and client cost logs.
+- Image upload supports drag & drop and mobile camera capture.
+- Tests live in `src/__tests__` and run with Jest + jsdom.
 
-### How It Works
-
-1. **ASCII Art Storage**: ASCII art is stored in `src/lib/constants.ts`
-2. **Automatic Extraction**: Scripts automatically extract ASCII art from constants
-3. **SVG Generation**: Converts text-based ASCII to properly sized SVG images
-4. **CSS Integration**: Colors are extracted from `src/styles/base.css` design system
-5. **React Components**: `ASCIILogo` component displays SVGs responsively
-
-### Updating ASCII Art
-
-1. Edit ASCII art in `src/lib/constants.ts`:
-   - `ASCII_LOGO_SINGLE` - Single line logo
-   - `ASCII_LOGO_TWO_LINES` - Two-line logo
-   - `ASCII_PLANT_LOGO` - Plant ASCII art
-
-2. Regenerate SVG files:
-   ```bash
-   npm run update-ascii
-   ```
-
-3. SVG files are automatically saved to `public/images/` and dimensions are calculated
-
-### Script Files
-
-- `scripts/generateAsciiSvgs.js` - Main SVG generation logic
-- `scripts/extractColors.js` - Extracts colors from CSS custom properties  
-- `scripts/updateAsciiFromConstants.js` - Orchestrates the update process
-- `scripts/README.md` - Detailed documentation for script usage
-
-## Development Guidelines
-
-- **Clean Code**: Avoid duplication, create reusable components
-- **Future-Ready**: Architecture designed for user accounts, premium features
-- **PDF Export**: All formatting optimized for PDF generation
-- **Accessibility**: WCAG 2.1 AA compliant
-- **Performance**: <3s initial page load target
-
-## API Integration
-
-The app integrates with Google Gemini API for:
-- Plant species identification
-- Diagnostic question generation  
-- Multi-expert diagnosis consensus
-- Treatment recommendation generation
-
-## Testing
-
-```bash
-# Run all tests
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
-```
-
-## Deployment
-
-The application is configured for deployment on Vercel:
-
-1. Connect your repository to Vercel
-2. Configure environment variables in Vercel dashboard
-3. Deploy automatically on every push to main branch
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add some amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Roadmap
-
-- [ ] Core MVP features
-- [ ] User authentication system
-- [ ] Premium feature tiers  
-- [ ] Diagnosis history storage
-- [ ] Advanced AI models
-- [ ] Mobile app versions

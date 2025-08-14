@@ -9,9 +9,9 @@ interface ImagePreviewGridProps {
   className?: string;
 }
 
-export default function ImagePreviewGrid({ 
-  images, 
-  className = '' 
+export default function ImagePreviewGrid({
+  images,
+  className = '',
 }: ImagePreviewGridProps) {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,6 +37,7 @@ export default function ImagePreviewGrid({
             className="image-preview-grid__item"
             onClick={() => handleImageClick(image)}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={image.url}
               alt="Plant"
@@ -48,7 +49,7 @@ export default function ImagePreviewGrid({
           </div>
         ))}
       </div>
-      
+
       <ImagePreviewModal
         images={images}
         currentImageId={selectedImageId}

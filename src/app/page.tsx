@@ -20,14 +20,14 @@ export default function HomePage() {
       <SharedHeader isHomePage={true} />
       <div className="home-content">
         <div className="terminal-text home-text">
-          <TypingText 
-            text="> Is your plant experiencing some compilation issues?" 
+          <TypingText
+            text="> Is your plant experiencing some compilation issues?"
             speed={100}
             onComplete={() => setLine1Complete(true)}
           />
           {line1Complete && (
-            <TypingText 
-              text="> Run the program below to start debugging." 
+            <TypingText
+              text="> Run the program below to start debugging."
               speed={100}
               onComplete={() => setLine2Complete(true)}
             />
@@ -36,7 +36,7 @@ export default function HomePage() {
           {line2Complete && (
             <div className="home-actions">
               <p className="typing-text prompt-line">
-                <TypingText 
+                <TypingText
                   as="span"
                   text="plant-debugger:~$"
                   speed={100}
@@ -46,9 +46,9 @@ export default function HomePage() {
                   <>
                     {' '}
                     <Link href="/upload" className="command-link">
-                      <TypingText 
-                        as="span" 
-                        text="start-debugging" 
+                      <TypingText
+                        as="span"
+                        text="start-debugging"
                         speed={100}
                         onComplete={() => setCommandComplete(true)}
                       />
@@ -59,7 +59,7 @@ export default function HomePage() {
             </div>
           )}
         </div>
-  {commandComplete && (
+        {commandComplete && (
           <div className="plant-logo-container">
             <ASCIILogo variant="plant" className="plant-logo" />
           </div>

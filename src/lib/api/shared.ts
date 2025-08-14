@@ -12,18 +12,18 @@ const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute
 export function checkRateLimit(clientId: string): boolean {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW;
-  
+
   const clientData = rateLimitMap.get(clientId) || { count: 0, lastReset: now };
-  
+
   // Reset count if window has passed
   if (clientData.lastReset < windowStart) {
     clientData.count = 0;
     clientData.lastReset = now;
   }
-  
+
   clientData.count++;
   rateLimitMap.set(clientId, clientData);
-  
+
   return clientData.count <= MAX_REQUESTS_PER_WINDOW;
 }
 
@@ -43,8 +43,10 @@ export function getClientId(request: NextRequest): string {
 export async function addRateLimitDelay(clientId: string): Promise<void> {
   const requestCount = rateLimitMap.get(clientId)?.count || 0;
   if (requestCount > 5) {
-    console.log(`High request frequency detected for client ${clientId}, adding delay...`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log(
+      `High request frequency detected for client ${clientId}, adding delay...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
 
@@ -55,11 +57,13 @@ export interface ProcessedFormData {
   rankedDiagnoses?: string;
 }
 
-export async function processFormData(formData: FormData): Promise<ProcessedFormData> {
+export async function processFormData(
+  formData: FormData
+): Promise<ProcessedFormData> {
   const images: File[] = [];
   let questionsAndAnswers = '';
   let rankedDiagnoses = '';
-  
+
   const formDataEntries = Array.from(formData.entries());
   let totalImageBytes = 0;
   for (const [key, value] of formDataEntries) {
@@ -73,11 +77,21 @@ export async function processFormData(formData: FormData): Promise<ProcessedForm
     }
   }
   // Log concise summary for debugging
-  console.log('[FormData] images:', images.length, `(~${Math.round(totalImageBytes / 1024)} KB)`, '| Q&A len:', questionsAndAnswers?.length || 0, '| ranked len:', rankedDiagnoses?.length || 0);
+  console.log(
+    '[FormData] images:',
+    images.length,
+    `(~${Math.round(totalImageBytes / 1024)} KB)`,
+    '| Q&A len:',
+    questionsAndAnswers?.length || 0,
+    '| ranked len:',
+    rankedDiagnoses?.length || 0
+  );
   return { images, questionsAndAnswers, rankedDiagnoses };
 }
 
-export async function convertImagesToBase64(images: File[]): Promise<Array<{ inlineData: { data: string; mimeType: string } }>> {
+export async function convertImagesToBase64(
+  images: File[]
+): Promise<Array<{ inlineData: { data: string; mimeType: string } }>> {
   return Promise.all(
     images.map(async (image) => {
       const arrayBuffer = await image.arrayBuffer();
