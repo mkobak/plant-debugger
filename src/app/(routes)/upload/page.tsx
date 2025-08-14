@@ -119,7 +119,11 @@ export default function UploadPage() {
           </div>
           <br />
           {!isNavigatingBack ? (
-            <TypingText text="Upload photos of your plant." speed={150} onComplete={() => setTitleComplete(true)} />
+            <TypingText
+              text="Upload photos of your plant."
+              speed={150}
+              onComplete={() => setTitleComplete(true)}
+            />
           ) : (
             <div>Upload photos of your plant.</div>
           )}
@@ -131,9 +135,16 @@ export default function UploadPage() {
           {titleComplete && (
             <div className="upload-tip">
               {!isNavigatingBack ? (
-                <TypingText text="Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts." speed={200} onComplete={() => setTipComplete(true)} />
+                <TypingText
+                  text="Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts."
+                  speed={200}
+                  onComplete={() => setTipComplete(true)}
+                />
               ) : (
-                <div>Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts.</div>
+                <div>
+                  Tip: For best results, upload clear, well-lit photos showing
+                  the whole plant and close-ups of any affected parts.
+                </div>
               )}
             </div>
           )}

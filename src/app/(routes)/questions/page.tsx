@@ -347,8 +347,8 @@ export default function QuestionsPage() {
       </div>
       <br />
 
-  {/* Images show immediately now */}
-  {images.length > 0 && (
+      {/* Images show immediately now */}
+      {images.length > 0 && (
         <div className="page-images">
           <ImagePreviewGrid images={images} />
         </div>
@@ -423,7 +423,11 @@ export default function QuestionsPage() {
                 onceKey={`${typingSessionKey}|no-plant-label`}
               />
               <div className="no-plant-message-text">
-                <TypingText text={noPlantMessage} speed={120} onceKey={`${typingSessionKey}|no-plant-message-title`} />
+                <TypingText
+                  text={noPlantMessage}
+                  speed={120}
+                  onceKey={`${typingSessionKey}|no-plant-message-title`}
+                />
               </div>
             </div>
           )}
@@ -480,9 +484,7 @@ export default function QuestionsPage() {
                     }}
                   />
                 ) : (
-                  <div>
-                    Please answer the following questions:
-                  </div>
+                  <div>Please answer the following questions:</div>
                 )}
 
                 {(instructionsTyped || isNavigatingBack) &&
@@ -553,7 +555,10 @@ export default function QuestionsPage() {
             questions.length === 0 &&
             (plantNameTyped || isNavigatingBack) && (
               <div className="no-questions">
-                <TypingText text="No additional questions needed. Proceeding to diagnosis..." speed={80} />
+                <TypingText
+                  text="No additional questions needed. Proceeding to diagnosis..."
+                  speed={80}
+                />
               </div>
             )}
         </div>
@@ -561,22 +566,22 @@ export default function QuestionsPage() {
         {/* Only show buttons when content is displayed or there's an error */}
         {(pageState === PageState.SHOWING_CONTENT ||
           pageState === PageState.ERROR) && (
-            <div className="page-actions">
-              <ActionButton variant="reset" onClick={handleReset}>
-                Reset
-              </ActionButton>
+          <div className="page-actions">
+            <ActionButton variant="reset" onClick={handleReset}>
+              Reset
+            </ActionButton>
 
-              <ActionButton
-                variant="primary"
-                href="/results"
-                disabled={!canProceed}
-                className={canProceed ? 'has-images' : ''}
-                onClick={handleNext}
-              >
-                Debug
-              </ActionButton>
-            </div>
-          )}
+            <ActionButton
+              variant="primary"
+              href="/results"
+              disabled={!canProceed}
+              className={canProceed ? 'has-images' : ''}
+              onClick={handleNext}
+            >
+              Debug
+            </ActionButton>
+          </div>
+        )}
       </div>
     </TerminalLayout>
   );

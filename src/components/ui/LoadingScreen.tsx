@@ -46,7 +46,8 @@ export default function LoadingScreen({
   if (compact) {
     let status = 'Processing answers';
     if (isAggregating) status = 'Investigating possible bugs';
-    if (aggregatingComplete && isGeneratingTreatment) status = 'Generating report';
+    if (aggregatingComplete && isGeneratingTreatment)
+      status = 'Generating report';
     if (finalDiagnosisComplete) status = 'Finalizing';
     return (
       <div className="loading-screen compact">

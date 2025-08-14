@@ -151,8 +151,7 @@
   grid-column: 2;
 }
 
-
- .answer-button {
+.answer-button {
   background: var(--grey-4);
   border: 0px;
   color: var(--grey-0);
@@ -162,22 +161,23 @@
   font-size: var(--font-size-md);
   transition: all 0.2s ease-in-out;
   line-height: 1.2;
- }
+}
 
- .answer-button:hover {
+.answer-button:hover {
   color: var(--white);
- }
+}
 
- .answer-button.selected {
+.answer-button.selected {
   color: var(--green);
-  text-shadow: 0 0 2px var(--green), 0 0 2px var(--green);
- }
+  text-shadow:
+    0 0 2px var(--green),
+    0 0 2px var(--green);
+}
 
- .answer-button:disabled {
+.answer-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
- }
-
+}
 
 .additional-comments-section {
   color: var(--grey-0);
@@ -254,7 +254,8 @@
 
 .summary-content {
   margin: 0;
-  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md)
+    var(--spacing-md);
   line-height: 1.5;
   color: var(--white);
 }
@@ -354,9 +355,9 @@
 }
 
 /* Make the first bold token at the start of bullet items extra prominent */
-.summary-content .custom-bullet-item .bullet-content>strong:first-child,
-.care-section .custom-bullet-item .bullet-content>strong:first-child,
-.detailed-section .custom-bullet-item .bullet-content>strong:first-child {
+.summary-content .custom-bullet-item .bullet-content > strong:first-child,
+.care-section .custom-bullet-item .bullet-content > strong:first-child,
+.detailed-section .custom-bullet-item .bullet-content > strong:first-child {
   font-weight: var(--font-weight-bold);
 }
 

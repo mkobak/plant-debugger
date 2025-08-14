@@ -342,7 +342,7 @@ export default function ResultsPage() {
       <br />
 
       {/* Image Preview Grid shows only after prompt */}
-  {images.length > 0 && (
+      {images.length > 0 && (
         <div className="page-images">
           <ImagePreviewGrid images={images} />
         </div>
@@ -450,9 +450,7 @@ export default function ResultsPage() {
                   <div className="result-section">
                     <div>{`Bug detected: ${currentDiagnosisResult.primary.condition}`}</div>
                     <div className="confidence-indicator">
-                      <span className="confidence-text">
-                        {'Confidence: '}
-                      </span>
+                      <span className="confidence-text">{'Confidence: '}</span>
                       <span
                         className="confidence-value"
                         style={{
@@ -658,7 +656,7 @@ export default function ResultsPage() {
             )}
         </div>
         {/* Cancel button shown only during loading */}
-  {isDiagnosing && !loadingComplete && !error && (
+        {isDiagnosing && !loadingComplete && !error && (
           <div className="page-actions page-actions--center">
             <ActionButton
               variant="reset"
@@ -676,7 +674,7 @@ export default function ResultsPage() {
         )}
 
         {/* Only show buttons when not loading or when there's an error */}
-  {(!(isDiagnosing && !loadingComplete) || error) && (
+        {(!(isDiagnosing && !loadingComplete) || error) && (
           <div className="page-actions">
             <ActionButton
               variant="reset"

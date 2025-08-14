@@ -8,7 +8,11 @@ interface TerminalLayoutProps {
   showControls?: boolean;
 }
 
-export default function TerminalLayout({ children, title = 'Plant Debugger', showControls = true }: TerminalLayoutProps) {
+export default function TerminalLayout({
+  children,
+  title = 'Plant Debugger',
+  showControls = true,
+}: TerminalLayoutProps) {
   return (
     <main className="terminal-container">
       <div className="terminal-header">

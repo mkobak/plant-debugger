@@ -33,7 +33,7 @@ export default function SharedHeader({
   // Use two-lines for home page on small screens
   const logoVariant = isHomePage && isSmallScreen ? 'two-lines' : 'single';
 
-  useEffect(() => { }, [logoVariant, isSmallScreen]);
+  useEffect(() => {}, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
     { step: 1, label: 'Upload', route: '/upload' },
@@ -98,7 +98,9 @@ export default function SharedHeader({
                   aria-disabled={isDisabled}
                 >
                   {status === 'current' ? '[' + label + ']' : label}
-                  {idx < navigationSteps.length - 1 && <span className="status-arrow">→</span>}
+                  {idx < navigationSteps.length - 1 && (
+                    <span className="status-arrow">→</span>
+                  )}
                 </span>
               );
             })}
