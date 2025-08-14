@@ -101,7 +101,6 @@
 
 .plant-name-container {
   display: inline-block;
-  margin-left: var(--spacing-xs);
 }
 
 .plant-name-input {
@@ -236,7 +235,7 @@
 }
 
 .section-divider::after {
-  content: '────────────────────────────────────────────────────────────────────────────────────────────────';
+  content: '──────────────────────────────────────────────────────────────────────────────────────────────────────────────────';
 }
 
 .confidence-indicator {

@@ -72,7 +72,7 @@ Inspect the image(s) very closely for any signs of early issues such as pest act
 The following diagnoses were ranked by frequency by other plant experts: ${rankedDiagnoses}.
 Consider this ranked list in your answer, but rely mainly on your own judgment. Do not mention the other experts in your response.
 
-Return ONLY a JSON object matching the final diagnosis schema. Include programming humor in the response. Do not include commentary outside JSON.
+Return ONLY a JSON object matching the final diagnosis schema. Include programming humor in the response. Do not include commentary outside JSON. If including a secondary diagnosis, make sure to include all sections.
 `;
 
 export const NO_PLANT_PROMPT = `

@@ -344,7 +344,7 @@ export default function QuestionsPage() {
       />
 
       <div className="prompt-line">
-        <Prompt path="~/analysis" />
+        <Prompt path="~/questions" />
       </div>
       <br />
 
@@ -445,7 +445,7 @@ export default function QuestionsPage() {
                     }}
                   />
                 ) : (
-                  <div>&gt; Plant name:</div>
+                  <div>Plant name:</div>
                 )}
                 {(plantNameTyped || isNavigatingBack) && (
                   <div className="plant-name-container">
@@ -482,7 +482,7 @@ export default function QuestionsPage() {
                   />
                 ) : (
                   <div>
-                    &gt; Please answer the following questions:
+                    Please answer the following questions:
                   </div>
                 )}
 
