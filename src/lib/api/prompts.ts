@@ -23,8 +23,8 @@ Make sure each question is unique and succinct and can be answered with a simple
 For example, if you suspect the issue could be overwatering leading to root rot, ask about the watering habits, the type of soil in which the plant is, current state of the soil etc.
 Consider also asking about watering frequency and amount, i.e., watering often but with little amount could lead to underwatering and root death as some roots are never getting saturated.
 If you are asking about exposure to direct sunlight, make sure to differentiate between morning sun and harsh afternoon sun, and the length of exposure.
-
-Please answer using the 'generate_questions' function call.
+You are talking to a programmer so use programming terms where appropriate.
+Return ONLY a JSON object matching the questions schema (keys Q1..Q5). Do not include commentary outside JSON.
 `;
 
 export const createInitialDiagnosisPrompt = (
@@ -71,7 +71,7 @@ Inspect the image(s) very closely for any signs of early issues such as pest act
 The following diagnoses were ranked by frequency by other plant experts: ${rankedDiagnoses}.
 Consider this ranked list in your answer, but rely mainly on your own judgment. Do not mention the other experts in your response.
 
-Please provide a diagnosis using the 'plant_diagnosis' function call.
+Return ONLY a JSON object matching the final diagnosis schema. Include programming humor in the response. Do not include commentary outside JSON.
 `;
 
 export const NO_PLANT_PROMPT = `

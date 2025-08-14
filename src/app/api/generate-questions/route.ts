@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
-import { getDiagnosisQuestions } from '@/lib/api/utils';
+import { questionsSchema } from '@/lib/api/schemas';
 import {
   processFormData,
   convertImagesToBase64,
@@ -57,11 +57,9 @@ export async function POST(request: NextRequest) {
       QUESTIONS_GENERATION_PROMPT
     );
 
-    const tools = getDiagnosisQuestions();
-
     // Concise send summary
     console.log(
-      `[GENERATE-QUESTIONS:${requestId}] Sending to AI | images: ${imageParts.length} | tools: ${tools.length}`
+      `[GENERATE-QUESTIONS:${requestId}] Sending to AI | images: ${imageParts.length} | schema: questions`
     );
 
     // Call Gemini API for questions generation
@@ -79,10 +77,11 @@ export async function POST(request: NextRequest) {
           parts: [{ text: QUESTIONS_GENERATION_PROMPT }, ...imageParts],
         },
       ],
-      tools,
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
+        responseMimeType: 'application/json',
+        responseSchema: questionsSchema as any,
       },
     });
 
@@ -100,74 +99,23 @@ export async function POST(request: NextRequest) {
     }
     recordUsageForRequest(request, 'modelMedium', usage);
 
-    // Handle function calling response
-    let questionsData;
+    // Structured JSON response parsing
+    let questionsData: any;
     try {
-      const response = result.response;
-      console.log(
-        `[GENERATE-QUESTIONS:${requestId}] candidates: ${response.candidates?.length}`
-      );
-
-      if (response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        console.log(
-          `[GENERATE-QUESTIONS:${requestId}] parts: ${candidate.content?.parts?.length}`
-        );
-
-        if (candidate.content?.parts) {
-          const functionCallPart = candidate.content.parts.find(
-            (part) => 'functionCall' in part
-          );
-
-          if (
-            functionCallPart &&
-            'functionCall' in functionCallPart &&
-            functionCallPart.functionCall
-          ) {
-            console.log(
-              `[GENERATE-QUESTIONS:${requestId}] functionCall: ${functionCallPart.functionCall.name}`
-            );
-            questionsData = functionCallPart.functionCall.args;
-          } else {
-            // Fallback: try to parse text response
-            const textPart = candidate.content.parts.find(
-              (part) => 'text' in part
-            );
-            if (textPart && 'text' in textPart && textPart.text) {
-              console.log(
-                `[GENERATE-QUESTIONS:${requestId}] Fallback to text parsing`
-              );
-              const responseText = textPart.text;
-              console.log(
-                `[GENERATE-QUESTIONS:${requestId}] text excerpt:`,
-                responseText.slice(0, 1000)
-              );
-
-              // Try to extract JSON from text
-              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                questionsData = JSON.parse(jsonMatch[0]);
-              } else {
-                throw new Error(
-                  'No function call or valid JSON found in response'
-                );
-              }
-            } else {
-              throw new Error('No function call or text found in response');
-            }
-          }
-        } else {
-          throw new Error('No content parts found in response');
-        }
-      } else {
-        throw new Error('No candidates found in response');
+      const jsonText = result.response.text();
+      if (typeof jsonText !== 'string' || !jsonText.trim()) {
+        throw new Error('Empty JSON response');
       }
-    } catch (parseError) {
-      console.error(
-        `[GENERATE-QUESTIONS:${requestId}] Parsing failed:`,
-        parseError
+      questionsData = JSON.parse(jsonText);
+      console.log(
+        `[GENERATE-QUESTIONS:${requestId}] Parsed JSON keys: ${Object.keys(questionsData || {}).join(', ')}`
       );
-      throw new Error('Invalid questions response format');
+    } catch (e) {
+      console.error(
+        `[GENERATE-QUESTIONS:${requestId}] Failed to parse structured JSON response`,
+        e
+      );
+      throw new Error('Invalid structured questions response');
     }
 
     // Convert the function call response to our questions format
