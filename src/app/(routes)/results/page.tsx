@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
+import Prompt from '@/components/ui/Prompt';
 import ActionButton from '@/components/ui/ActionButton';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import ImagePreviewGrid from '@/components/ui/ImagePreviewGrid';
@@ -35,7 +36,7 @@ export default function ResultsPage() {
   const [hasShownResultsBefore, setHasShownResultsBefore] = useState(false);
   // Only type the plant name; rest appears immediately
   const [plantTitleDone, setPlantTitleDone] = useState(false);
-  const [promptComplete, setPromptComplete] = useState(false); // ensure prompt prints first
+  const [promptComplete, setPromptComplete] = useState(true); // prompt renders immediately
 
   // Format questions and answers for the diagnosis
   const formatQuestionsAndAnswers = () => {
@@ -328,7 +329,7 @@ export default function ResultsPage() {
   const currentDiagnosisResult = contextDiagnosisResult || diagnosisResult;
 
   return (
-    <TerminalLayout title="plant-debugger:~/results$">
+    <TerminalLayout title="Plant Debugger">
       <SharedHeader
         currentStep={3}
         showNavigation={true}
@@ -336,21 +337,12 @@ export default function ResultsPage() {
       />
 
       <div className="prompt-line">
-        {!isNavigatingBack ? (
-          <TypingText
-            text="plant-debugger:~/results$"
-            speed={100}
-            onceKey={`prompt|results`}
-            onComplete={() => setPromptComplete(true)}
-          />
-        ) : (
-          <div>plant-debugger:~/results$</div>
-        )}
+        <Prompt path="~/results" />
       </div>
       <br />
 
       {/* Image Preview Grid shows only after prompt */}
-      {promptComplete && images.length > 0 && (
+  {images.length > 0 && (
         <div className="page-images">
           <ImagePreviewGrid images={images} />
         </div>
@@ -359,7 +351,7 @@ export default function ResultsPage() {
       <div className="results-page">
         <div className="terminal-text">
           {/* Show loading screen while diagnosing */}
-          {promptComplete && isDiagnosing && !loadingComplete && (
+          {isDiagnosing && !loadingComplete && (
             <LoadingScreen
               isDiagnosing={isDiagnosing}
               isAggregating={!initialDiagnosisComplete}
@@ -369,6 +361,7 @@ export default function ResultsPage() {
               aggregatingComplete={initialDiagnosisComplete}
               finalDiagnosisComplete={finalDiagnosisComplete}
               onceKeyPrefix={typingKeyPrefix}
+              compact={true}
               onComplete={() => setLoadingComplete(true)}
             />
           )}
@@ -392,15 +385,14 @@ export default function ResultsPage() {
                     opacity: isDiagnosing ? 0.6 : 1,
                   }}
                 >
-                  [ Retry Diagnosis ]
+                  Retry Diagnosis
                 </button>
               </div>
             </div>
           )}
 
           {/* Show results only when diagnosis is complete */}
-          {promptComplete &&
-            (finalDiagnosisComplete || contextDiagnosisResult) &&
+          {(finalDiagnosisComplete || contextDiagnosisResult) &&
             (diagnosisResult || contextDiagnosisResult) &&
             (loadingComplete || !isDiagnosing) && (
               <div className="diagnosis-results">
@@ -408,7 +400,7 @@ export default function ResultsPage() {
                 {currentDiagnosisResult?.plant && (
                   <div className="result-section">
                     <TypingText
-                      text={`> Plant name: ${currentDiagnosisResult.plant}`}
+                      text={`Plant name: ${currentDiagnosisResult.plant}`}
                       speed={60}
                       onceKey={`${typingKeyPrefix}|plant`}
                       onComplete={() => setPlantTitleDone(true)}
@@ -431,10 +423,7 @@ export default function ResultsPage() {
                         className="care-section"
                         style={{ marginTop: '-1px' }}
                       >
-                        <div className="summary-content-title">
-                          {' '}
-                          {'> Care Tips:'}{' '}
-                        </div>
+                        <div className="summary-content-title">Care Tips:</div>
                         <div className="summary-content">
                           <div
                             dangerouslySetInnerHTML={{
@@ -459,10 +448,10 @@ export default function ResultsPage() {
                 {/* Primary Diagnosis */}
                 {currentDiagnosisResult && plantTitleDone && (
                   <div className="result-section">
-                    <div>{`> Bug detected: ${currentDiagnosisResult.primary.condition}`}</div>
+                    <div>{`Bug detected: ${currentDiagnosisResult.primary.condition}`}</div>
                     <div className="confidence-indicator">
                       <span className="confidence-text">
-                        {'> Confidence: '}
+                        {'Confidence: '}
                       </span>
                       <span
                         className="confidence-value"
@@ -481,7 +470,7 @@ export default function ResultsPage() {
                 {/* Primary Summary */}
                 {currentDiagnosisResult && plantTitleDone && (
                   <div className="result-section">
-                    <div>{'> Summary:'}</div>
+                    <div>{'Summary:'}</div>
                     <div className="summary-content">
                       <div
                         dangerouslySetInnerHTML={{
@@ -507,7 +496,7 @@ export default function ResultsPage() {
                       >
                         <div className="diagnosis-subsection">
                           <div className="summary-content-title">
-                            {'> Reasoning:'}
+                            {'Reasoning:'}
                           </div>
                           <div className="summary-content">
                             <div
@@ -522,7 +511,7 @@ export default function ResultsPage() {
 
                         <div className="diagnosis-subsection">
                           <div className="summary-content-title">
-                            {'> Treatment Plan:'}
+                            {'Treatment Plan:'}
                           </div>
                           <div className="summary-content">
                             <div
@@ -537,7 +526,7 @@ export default function ResultsPage() {
 
                         <div className="diagnosis-subsection">
                           <div className="summary-content-title">
-                            {'> Prevention Tips:'}
+                            {'Prevention Tips:'}
                           </div>
                           <div className="summary-content">
                             <div
@@ -563,13 +552,13 @@ export default function ResultsPage() {
                     </div>
 
                     <div className="result-section">
-                      <div>{`> Another possible bug: ${currentDiagnosisResult.secondary.condition}`}</div>
+                      <div>{`Another possible bug: ${currentDiagnosisResult.secondary.condition}`}</div>
                       <div className="confidence-indicator">
                         <span
                           className="confidence-text"
                           style={{ color: 'var(--text-primary)' }}
                         >
-                          {'> Confidence: '}
+                          {'Confidence: '}
                         </span>
                         <span
                           className="confidence-value"
@@ -586,7 +575,7 @@ export default function ResultsPage() {
 
                     {/* Secondary Summary */}
                     <div className="result-section">
-                      <div>{'> Summary:'}</div>
+                      <div>{'Summary:'}</div>
                       <div className="summary-content">
                         <div
                           dangerouslySetInnerHTML={{
@@ -614,7 +603,7 @@ export default function ResultsPage() {
                         >
                           <div className="diagnosis-subsection">
                             <div className="summary-content-title">
-                              {'> Reasoning:'}
+                              {'Reasoning:'}
                             </div>
                             <div className="summary-content">
                               <div
@@ -629,7 +618,7 @@ export default function ResultsPage() {
 
                           <div className="diagnosis-subsection">
                             <div className="summary-content-title">
-                              {'> Treatment Plan:'}
+                              {'Treatment Plan:'}
                             </div>
                             <div className="summary-content">
                               <div
@@ -644,7 +633,7 @@ export default function ResultsPage() {
 
                           <div className="diagnosis-subsection">
                             <div className="summary-content-title">
-                              {'> Prevention Tips:'}
+                              {'Prevention Tips:'}
                             </div>
                             <div className="summary-content">
                               <div
@@ -669,7 +658,7 @@ export default function ResultsPage() {
             )}
         </div>
         {/* Cancel button shown only during loading */}
-        {promptComplete && isDiagnosing && !loadingComplete && !error && (
+  {isDiagnosing && !loadingComplete && !error && (
           <div className="page-actions page-actions--center">
             <ActionButton
               variant="reset"
@@ -681,20 +670,20 @@ export default function ResultsPage() {
                 goToQuestions();
               }}
             >
-              [ Cancel ]
+              Cancel
             </ActionButton>
           </div>
         )}
 
         {/* Only show buttons when not loading or when there's an error */}
-        {promptComplete && (!(isDiagnosing && !loadingComplete) || error) && (
+  {(!(isDiagnosing && !loadingComplete) || error) && (
           <div className="page-actions">
             <ActionButton
               variant="reset"
               onClick={handleNewDiagnosis}
               disabled={isDiagnosing}
             >
-              [ Reset ]
+              Reset
             </ActionButton>
 
             <ActionButton
@@ -702,7 +691,7 @@ export default function ResultsPage() {
               disabled={true}
               className="placeholder-button"
             >
-              [ Download ]
+              Download
             </ActionButton>
           </div>
         )}

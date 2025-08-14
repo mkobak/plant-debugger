@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
+import Prompt from '@/components/ui/Prompt';
 import ImageUpload from '@/components/ui/ImageUpload';
 import ImagePreviewModal from '@/components/ui/ImagePreviewModal';
 import ActionButton from '@/components/ui/ActionButton';
@@ -109,32 +110,19 @@ export default function UploadPage() {
   const canProceed = images.length > 0 && !isUploading;
 
   return (
-    <TerminalLayout title="plant-debugger:~/upload$">
+    <TerminalLayout title="Plant Debugger">
       <SharedHeader currentStep={1} showNavigation={true} />
       <div className="upload-page">
         <div className="terminal-text">
           <div className="prompt-line">
-            {!isNavigatingBack ? (
-              <TypingText
-                text="plant-debugger:~/upload$"
-                speed={100}
-                onComplete={() => setCodeComplete(true)}
-              />
-            ) : (
-              <div>plant-debugger:~/upload$</div>
-            )}
+            <Prompt path="~/upload" />
           </div>
           <br />
-          {codeComplete &&
-            (!isNavigatingBack ? (
-              <TypingText
-                text="> Upload photos of your plant."
-                speed={100}
-                onComplete={() => setTitleComplete(true)}
-              />
-            ) : (
-              <div>&gt; Upload photos of your plant.</div>
-            ))}
+          {!isNavigatingBack ? (
+            <TypingText text="Upload photos of your plant." speed={150} onComplete={() => setTitleComplete(true)} />
+          ) : (
+            <div>Upload photos of your plant.</div>
+          )}
           {error && (
             <div className="error-message">
               <TypingText text={`ERROR: ${error}`} className="error-text" />
@@ -143,16 +131,9 @@ export default function UploadPage() {
           {titleComplete && (
             <div className="upload-tip">
               {!isNavigatingBack ? (
-                <TypingText
-                  text="> Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts."
-                  speed={150}
-                  onComplete={() => setTipComplete(true)}
-                />
+                <TypingText text="Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts." speed={200} onComplete={() => setTipComplete(true)} />
               ) : (
-                <div>
-                  &gt; Tip: For best results, upload clear, well-lit photos
-                  showing the whole plant and close-ups of any affected parts.
-                </div>
+                <div>Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts.</div>
               )}
             </div>
           )}
@@ -169,25 +150,24 @@ export default function UploadPage() {
                 onImagePreview={handleImagePreview}
               />
               <div className="page-actions">
-                <button
-                  className="action-button action-button--reset"
+                <ActionButton
+                  variant="reset"
                   onClick={() => {
-                    console.log('Reset button clicked');
                     handleReset();
                   }}
                 >
-                  [ Reset ]
-                </button>
-                <button
-                  className={`action-button action-button--primary ${images.length > 0 ? 'has-images' : ''}`}
+                  Reset
+                </ActionButton>
+                <ActionButton
+                  variant="primary"
                   disabled={!canProceed}
                   onClick={() => {
-                    console.log('Next button clicked');
                     handleNext();
                   }}
+                  className={images.length > 0 ? 'has-images' : ''}
                 >
-                  [ Next ]
-                </button>
+                  Next
+                </ActionButton>
               </div>
             </>
           )}

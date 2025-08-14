@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useNavigation } from '@/hooks/useNavigation';
 import ASCIILogo from '@/components/ui/ASCIILogo';
@@ -15,7 +15,7 @@ interface SharedHeaderProps {
   currentStep?: number;
   showNavigation?: boolean;
   isHomePage?: boolean;
-  disableNavigation?: boolean; // new prop to disable step navigation (e.g., during loading)
+  disableNavigation?: boolean;
 }
 
 export default function SharedHeader({
@@ -29,48 +29,11 @@ export default function SharedHeader({
   // Directly access context to compute gating
   const { images, diagnosisResult } =
     require('@/context/DiagnosisContext').useDiagnosis();
-  const underlineRef = useRef<HTMLDivElement>(null);
-  const navUnderlineRef = useRef<HTMLDivElement>(null);
-  const [logoUnderlineChars, setLogoUnderlineChars] = useState(80);
-  const [navUnderlineChars, setNavUnderlineChars] = useState(80);
 
-  // Simplified logo logic - use two-lines for home page on small screens
+  // Use two-lines for home page on small screens
   const logoVariant = isHomePage && isSmallScreen ? 'two-lines' : 'single';
 
-  // Calculate exact number of # characters that fit in the container
-  useEffect(() => {
-    const calculateChars = () => {
-      if (underlineRef.current) {
-        const containerWidth =
-          underlineRef.current.getBoundingClientRect().width;
-        // Use a more precise character width measurement
-        const tempSpan = document.createElement('span');
-        tempSpan.style.fontFamily = 'monospace';
-        tempSpan.style.fontSize = '0.9rem';
-        tempSpan.style.visibility = 'hidden';
-        tempSpan.style.position = 'absolute';
-        tempSpan.textContent = '#';
-        document.body.appendChild(tempSpan);
-        const charWidth = tempSpan.getBoundingClientRect().width;
-        document.body.removeChild(tempSpan);
-
-        const numChars = Math.floor((containerWidth * 1.005) / charWidth);
-        setLogoUnderlineChars(Math.max(numChars, 10)); // Minimum 10 characters
-      }
-    };
-
-    // Calculate after component mounts
-    const timer = setTimeout(calculateChars, 50);
-
-    // Recalculate on window resize
-    const handleResize = () => calculateChars();
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [logoVariant, isSmallScreen]);
+  useEffect(() => { }, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
     { step: 1, label: 'Upload', route: '/upload' },
@@ -115,39 +78,32 @@ export default function SharedHeader({
           variant={logoVariant}
           className={`${logoVariant} ${isHomePage ? 'home-page' : 'other-page'}`}
         />
-        <div ref={underlineRef} className={`logo-underline ${logoVariant}`}>
-          {'#'.repeat(logoUnderlineChars)}
-        </div>
+        <div className={`logo-underline ${logoVariant}`} aria-hidden="true" />
       </div>
 
       {showNavigation && (
-        <div className="navigation-section">
-          <div className="navigation-steps">
-            {navigationSteps.map((step) => {
+        <div className="navigation-section terminal-status-bar">
+          <div className="terminal-status-line">
+            {navigationSteps.map((step, idx) => {
               const status = getStepStatus(step.step);
               const isDisabled = disableNavigation || status === 'future';
+              const label = step.label.toLowerCase();
               return (
                 <span
                   key={step.step}
-                  className={`nav-step nav-step--${status} ${!isDisabled ? 'clickable' : 'disabled'} ${disableNavigation ? 'nav-step--temporarily-disabled' : ''}`}
+                  className={`status-segment status-segment--${status} ${!isDisabled ? 'clickable' : ''}`}
                   onClick={() => {
                     if (!isDisabled) handleStepClick(step);
                   }}
                   aria-disabled={isDisabled}
-                  title={
-                    disableNavigation
-                      ? 'Navigation disabled during processing'
-                      : undefined
-                  }
                 >
-                  [ {step.step}. ]
+                  {status === 'current' ? '[' + label + ']' : label}
+                  {idx < navigationSteps.length - 1 && <span className="status-arrow">→</span>}
                 </span>
               );
             })}
           </div>
-          <div ref={navUnderlineRef} className="logo-underline">
-            {'#'.repeat(logoUnderlineChars)}
-          </div>
+          <div className="logo-underline" aria-hidden="true" />
         </div>
       )}
     </div>
