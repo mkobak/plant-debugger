@@ -1,114 +1,162 @@
 /* UI Component Styles */
 
 /* Button Component */
-.terminal-button {
-  background: transparent;
-  border: none;
+ .terminal-button {
+  background: var(--grey-5);
+  border: 1px solid var(--green);
   color: var(--green);
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-xs) var(--spacing-lg);
   cursor: pointer;
   transition: var(--transition-normal);
   position: relative;
   overflow: hidden;
-}
+  line-height: 1.2;
+  text-transform: none;
+ }
 
-.terminal-button:hover:not(:disabled) {
-  color: var(--grey-4);
-}
+ .terminal-button:hover:not(:disabled) {
+  background: var(--green);
+  color: var(--black);
+  box-shadow: 0 0 0 1px var(--green), 0 0 6px var(--green);
+ }
 
-.terminal-button:disabled {
+ .terminal-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
+  box-shadow: none;
+  color: var(--grey-2) !important;
+  border-color: var(--grey-3) !important;
+  background: var(--grey-5) !important;
+ }
 
-.terminal-button--primary {
+ .terminal-button--primary {
   color: var(--green);
-}
+ }
 
-.terminal-button--secondary {
+ .terminal-button--secondary {
   color: var(--grey-1);
-}
+  border-color: var(--grey-2);
+ }
 
-.terminal-button--secondary:hover:not(:disabled) {
-  color: var(--grey-4);
-}
+ .terminal-button--secondary:hover:not(:disabled) {
+  background: var(--grey-2);
+  color: var(--black);
+ }
 
-.terminal-button--danger {
+ .terminal-button--danger {
   color: var(--red);
-}
+  border: 0px;
+ }
 
-.terminal-button--danger:hover:not(:disabled) {
-  color: var(--white);
-}
+ .terminal-button--danger:hover:not(:disabled) {
+  background: var(--red);
+  color: var(--black);
+  border: 0px !important;
+ }
 
-.terminal-button--sm {
+ .terminal-button--sm {
   font-size: var(--font-size-xs);
-  padding: var(--spacing-xs) 0;
-}
+  padding: var(--spacing-2xs) var(--spacing-sm);
+ }
 
-.terminal-button--md {
+ .terminal-button--md {
   font-size: var(--font-size-md);
-  padding: var(--spacing-sm) var(--spacing-lg);
-}
+  padding: var(--spacing-xs) var(--spacing-lg);
+ }
 
-.terminal-button--lg {
+ .terminal-button--lg {
   font-size: var(--font-size-lg);
-  padding: var(--spacing-md) var(--spacing-xl);
-}
+  padding: var(--spacing-sm) var(--spacing-xl);
+ }
+
 
 /* Action Button Component */
-.action-button {
-  background: transparent;
-  border: none;
+ .action-button {
+  background: var(--grey-5);
+  border: 1px solid var(--green);
   font-family: var(--font-family);
-  font-size: var(--font-size-2xl);
-  padding: var(--spacing-sm) 0;
+  font-size: var(--font-size-lg);
+  padding: var(--spacing-xs) var(--spacing-lg);
   cursor: pointer;
   transition: var(--transition-normal);
-}
-
-.action-button--primary {
-  color: var(--grey-2);
-}
-
-.action-button--primary:hover:not(:disabled) {
-  color: var(--white);
-}
-
-.action-button--primary.has-images {
+  position: relative;
+  outline: none;
   color: var(--green);
-}
+  line-height: 1.2;
+ }
 
-.action-button--primary.has-images:hover:not(:disabled) {
-  color: var(--white);
-}
+ .action-button--primary {
+  color: var(--green);
+ }
 
-.action-button--secondary {
-  color: var(--grey-2);
-}
+ .action-button--primary:hover:not(:disabled) {
+  background: var(--green);
+  color: var(--black);
+  box-shadow: 0 0 0 1px var(--green), 0 0 6px var(--green);
+ }
 
-.action-button--secondary:hover:not(:disabled) {
-  color: var(--white);
-}
+ .action-button--primary.has-images {
+  color: var(--green);
+ }
 
-.action-button--reset {
+ .action-button--primary.has-images:hover:not(:disabled) {
+  background: var(--green);
+  color: var(--black);
+ }
+
+ .action-button--secondary {
   color: var(--grey-1);
-}
+  border-color: var(--grey-2);
+ }
 
-.action-button--reset:hover:not(:disabled) {
+ .action-button--secondary:hover:not(:disabled) {
+  background: var(--grey-2);
+  color: var(--black);
+ }
+
+ .action-button--reset {
+  color: var(--grey-0);
+  border-color: var(--grey-2);
+ }
+
+ .action-button--reset:hover:not(:disabled) {
+  background: var(--grey-2);
   color: var(--white);
-}
+ }
 
-.action-button:disabled {
-  opacity: 0.8;
-  cursor: not-allowed;
-}
-
-.action-button.placeholder-button {
+ .action-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
+  color: var(--grey-2) !important;
+  border-color: var(--grey-3) !important;
+  background: var(--grey-5) !important;
+ }
+
+ .action-button.placeholder-button {
+  opacity: 0.4;
+  cursor: not-allowed;
+ }
+
+/* Focus accessibility */
+ .action-button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+ }
+
+/* Inline bracket flashing style (optional subtle) */
+.action-button:hover:not(:disabled)::after,
+.action-button:focus-visible::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--grey-3), transparent);
+  opacity: 0.6;
 }
 
 /* Loading Spinner */
@@ -226,7 +274,7 @@
 /* Terminal Spinner Component */
 .terminal-spinner {
   display: inline-block;
-  color: var(--white);
+  color: var(--grey-0);
   vertical-align: baseline;
   line-height: 1;
 }

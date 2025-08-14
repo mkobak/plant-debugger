@@ -12,6 +12,7 @@ interface QuestionsLoadingScreenProps {
   onComplete?: () => void;
   // Optional key to retrigger typing when input changes
   onceKeyPrefix?: string;
+  compact?: boolean; // single line status mode
 }
 
 export default function QuestionsLoadingScreen({
@@ -21,6 +22,7 @@ export default function QuestionsLoadingScreen({
   questionsGenerated,
   onComplete,
   onceKeyPrefix,
+  compact = true,
 }: QuestionsLoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -39,45 +41,58 @@ export default function QuestionsLoadingScreen({
     }
   }, [questionsGenerated, line3Complete, onComplete]);
 
+  if (compact) {
+    // Single-line dynamic status
+    let status = 'Analyzing images';
+    if (isIdentifying) status = 'Identifying plant';
+    if (identificationComplete && isGeneratingQuestions)
+      status = 'Generating questions';
+    if (questionsGenerated) status = 'Finalizing';
+
+    return (
+      <div className="questions-loading-screen compact">
+        <TypingText
+          text={`Status: ${status}...`}
+          speed={40}
+          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|compact` : undefined}
+          onComplete={() => {
+            if (questionsGenerated) setLine3Complete(true);
+          }}
+        />
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
-    <div className="questions-loading-screen">
+    <div className="questions-loading-screen verbose">
+      {/* Original multi-line retained behind flag */}
       <div className="terminal-line">
         <TypingText
           text="> Analyzing images..."
           speed={60}
           onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
-          onComplete={() => {
-            console.log('QuestionsLoadingScreen: Line 1 complete');
-            setLine1Complete(true);
-          }}
+          onComplete={() => setLine1Complete(true)}
         />
       </div>
-
       {line1Complete && (
         <div className="terminal-line">
           <TypingText
             text="> Identifying plant..."
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
-            onComplete={() => {
-              console.log('QuestionsLoadingScreen: Line 2 complete');
-              setLine2Complete(true);
-            }}
+            onComplete={() => setLine2Complete(true)}
           />
           {isIdentifying && <LoadingSpinner />}
         </div>
       )}
-
       {line2Complete && identificationComplete && (
         <div className="terminal-line">
           <TypingText
             text="> Generating questions..."
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
-            onComplete={() => {
-              console.log('QuestionsLoadingScreen: Line 3 complete');
-              setLine3Complete(true);
-            }}
+            onComplete={() => setLine3Complete(true)}
           />
           {isGeneratingQuestions && <LoadingSpinner />}
         </div>

@@ -11,8 +11,8 @@ interface LoadingScreenProps {
   aggregatingComplete?: boolean;
   finalDiagnosisComplete?: boolean;
   onComplete?: () => void;
-  // When provided, the 3 typing lines will be keyed to this prefix so they retype when the prefix changes
   onceKeyPrefix?: string;
+  compact?: boolean; // single line status mode
 }
 
 export default function LoadingScreen({
@@ -23,6 +23,7 @@ export default function LoadingScreen({
   finalDiagnosisComplete = false,
   onComplete,
   onceKeyPrefix,
+  compact = true,
 }: LoadingScreenProps) {
   const [line1Complete, setLine1Complete] = useState(false);
   const [line2Complete, setLine2Complete] = useState(false);
@@ -42,8 +43,28 @@ export default function LoadingScreen({
     }
   }, [finalDiagnosisComplete, line3Complete, onComplete]);
 
+  if (compact) {
+    let status = 'Processing answers';
+    if (isAggregating) status = 'Investigating possible bugs';
+    if (aggregatingComplete && isGeneratingTreatment) status = 'Generating report';
+    if (finalDiagnosisComplete) status = 'Finalizing';
+    return (
+      <div className="loading-screen compact">
+        <TypingText
+          text={`Status: ${status}...`}
+          speed={45}
+          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|compact` : undefined}
+          onComplete={() => {
+            if (finalDiagnosisComplete) handleLine3Complete();
+          }}
+        />
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
-    <div className="loading-screen">
+    <div className="loading-screen verbose">
       <div className="terminal-line">
         <TypingText
           text="> Processing answers..."
@@ -63,7 +84,6 @@ export default function LoadingScreen({
           {isAggregating && <LoadingSpinner />}
         </div>
       )}
-
       {line2Complete && aggregatingComplete && (
         <div className="terminal-line">
           <TypingText

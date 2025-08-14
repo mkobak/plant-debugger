@@ -140,12 +140,28 @@
 
 /* Logo underline using precise character calculation */
 .logo-underline {
-  color: var(--grey-2);
-  margin-bottom: var(--spacing-sm);
+  position: relative;
+  margin-bottom: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  width: 100%;
+  height: 0.9rem;
+  /* matches previous font-size height */
+  overflow: hidden;
+  /* Hide overflow characters */
+  line-height: 0.9rem;
   font-family: monospace;
   font-size: 0.9rem;
-  line-height: 1;
-  width: 100%;
+  color: var(--grey-2);
+  pointer-events: none;
+  user-select: none;
+}
+
+.logo-underline::before {
+  content: '────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────';
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
 }
 
 /* Navigation section styling */
@@ -164,17 +180,36 @@
 .home-content {
   display: flex !important;
   flex-direction: column !important;
-  align-items: flex-start !important;
+  align-items: stretch !important; /* left align text container */
   justify-content: flex-start !important;
   min-height: 60vh;
   width: 100%;
 }
 
 .home-text {
-  text-align: left !important;
+  text-align: left !important; /* left aligned paragraphs */
   width: 100%;
   margin-bottom: var(--spacing-xl);
   margin-top: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* ensure text is left */
+}
+
+.home-intro-copy p {
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.home-start-line {
+  margin-top: var(--spacing-xl);
+  display: flex;
+  justify-content: center; /* center the button */
+  width: 100%;
+}
+
+.home-start-button {
+  min-width: 160px;
+  text-align: center;
 }
 
 .plant-logo-container {
@@ -195,15 +230,154 @@
   color: var(--grey-1);
 }
 
+/* ASCII frame utility */
+.ascii-frame {
+  position: relative;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--grey-2);
+  background: rgba(255, 255, 255, 0.01);
+  display: inline-block;
+}
+
+/* Tighter variant for image grid */
+.image-preview-grid.ascii-frame {
+  padding: var(--spacing-xs);
+}
+
+.ascii-frame::before,
+.ascii-frame::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.ascii-frame::before {
+  top: -1px;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: var(--grey-2);
+}
+
+.ascii-frame::after {
+  bottom: -1px;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: var(--grey-2);
+}
+
+/* Loading compact styles */
+.questions-loading-screen.compact,
+.loading-screen.compact {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--grey-1);
+  margin: var(--spacing-md) 0;
+}
+
+.questions-loading-screen.compact .typing-text,
+.loading-screen.compact .typing-text {
+  color: var(--grey-1);
+}
+
+/* Width constraint for results for readability */
+.diagnosis-results {
+  max-width: 85ch;
+}
+
+.diagnosis-results .summary-content p {
+  line-height: 1.35;
+}
+
+/* Shell prompt */
+.pd-prompt {
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  white-space: nowrap;
+}
+
+.pd-prompt__user {
+  color: var(--green);
+}
+
+.pd-prompt__at {
+  color: var(--grey-1);
+}
+
+.pd-prompt__host {
+  color: var(--green);
+}
+
+.pd-prompt__sep {
+  color: var(--grey-2);
+}
+
+.pd-prompt__path {
+  color: var(--cyan, #40bcd8);
+}
+
+.pd-prompt__char {
+  color: var(--grey-1);
+  margin-left: 2px;
+}
+
+.pd-prompt__cursor {
+  color: var(--green);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 2px;
+}
+
+/* Status bar style navigation */
+.terminal-status-bar {
+  margin-top: var(--spacing-xs);
+}
+
+.terminal-status-line {
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  color: var(--grey-2);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-segment--current {
+  color: var(--green);
+}
+
+.status-segment--completed {
+  color: var(--grey-0);
+}
+
+.status-segment--future {
+  color: var(--grey-2);
+}
+
+.status-segment.clickable {
+  cursor: pointer;
+}
+
+.status-segment.clickable:hover {
+  color: var(--white);
+}
+
+.status-arrow {
+  margin: 0 2px 0 8px;
+  color: var(--grey-2);
+}
+
 /* Terminal text with typing effect */
 .terminal-text {
   width: 100%;
   color: var(--white);
-  line-height: 1.5;
+  line-height: 1.3;
 }
 
 .typing-text {
-  line-height: 1.5;
+  line-height: 1.3;
+  margin-bottom: var(--spacing-sm);
 }
 
 .typing-cursor {

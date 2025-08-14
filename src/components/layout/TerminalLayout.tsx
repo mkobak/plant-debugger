@@ -8,24 +8,19 @@ interface TerminalLayoutProps {
   showControls?: boolean;
 }
 
-export default function TerminalLayout({
-  children,
-  title = 'plant-debugger:~$',
-  showControls = true,
-}: TerminalLayoutProps) {
+export default function TerminalLayout({ children, title = 'Plant Debugger', showControls = true }: TerminalLayoutProps) {
   return (
     <main className="terminal-container">
       <div className="terminal-header">
         {showControls && (
           <div className="terminal-controls">
-            <span className="control close"></span>
-            <span className="control minimize"></span>
-            <span className="control maximize"></span>
+            <span className="control close" />
+            <span className="control minimize" />
+            <span className="control maximize" />
           </div>
         )}
-        <span className="terminal-title">{title}</span>
+        {title && <span className="terminal-title">{title}</span>}
       </div>
-
       <div className="terminal-content">{children}</div>
     </main>
   );
