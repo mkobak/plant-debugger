@@ -197,7 +197,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     // Inform server to reset server-side cost totals (best-effort)
     try {
       fetch('/api/reset-costs', { method: 'POST' });
-    } catch { }
+    } catch {}
   };
 
   const value = {

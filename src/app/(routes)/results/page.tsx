@@ -67,7 +67,9 @@ export default function ResultsPage() {
       parts.push(`Additional user comment: ${additionalComments.trim()}`);
     }
 
-    return parts.length > 0 ? parts.join('') : 'No additional questions were answered.';
+    return parts.length > 0
+      ? parts.join('')
+      : 'No additional questions were answered.';
   };
 
   const formatWithMarkdown = (text: string) => {

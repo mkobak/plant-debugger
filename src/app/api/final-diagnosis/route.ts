@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
-    console.log(`[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`);
+    console.log(
+      `[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`
+    );
     const genPromise = models.modelHigh.generateContent({
       contents: [
         {

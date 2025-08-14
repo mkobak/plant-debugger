@@ -30,20 +30,20 @@ Plant Debugger makes plant care as easy as debugging, with terminal-style UX and
 
 ### Installation
 
-1) Clone the repository
+1. Clone the repository
 
 ```powershell
 git clone https://github.com/mkobak/plant-debugger.git
 cd plant-debugger
 ```
 
-2) Install dependencies
+2. Install dependencies
 
 ```powershell
 npm install
 ```
 
-3) Configure environment variables
+3. Configure environment variables
 
 - Copy the example file and edit values:
 
@@ -66,7 +66,7 @@ NEXT_PUBLIC_ENABLE_CLIENT_COST_LOGS=1   # log cost summaries in the browser
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-4) Start the dev server
+4. Start the dev server
 
 ```powershell
 npm run dev
@@ -135,4 +135,3 @@ Then open http://localhost:3000
 - Required env: `GEMINI_API_KEY`. Optional toggles control verbose logging and client cost logs.
 - Image upload supports drag & drop and mobile camera capture.
 - Tests live in `src/__tests__` and run with Jest + jsdom.
-

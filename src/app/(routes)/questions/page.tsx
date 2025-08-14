@@ -300,7 +300,6 @@ export default function QuestionsPage() {
     setQuestions,
   ]);
 
-
   useEffect(() => {
     return () => {
       setCtxIsIdentifying(false);
@@ -433,22 +432,24 @@ export default function QuestionsPage() {
           )}
 
           {/* Show no-plant message if applicable */}
-          {promptComplete && pageState === PageState.SHOWING_CONTENT && noPlantMessage && (
-            <div className="no-plant-message-title">
-              <TypingText
-                text={'> Error detecting plant'}
-                speed={100}
-                onceKey={`${typingSessionKey}|no-plant-label`}
-              />
-              <div className="no-plant-message-text">
+          {promptComplete &&
+            pageState === PageState.SHOWING_CONTENT &&
+            noPlantMessage && (
+              <div className="no-plant-message-title">
                 <TypingText
-                  text={'> ' + noPlantMessage}
-                  speed={120}
-                  onceKey={`${typingSessionKey}|no-plant-message-title`}
+                  text={'> Error detecting plant'}
+                  speed={100}
+                  onceKey={`${typingSessionKey}|no-plant-label`}
                 />
+                <div className="no-plant-message-text">
+                  <TypingText
+                    text={'> ' + noPlantMessage}
+                    speed={120}
+                    onceKey={`${typingSessionKey}|no-plant-message-title`}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Show plant identification and questions when ready */}
           {promptComplete &&
@@ -505,7 +506,8 @@ export default function QuestionsPage() {
                   />
                 ) : (
                   <div>
-                    &gt; Please answer the following questions. If you are unsure how to answer, you may leave a question blank:
+                    &gt; Please answer the following questions. If you are
+                    unsure how to answer, you may leave a question blank:
                   </div>
                 )}
 
@@ -547,20 +549,22 @@ export default function QuestionsPage() {
               </div>
             )}
 
-          {promptComplete && (instructionsTyped || isNavigatingBack) && !noPlantMessage && (
-            <div className="additional-comments-section">
-              &gt; Any additional observations:
-              <div className="comments-container">
-                <textarea
-                  value={additionalComments}
-                  onChange={(e) => setAdditionalComments(e.target.value)}
-                  className="comments-textarea"
-                  placeholder="Describe any other symptoms, changes, etc."
-                  rows={3}
-                />
+          {promptComplete &&
+            (instructionsTyped || isNavigatingBack) &&
+            !noPlantMessage && (
+              <div className="additional-comments-section">
+                &gt; Any additional observations:
+                <div className="comments-container">
+                  <textarea
+                    value={additionalComments}
+                    onChange={(e) => setAdditionalComments(e.target.value)}
+                    className="comments-textarea"
+                    placeholder="Describe any other symptoms, changes, etc."
+                    rows={3}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {promptComplete &&
             pageState === PageState.SHOWING_CONTENT &&
@@ -577,8 +581,9 @@ export default function QuestionsPage() {
         </div>
 
         {/* Only show buttons when content is displayed or there's an error */}
-        {promptComplete && (pageState === PageState.SHOWING_CONTENT ||
-          pageState === PageState.ERROR) && (
+        {promptComplete &&
+          (pageState === PageState.SHOWING_CONTENT ||
+            pageState === PageState.ERROR) && (
             <div className="page-actions">
               <ActionButton variant="reset" onClick={handleReset}>
                 [ Reset ]

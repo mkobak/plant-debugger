@@ -168,6 +168,6 @@ export async function POST(request: NextRequest) {
     try {
       const clientId = getClientId(request);
       inFlightByClient.delete(clientId);
-    } catch { }
+    } catch {}
   }
 }

@@ -2,12 +2,12 @@
 // Provides a singleton router so tests and hooks share the same instance
 
 const router = {
-    push: jest.fn(),
-    prefetch: jest.fn(),
-    replace: jest.fn(),
-    refresh: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
+  push: jest.fn(),
+  prefetch: jest.fn(),
+  replace: jest.fn(),
+  refresh: jest.fn(),
+  back: jest.fn(),
+  forward: jest.fn(),
 };
 
 export const useRouter = () => router;

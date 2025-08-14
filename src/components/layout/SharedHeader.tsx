@@ -134,7 +134,11 @@ export default function SharedHeader({
                     if (!isDisabled) handleStepClick(step);
                   }}
                   aria-disabled={isDisabled}
-                  title={disableNavigation ? 'Navigation disabled during processing' : undefined}
+                  title={
+                    disableNavigation
+                      ? 'Navigation disabled during processing'
+                      : undefined
+                  }
                 >
                   [ {step.step}. ]
                 </span>

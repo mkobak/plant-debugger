@@ -123,7 +123,6 @@
 }
 
 @media (max-width: 880px) {
-
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(110px, 60vw, 250px);
@@ -131,7 +130,6 @@
 }
 
 @media (max-width: 480px) {
-
   .ascii-logo-image.plant,
   .ascii-logo-image.plant-logo {
     max-width: clamp(90px, 60vw, 240px);
@@ -212,7 +210,6 @@
 }
 
 @keyframes blink {
-
   0%,
   50% {
     opacity: 1;
