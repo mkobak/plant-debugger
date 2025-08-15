@@ -11,6 +11,7 @@ import ActionButton from '@/components/ui/ActionButton';
 import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { useNavigation } from '@/hooks/useNavigation';
+import useConfirmReset from '@/hooks/useConfirmReset';
 import { PlantImage } from '@/types';
 
 export default function UploadPage() {
@@ -26,6 +27,7 @@ export default function UploadPage() {
   const [shouldNavigate, setShouldNavigate] = useState(false);
 
   const { images: contextImages, setImages: setContextImages } = useDiagnosis();
+  const { requestReset, ResetConfirmModal } = useConfirmReset();
 
   const {
     images,
@@ -104,14 +106,18 @@ export default function UploadPage() {
 
   const handleReset = () => {
     console.log('handleReset called');
-    goHome();
+    requestReset();
   };
 
   const canProceed = images.length > 0 && !isUploading;
 
   return (
     <TerminalLayout title="Plant Debugger">
-      <SharedHeader currentStep={1} showNavigation={true} />
+      <SharedHeader
+        currentStep={1}
+        showNavigation={true}
+        onLogoClick={requestReset}
+      />
       <div className="upload-page">
         <div className="terminal-text">
           <div className="prompt-line">
@@ -190,6 +196,7 @@ export default function UploadPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
+      <ResetConfirmModal />
     </TerminalLayout>
   );
 }

@@ -58,8 +58,9 @@ export default function QuestionsLoadingScreen({
           onComplete={() => {
             if (questionsGenerated) setLine3Complete(true);
           }}
-        />
-        <LoadingSpinner />
+        >
+          <LoadingSpinner />
+        </TypingText>
       </div>
     );
   }
@@ -82,8 +83,9 @@ export default function QuestionsLoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
-          />
-          {isIdentifying && <LoadingSpinner />}
+          >
+            {isIdentifying && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
       {line2Complete && identificationComplete && (
@@ -93,8 +95,9 @@ export default function QuestionsLoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={() => setLine3Complete(true)}
-          />
-          {isGeneratingQuestions && <LoadingSpinner />}
+          >
+            {isGeneratingQuestions && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
     </div>

@@ -58,8 +58,9 @@ export default function LoadingScreen({
           onComplete={() => {
             if (finalDiagnosisComplete) handleLine3Complete();
           }}
-        />
-        <LoadingSpinner />
+        >
+          <LoadingSpinner />
+        </TypingText>
       </div>
     );
   }
@@ -81,8 +82,9 @@ export default function LoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
-          />
-          {isAggregating && <LoadingSpinner />}
+          >
+            {isAggregating && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
       {line2Complete && aggregatingComplete && (
@@ -92,8 +94,9 @@ export default function LoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}
-          />
-          {isGeneratingTreatment && <LoadingSpinner />}
+          >
+            {isGeneratingTreatment && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
     </div>

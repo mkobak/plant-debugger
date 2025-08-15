@@ -281,7 +281,7 @@
 .terminal-spinner {
   display: inline-block;
   color: var(--grey-0);
-  vertical-align: -0.5em;
+  vertical-align: middle;
   line-height: 1;
 }
 
@@ -306,6 +306,8 @@
   max-width: 300px;
 }
 
+/* (Reverted single/multi UI changes: keep small square thumbnails in app) */
+
 .image-preview-grid__item {
   position: relative;
   aspect-ratio: 1;
@@ -320,6 +322,71 @@
   height: 100%;
   object-fit: cover;
   transition: var(--transition-normal);
+}
+
+/* Export (PDF) context: enlarge thumbnails and allow up to 3 per row using flex override */
+/* Export layout: adapt columns to actual image count (1–3) */
+.report-exporting .page-images .image-preview-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  max-width: none;
+  justify-content: flex-start;
+  width: max-content !important; /* collapse to actual images so no empty slots */
+}
+/* Tag applied via JS to root for count-based sizing */
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='1']
+  > .image-preview-grid__item {
+  flex: 0 0 320px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='2']
+  > .image-preview-grid__item {
+  flex: 0 0 260px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='3']
+  > .image-preview-grid__item {
+  flex: 0 0 200px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='4']
+  > .image-preview-grid__item,
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='5']
+  > .image-preview-grid__item,
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='6']
+  > .image-preview-grid__item {
+  flex: 0 0 160px;
+}
+
+.report-exporting .page-images .image-preview-grid > .image-preview-grid__item {
+  width: auto;
+  height: auto;
+  position: relative;
+}
+.report-exporting .image-preview-grid__img {
+  width: 100%;
+  height: auto;
+  max-height: 260px; /* larger */
+  object-fit: cover; /* fill without distortion */
+  background: #000;
+  border: 1px solid var(--grey-3);
+  padding: 2px;
+}
+/* (Removed export single-image overrides; export uses flex enlargement already) */
+
+/* Hide interactive-only actions when exporting */
+.report-exporting .page-actions {
+  display: none !important;
 }
 
 .image-preview-grid__overlay {
@@ -344,4 +411,19 @@
 
 .image-preview-grid__item:hover .image-preview-grid__img {
   transform: scale(1.1);
+}
+
+/* Full-screen overlay while preparing PDF export */
+.download-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 10000; /* above everything */
+  font-family: var(--font-family);
+  color: var(--white);
+  backdrop-filter: blur(4px);
 }

@@ -16,6 +16,7 @@ interface SharedHeaderProps {
   showNavigation?: boolean;
   isHomePage?: boolean;
   disableNavigation?: boolean;
+  onLogoClick?: () => void;
 }
 
 export default function SharedHeader({
@@ -23,6 +24,7 @@ export default function SharedHeader({
   showNavigation = false,
   isHomePage = false,
   disableNavigation = false,
+  onLogoClick,
 }: SharedHeaderProps) {
   const { isSmall: isSmallScreen } = useScreenSize();
   const { goToUpload, goToQuestions, goToResults } = useNavigation();
@@ -77,6 +79,8 @@ export default function SharedHeader({
         <ASCIILogo
           variant={logoVariant}
           className={`${logoVariant} ${isHomePage ? 'home-page' : 'other-page'}`}
+          onClick={onLogoClick}
+          title={onLogoClick ? 'Home' : undefined}
         />
         <div className={`logo-underline ${logoVariant}`} aria-hidden="true" />
       </div>
