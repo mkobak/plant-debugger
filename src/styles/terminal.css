@@ -286,7 +286,8 @@
 .questions-loading-screen.compact .terminal-spinner,
 .loading-screen.compact .terminal-spinner {
   position: relative;
-  top: -1px;
+  top: 0;
+  vertical-align: middle;
 }
 
 .questions-loading-screen.compact .typing-text,

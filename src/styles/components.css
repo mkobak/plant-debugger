@@ -281,7 +281,7 @@
 .terminal-spinner {
   display: inline-block;
   color: var(--grey-0);
-  vertical-align: -0.5em;
+  vertical-align: middle;
   line-height: 1;
 }
 

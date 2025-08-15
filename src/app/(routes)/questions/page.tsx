@@ -351,12 +351,12 @@ export default function QuestionsPage() {
         </div>
         <br />
 
-      {/* Images show immediately now */}
-      {images.length > 0 && (
-        <div className="page-images">
-          <ImagePreviewGrid images={images} />
-        </div>
-      )}
+        {/* Images show immediately now */}
+        {images.length > 0 && (
+          <div className="page-images">
+            <ImagePreviewGrid images={images} />
+          </div>
+        )}
 
         <div className="questions-page">
           <div className="terminal-text">
@@ -418,23 +418,23 @@ export default function QuestionsPage() {
               </div>
             )}
 
-          {/* Show no-plant message if applicable */}
-          {pageState === PageState.SHOWING_CONTENT && noPlantMessage && (
-            <div className="no-plant-message-title">
-              <TypingText
-                text={'Error detecting plant'}
-                speed={100}
-                onceKey={`${typingSessionKey}|no-plant-label`}
-              />
-              <div className="no-plant-message-text">
+            {/* Show no-plant message if applicable */}
+            {pageState === PageState.SHOWING_CONTENT && noPlantMessage && (
+              <div className="no-plant-message-title">
                 <TypingText
-                  text={noPlantMessage}
-                  speed={120}
-                  onceKey={`${typingSessionKey}|no-plant-message-title`}
+                  text={'Error detecting plant'}
+                  speed={100}
+                  onceKey={`${typingSessionKey}|no-plant-label`}
                 />
+                <div className="no-plant-message-text">
+                  <TypingText
+                    text={noPlantMessage}
+                    speed={120}
+                    onceKey={`${typingSessionKey}|no-plant-message-title`}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
             {/* Show plant identification and questions when ready */}
             {pageState === PageState.SHOWING_CONTENT &&
@@ -472,24 +472,24 @@ export default function QuestionsPage() {
                 </div>
               )}
 
-          {pageState === PageState.SHOWING_CONTENT &&
-            !noPlantMessage &&
-            questions.length > 0 &&
-            (plantNameTyped || isNavigatingBack) && (
-              <div className="questions-section">
-                {!isNavigatingBack ? (
-                  <TypingText
-                    text="Please answer the following questions:"
-                    speed={80}
-                    onceKey={`${typingSessionKey}|instructions`}
-                    onComplete={() => {
-                      console.log('Instructions typing complete');
-                      setInstructionsTyped(true);
-                    }}
-                  />
-                ) : (
-                  <div>Please answer the following questions:</div>
-                )}
+            {pageState === PageState.SHOWING_CONTENT &&
+              !noPlantMessage &&
+              questions.length > 0 &&
+              (plantNameTyped || isNavigatingBack) && (
+                <div className="questions-section">
+                  {!isNavigatingBack ? (
+                    <TypingText
+                      text="Please answer the following questions:"
+                      speed={80}
+                      onceKey={`${typingSessionKey}|instructions`}
+                      onComplete={() => {
+                        console.log('Instructions typing complete');
+                        setInstructionsTyped(true);
+                      }}
+                    />
+                  ) : (
+                    <div>Please answer the following questions:</div>
+                  )}
 
                   {(instructionsTyped || isNavigatingBack) &&
                     questions.map((question: any, index: number) => {
@@ -554,39 +554,41 @@ export default function QuestionsPage() {
               </div>
             )}
 
-          {pageState === PageState.SHOWING_CONTENT &&
-            !noPlantMessage &&
-            questions.length === 0 &&
-            (plantNameTyped || isNavigatingBack) && (
-              <div className="no-questions">
-                <TypingText
-                  text="No additional questions needed. Proceeding to diagnosis..."
-                  speed={80}
-                />
-              </div>
-            )}
-        </div>
-
-        {/* Only show buttons when content is displayed or there's an error */}
-        {(pageState === PageState.SHOWING_CONTENT ||
-          pageState === PageState.ERROR) && (
-          <div className="page-actions">
-            <ActionButton variant="reset" onClick={handleReset}>
-              Reset
-            </ActionButton>
-
-            <ActionButton
-              variant="primary"
-              href="/results"
-              disabled={!canProceed}
-              className={canProceed ? 'has-images' : ''}
-              onClick={handleNext}
-            >
-              Debug
-            </ActionButton>
+            {pageState === PageState.SHOWING_CONTENT &&
+              !noPlantMessage &&
+              questions.length === 0 &&
+              (plantNameTyped || isNavigatingBack) && (
+                <div className="no-questions">
+                  <TypingText
+                    text="No additional questions needed. Proceeding to diagnosis..."
+                    speed={80}
+                  />
+                </div>
+              )}
           </div>
-        )}
-      </div>
-    </TerminalLayout>
+
+          {/* Only show buttons when content is displayed or there's an error */}
+          {(pageState === PageState.SHOWING_CONTENT ||
+            pageState === PageState.ERROR) && (
+            <div className="page-actions">
+              <ActionButton variant="reset" onClick={handleReset}>
+                Reset
+              </ActionButton>
+
+              <ActionButton
+                variant="primary"
+                href="/results"
+                disabled={!canProceed}
+                className={canProceed ? 'has-images' : ''}
+                onClick={handleNext}
+              >
+                Debug
+              </ActionButton>
+            </div>
+          )}
+        </div>
+      </TerminalLayout>
+      <ResetConfirmModal />
+    </>
   );
 }
