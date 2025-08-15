@@ -1,8 +1,8 @@
 /* Terminal Layout and Container Styles */
 
 .terminal-container {
-  background-color: var(--grey-4);
-  border: 2px solid var(--grey-3);
+  background-color: var(--grey-6);
+  border: 2px solid var(--grey-4);
   border-radius: var(--radius-lg);
   margin: var(--spacing-lg);
   overflow: hidden;
@@ -16,7 +16,7 @@
 }
 
 .terminal-header {
-  background-color: var(--grey-3);
+  background-color: var(--grey-4);
   padding: var(--spacing-sm) var(--spacing-lg);
   display: flex;
   align-items: center;
@@ -275,16 +275,18 @@
 
 .questions-loading-screen.compact,
 .loading-screen.compact {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
   color: var(--grey-1);
   margin: var(--spacing-md) 0;
 }
 
+/* Fine tune spinner vertical position in compact mode if needed */
 .questions-loading-screen.compact .terminal-spinner,
 .loading-screen.compact .terminal-spinner {
-  margin-left: var(--spacing-xs);
   position: relative;
-  top: 0;
-  vertical-align: baseline;
+  top: -1px;
 }
 
 .questions-loading-screen.compact .typing-text,

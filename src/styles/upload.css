@@ -222,8 +222,13 @@
   color: var(--red) !important;
   padding: var(--spacing-2xs) 0 !important;
   text-align: center;
+  box-shadow: none !important; /* Prevent inherited button hover ring */
+  outline: none !important;
 }
 .image-preview__remove:hover:not(:disabled) {
   color: var(--white) !important;
   background: transparent !important;
+  border: none !important;
+  box-shadow: none !important; /* Ensure no green border glow on hover */
+  outline: none !important;
 }

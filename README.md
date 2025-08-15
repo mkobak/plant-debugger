@@ -1,7 +1,9 @@
+[![CI](https://github.com/mkobak/plant-debugger/actions/workflows/ci.yml/badge.svg)](https://github.com/mkobak/plant-debugger/actions/workflows/ci.yml)
+
 # Plant Debugger
 
 Great at debugging code but struggling to keep plants alive?
-Plant Debugger makes plant care as easy as debugging, with terminal-style UX and plant concepts explained in programming terms.
+Plant Debugger makes plant care as easy as debugging, with a terminal-style UX and plant concepts explained in programming terms.
 
 ## Features
 
