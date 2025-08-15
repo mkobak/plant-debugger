@@ -11,6 +11,7 @@ interface TypingTextProps {
   speed?: number; // characters per second
   as?: 'p' | 'span'; // wrapper element
   onceKey?: string; // use to group re-renders of the same logical text
+  children?: React.ReactNode; // optional inline suffix (e.g. spinner)
 }
 
 export default function TypingText({
@@ -21,6 +22,7 @@ export default function TypingText({
   speed = 60,
   as = 'p',
   onceKey,
+  children,
 }: TypingTextProps) {
   const [display, setDisplay] = useState('');
   const [complete, setComplete] = useState(false);
@@ -106,6 +108,7 @@ export default function TypingText({
     <Element className={classes}>
       {display}
       {showCursor && <span className="typing-cursor">|</span>}
+      {children}
     </Element>
   );
 }

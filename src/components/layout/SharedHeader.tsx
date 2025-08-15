@@ -16,6 +16,7 @@ interface SharedHeaderProps {
   showNavigation?: boolean;
   isHomePage?: boolean;
   disableNavigation?: boolean;
+  onLogoClick?: () => void;
 }
 
 export default function SharedHeader({
@@ -23,6 +24,7 @@ export default function SharedHeader({
   showNavigation = false,
   isHomePage = false,
   disableNavigation = false,
+  onLogoClick,
 }: SharedHeaderProps) {
   const { isSmall: isSmallScreen } = useScreenSize();
   const { goToUpload, goToQuestions, goToResults } = useNavigation();
@@ -33,7 +35,7 @@ export default function SharedHeader({
   // Use two-lines for home page on small screens
   const logoVariant = isHomePage && isSmallScreen ? 'two-lines' : 'single';
 
-  useEffect(() => { }, [logoVariant, isSmallScreen]);
+  useEffect(() => {}, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
     { step: 1, label: 'Upload', route: '/upload' },
@@ -77,6 +79,8 @@ export default function SharedHeader({
         <ASCIILogo
           variant={logoVariant}
           className={`${logoVariant} ${isHomePage ? 'home-page' : 'other-page'}`}
+          onClick={onLogoClick}
+          title={onLogoClick ? 'Home' : undefined}
         />
         <div className={`logo-underline ${logoVariant}`} aria-hidden="true" />
       </div>
@@ -98,7 +102,9 @@ export default function SharedHeader({
                   aria-disabled={isDisabled}
                 >
                   {status === 'current' ? '[' + label + ']' : label}
-                  {idx < navigationSteps.length - 1 && <span className="status-arrow">→</span>}
+                  {idx < navigationSteps.length - 1 && (
+                    <span className="status-arrow">→</span>
+                  )}
                 </span>
               );
             })}

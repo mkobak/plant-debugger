@@ -1,7 +1,7 @@
 /* UI Component Styles */
 
 /* Button Component */
- .terminal-button {
+.terminal-button {
   background: var(--grey-5);
   border: 1px solid var(--green);
   color: var(--green);
@@ -14,66 +14,67 @@
   overflow: hidden;
   line-height: 1.2;
   text-transform: none;
- }
+}
 
- .terminal-button:hover:not(:disabled) {
+.terminal-button:hover:not(:disabled) {
   background: var(--green);
   color: var(--black);
-  box-shadow: 0 0 0 1px var(--green), 0 0 6px var(--green);
- }
+  box-shadow:
+    0 0 0 1px var(--green),
+    0 0 6px var(--green);
+}
 
- .terminal-button:disabled {
+.terminal-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
   color: var(--grey-2) !important;
   border-color: var(--grey-3) !important;
   background: var(--grey-5) !important;
- }
+}
 
- .terminal-button--primary {
+.terminal-button--primary {
   color: var(--green);
- }
+}
 
- .terminal-button--secondary {
+.terminal-button--secondary {
   color: var(--grey-1);
   border-color: var(--grey-2);
- }
+}
 
- .terminal-button--secondary:hover:not(:disabled) {
+.terminal-button--secondary:hover:not(:disabled) {
   background: var(--grey-2);
   color: var(--black);
- }
+}
 
- .terminal-button--danger {
+.terminal-button--danger {
   color: var(--red);
   border: 0px;
- }
+}
 
- .terminal-button--danger:hover:not(:disabled) {
+.terminal-button--danger:hover:not(:disabled) {
   background: var(--red);
   color: var(--black);
   border: 0px !important;
- }
+}
 
- .terminal-button--sm {
+.terminal-button--sm {
   font-size: var(--font-size-xs);
   padding: var(--spacing-2xs) var(--spacing-sm);
- }
+}
 
- .terminal-button--md {
+.terminal-button--md {
   font-size: var(--font-size-md);
   padding: var(--spacing-xs) var(--spacing-lg);
- }
+}
 
- .terminal-button--lg {
+.terminal-button--lg {
   font-size: var(--font-size-lg);
   padding: var(--spacing-sm) var(--spacing-xl);
- }
-
+}
 
 /* Action Button Component */
- .action-button {
+.action-button {
   background: var(--grey-5);
   border: 1px solid var(--green);
   font-family: var(--font-family);
@@ -85,66 +86,68 @@
   outline: none;
   color: var(--green);
   line-height: 1.2;
- }
+}
 
- .action-button--primary {
+.action-button--primary {
   color: var(--green);
- }
+}
 
- .action-button--primary:hover:not(:disabled) {
+.action-button--primary:hover:not(:disabled) {
   background: var(--green);
   color: var(--black);
-  box-shadow: 0 0 0 1px var(--green), 0 0 6px var(--green);
- }
+  box-shadow:
+    0 0 0 1px var(--green),
+    0 0 6px var(--green);
+}
 
- .action-button--primary.has-images {
+.action-button--primary.has-images {
   color: var(--green);
- }
+}
 
- .action-button--primary.has-images:hover:not(:disabled) {
+.action-button--primary.has-images:hover:not(:disabled) {
   background: var(--green);
   color: var(--black);
- }
+}
 
- .action-button--secondary {
+.action-button--secondary {
   color: var(--grey-1);
   border-color: var(--grey-2);
- }
+}
 
- .action-button--secondary:hover:not(:disabled) {
+.action-button--secondary:hover:not(:disabled) {
   background: var(--grey-2);
   color: var(--black);
- }
+}
 
- .action-button--reset {
+.action-button--reset {
   color: var(--grey-0);
   border-color: var(--grey-2);
- }
+}
 
- .action-button--reset:hover:not(:disabled) {
+.action-button--reset:hover:not(:disabled) {
   background: var(--grey-2);
   color: var(--white);
- }
+}
 
- .action-button:disabled {
+.action-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
   color: var(--grey-2) !important;
   border-color: var(--grey-3) !important;
   background: var(--grey-5) !important;
- }
+}
 
- .action-button.placeholder-button {
+.action-button.placeholder-button {
   opacity: 0.4;
   cursor: not-allowed;
- }
+}
 
 /* Focus accessibility */
- .action-button:focus-visible {
+.action-button:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 2px;
- }
+}
 
 /* Inline bracket flashing style (optional subtle) */
 .action-button:hover:not(:disabled)::after,
@@ -300,6 +303,8 @@
   max-width: 300px;
 }
 
+/* (Reverted single/multi UI changes: keep small square thumbnails in app) */
+
 .image-preview-grid__item {
   position: relative;
   aspect-ratio: 1;
@@ -314,6 +319,71 @@
   height: 100%;
   object-fit: cover;
   transition: var(--transition-normal);
+}
+
+/* Export (PDF) context: enlarge thumbnails and allow up to 3 per row using flex override */
+/* Export layout: adapt columns to actual image count (1–3) */
+.report-exporting .page-images .image-preview-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  max-width: none;
+  justify-content: flex-start;
+  width: max-content !important; /* collapse to actual images so no empty slots */
+}
+/* Tag applied via JS to root for count-based sizing */
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='1']
+  > .image-preview-grid__item {
+  flex: 0 0 320px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='2']
+  > .image-preview-grid__item {
+  flex: 0 0 260px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='3']
+  > .image-preview-grid__item {
+  flex: 0 0 200px;
+}
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='4']
+  > .image-preview-grid__item,
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='5']
+  > .image-preview-grid__item,
+.report-exporting
+  .page-images
+  .image-preview-grid[data-image-count='6']
+  > .image-preview-grid__item {
+  flex: 0 0 160px;
+}
+
+.report-exporting .page-images .image-preview-grid > .image-preview-grid__item {
+  width: auto;
+  height: auto;
+  position: relative;
+}
+.report-exporting .image-preview-grid__img {
+  width: 100%;
+  height: auto;
+  max-height: 260px; /* larger */
+  object-fit: cover; /* fill without distortion */
+  background: #000;
+  border: 1px solid var(--grey-3);
+  padding: 2px;
+}
+/* (Removed export single-image overrides; export uses flex enlargement already) */
+
+/* Hide interactive-only actions when exporting */
+.report-exporting .page-actions {
+  display: none !important;
 }
 
 .image-preview-grid__overlay {
@@ -338,4 +408,19 @@
 
 .image-preview-grid__item:hover .image-preview-grid__img {
   transform: scale(1.1);
+}
+
+/* Full-screen overlay while preparing PDF export */
+.download-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 10000; /* above everything */
+  font-family: var(--font-family);
+  color: var(--white);
+  backdrop-filter: blur(4px);
 }

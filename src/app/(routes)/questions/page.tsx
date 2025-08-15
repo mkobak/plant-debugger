@@ -11,6 +11,7 @@ import QuestionsLoadingScreen from '@/components/ui/QuestionsLoadingScreen';
 import ImagePreviewGrid from '@/components/ui/ImagePreviewGrid';
 import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
+import useConfirmReset from '@/hooks/useConfirmReset';
 import {
   identifyPlant,
   generateQuestions,
@@ -64,6 +65,7 @@ export default function QuestionsPage() {
     isGeneratingQuestions: ctxIsGeneratingQuestions,
     setIsGeneratingQuestions: setCtxIsGeneratingQuestions,
   } = useDiagnosis();
+  const { requestReset, ResetConfirmModal } = useConfirmReset();
 
   // Local UI state for loading and animation
   const [pageState, setPageState] = useState<PageState>(PageState.LOADING);
@@ -314,7 +316,7 @@ export default function QuestionsPage() {
     answers.find((a: any) => a.questionId === questionId);
 
   const handleReset = () => {
-    goHome();
+    requestReset();
   };
 
   const handleNext = () => {
@@ -335,232 +337,239 @@ export default function QuestionsPage() {
   const questionsGenerated = loadingPhase === LoadingPhase.COMPLETE;
 
   return (
-    <TerminalLayout title="Plant Debugger">
-      <SharedHeader
-        currentStep={2}
-        showNavigation={true}
-        disableNavigation={pageState === PageState.LOADING}
-      />
+    <>
+      <TerminalLayout title="Plant Debugger">
+        <SharedHeader
+          currentStep={2}
+          showNavigation={true}
+          disableNavigation={pageState === PageState.LOADING}
+          onLogoClick={requestReset}
+        />
 
-      <div className="prompt-line">
-        <Prompt path="~/questions" />
-      </div>
-      <br />
-
-  {/* Images show immediately now */}
-  {images.length > 0 && (
-        <div className="page-images">
-          <ImagePreviewGrid images={images} />
+        <div className="prompt-line">
+          <Prompt path="~/questions" />
         </div>
-      )}
+        <br />
 
-      <div className="questions-page">
-        <div className="terminal-text">
-          {/* Show loading screen while processing */}
-          {pageState === PageState.LOADING && (
-            <QuestionsLoadingScreen
-              isIdentifying={isIdentifying}
-              isGeneratingQuestions={isGeneratingQuestions}
-              identificationComplete={identificationComplete}
-              questionsGenerated={questionsGenerated}
-              onceKeyPrefix={typingSessionKey}
-              compact={true}
-              onComplete={() => {
-                if (loadingPhase === LoadingPhase.COMPLETE) {
-                  setPageState(PageState.SHOWING_CONTENT);
-                }
-              }}
-            />
-          )}
-          {pageState === PageState.LOADING && (
-            <div className="page-actions page-actions--center">
-              <ActionButton
-                variant="reset"
-                onClick={() => {
-                  // Abort and go back to upload
-                  processStartedRef.current = false;
-                  if (abortRef.current) abortRef.current.abort();
-                  setCtxIsIdentifying(false);
-                  setCtxIsGeneratingQuestions(false);
-                  setQuestions([]);
-                  setPlantIdentification(null);
-                  setNoPlantMessage('');
-                  goToUpload();
+        {/* Images show immediately now */}
+        {images.length > 0 && (
+          <div className="page-images">
+            <ImagePreviewGrid images={images} />
+          </div>
+        )}
+
+        <div className="questions-page">
+          <div className="terminal-text">
+            {/* Show loading screen while processing */}
+            {pageState === PageState.LOADING && (
+              <QuestionsLoadingScreen
+                isIdentifying={isIdentifying}
+                isGeneratingQuestions={isGeneratingQuestions}
+                identificationComplete={identificationComplete}
+                questionsGenerated={questionsGenerated}
+                onceKeyPrefix={typingSessionKey}
+                compact={true}
+                onComplete={() => {
+                  if (loadingPhase === LoadingPhase.COMPLETE) {
+                    setPageState(PageState.SHOWING_CONTENT);
+                  }
                 }}
-              >
-                Cancel
-              </ActionButton>
-            </div>
-          )}
-
-          {/* Show error message */}
-          {error && (
-            <div className="error-message">
-              <TypingText text={`Error: ${error}`} speed={80} />
-              <div className="error-actions">
-                <button
-                  onClick={() => {
-                    processStartedRef.current = false;
-                    startDiagnosisProcess();
-                  }}
-                  className="retry-button"
-                >
-                  Retry
-                </button>
-                <button onClick={handleReset} className="reset-button">
-                  Reset
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Show no-plant message if applicable */}
-          {pageState === PageState.SHOWING_CONTENT && noPlantMessage && (
-            <div className="no-plant-message-title">
-              <TypingText
-                text={'Error detecting plant'}
-                speed={100}
-                onceKey={`${typingSessionKey}|no-plant-label`}
               />
-              <div className="no-plant-message-text">
-                <TypingText text={noPlantMessage} speed={120} onceKey={`${typingSessionKey}|no-plant-message-title`} />
-              </div>
-            </div>
-          )}
-
-          {/* Show plant identification and questions when ready */}
-          {pageState === PageState.SHOWING_CONTENT &&
-            plantIdentification &&
-            !noPlantMessage && (
-              <div className="plant-identification">
-                {!isNavigatingBack ? (
-                  <TypingText
-                    text={`Plant name:`}
-                    speed={80}
-                    onceKey={`${typingSessionKey}|plant-label`}
-                    onComplete={() => {
-                      console.log('Plant name typing complete');
-                      setPlantNameTyped(true);
-                    }}
-                  />
-                ) : (
-                  <div>Plant name:</div>
-                )}
-                {(plantNameTyped || isNavigatingBack) && (
-                  <div className="plant-name-container">
-                    <span className="plant-name-label"> </span>
-                    <input
-                      type="text"
-                      value={editablePlantName}
-                      onChange={(e) => {
-                        setEditablePlantName(e.target.value);
-                        updatePlantName(e.target.value);
-                      }}
-                      className="plant-name-input"
-                      placeholder="Unknown"
-                    />
-                  </div>
-                )}
+            )}
+            {pageState === PageState.LOADING && (
+              <div className="page-actions page-actions--center">
+                <ActionButton
+                  variant="reset"
+                  onClick={() => {
+                    // Abort and go back to upload
+                    processStartedRef.current = false;
+                    if (abortRef.current) abortRef.current.abort();
+                    setCtxIsIdentifying(false);
+                    setCtxIsGeneratingQuestions(false);
+                    setQuestions([]);
+                    setPlantIdentification(null);
+                    setNoPlantMessage('');
+                    goToUpload();
+                  }}
+                >
+                  Cancel
+                </ActionButton>
               </div>
             )}
 
-          {pageState === PageState.SHOWING_CONTENT &&
-            !noPlantMessage &&
-            questions.length > 0 &&
-            (plantNameTyped || isNavigatingBack) && (
-              <div className="questions-section">
-                {!isNavigatingBack ? (
-                  <TypingText
-                    text="Please answer the following questions:"
-                    speed={80}
-                    onceKey={`${typingSessionKey}|instructions`}
-                    onComplete={() => {
-                      console.log('Instructions typing complete');
-                      setInstructionsTyped(true);
+            {/* Show error message */}
+            {error && (
+              <div className="error-message">
+                <TypingText text={`Error: ${error}`} speed={80} />
+                <div className="error-actions">
+                  <button
+                    onClick={() => {
+                      processStartedRef.current = false;
+                      startDiagnosisProcess();
                     }}
-                  />
-                ) : (
-                  <div>
-                    Please answer the following questions:
-                  </div>
-                )}
+                    className="retry-button"
+                  >
+                    Retry
+                  </button>
+                  <button onClick={handleReset} className="reset-button">
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
 
-                {(instructionsTyped || isNavigatingBack) &&
-                  questions.map((question: any, index: number) => {
-                    const existing = getAnswerById(question.id);
-                    return (
-                      <div key={question.id} className="question-item">
-                        <div>
-                          Q{index + 1}: {question.question}
-                        </div>
-                        <div className="question-buttons no-clear">
-                          <div className="answer-buttons-group">
-                            <button
-                              className={`answer-button ${existing?.answer === true ? 'selected' : ''}`}
-                              onClick={() => handleAnswer(question.id, true)}
-                            >
-                              [Y] Yes
-                            </button>
-                            <button
-                              className={`answer-button ${existing && existing.answer === false && !existing.skipped ? 'selected' : ''}`}
-                              onClick={() => handleAnswer(question.id, false)}
-                            >
-                              [N] No
-                            </button>
-                            <button
-                              className={`answer-button ${existing?.skipped ? 'selected' : ''}`}
-                              onClick={() => {
-                                if (!existing || !existing.skipped) {
-                                  // Store a skipped marker (excluded downstream)
-                                  addAnswer({
-                                    questionId: question.id,
-                                    answer: false,
-                                    skipped: true,
-                                  });
-                                } else {
-                                  // Toggle off skip clears answer entirely
-                                  removeAnswer(question.id);
-                                }
-                              }}
-                            >
-                              [S] Skip
-                            </button>
+            {/* Show no-plant message if applicable */}
+            {pageState === PageState.SHOWING_CONTENT && noPlantMessage && (
+              <div className="no-plant-message-title">
+                <TypingText
+                  text={'Error detecting plant'}
+                  speed={100}
+                  onceKey={`${typingSessionKey}|no-plant-label`}
+                />
+                <div className="no-plant-message-text">
+                  <TypingText
+                    text={noPlantMessage}
+                    speed={120}
+                    onceKey={`${typingSessionKey}|no-plant-message-title`}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Show plant identification and questions when ready */}
+            {pageState === PageState.SHOWING_CONTENT &&
+              plantIdentification &&
+              !noPlantMessage && (
+                <div className="plant-identification">
+                  {!isNavigatingBack ? (
+                    <TypingText
+                      text={`Plant name:`}
+                      speed={80}
+                      onceKey={`${typingSessionKey}|plant-label`}
+                      onComplete={() => {
+                        console.log('Plant name typing complete');
+                        setPlantNameTyped(true);
+                      }}
+                    />
+                  ) : (
+                    <div>Plant name:</div>
+                  )}
+                  {(plantNameTyped || isNavigatingBack) && (
+                    <div className="plant-name-container">
+                      <span className="plant-name-label"> </span>
+                      <input
+                        type="text"
+                        value={editablePlantName}
+                        onChange={(e) => {
+                          setEditablePlantName(e.target.value);
+                          updatePlantName(e.target.value);
+                        }}
+                        className="plant-name-input"
+                        placeholder="Unknown"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {pageState === PageState.SHOWING_CONTENT &&
+              !noPlantMessage &&
+              questions.length > 0 &&
+              (plantNameTyped || isNavigatingBack) && (
+                <div className="questions-section">
+                  {!isNavigatingBack ? (
+                    <TypingText
+                      text="Please answer the following questions:"
+                      speed={80}
+                      onceKey={`${typingSessionKey}|instructions`}
+                      onComplete={() => {
+                        console.log('Instructions typing complete');
+                        setInstructionsTyped(true);
+                      }}
+                    />
+                  ) : (
+                    <div>Please answer the following questions:</div>
+                  )}
+
+                  {(instructionsTyped || isNavigatingBack) &&
+                    questions.map((question: any, index: number) => {
+                      const existing = getAnswerById(question.id);
+                      return (
+                        <div key={question.id} className="question-item">
+                          <div>
+                            Q{index + 1}: {question.question}
+                          </div>
+                          <div className="question-buttons no-clear">
+                            <div className="answer-buttons-group">
+                              <button
+                                className={`answer-button ${existing?.answer === true ? 'selected' : ''}`}
+                                onClick={() => handleAnswer(question.id, true)}
+                              >
+                                [Y] Yes
+                              </button>
+                              <button
+                                className={`answer-button ${existing && existing.answer === false && !existing.skipped ? 'selected' : ''}`}
+                                onClick={() => handleAnswer(question.id, false)}
+                              >
+                                [N] No
+                              </button>
+                              <button
+                                className={`answer-button ${existing?.skipped ? 'selected' : ''}`}
+                                onClick={() => {
+                                  if (!existing || !existing.skipped) {
+                                    // Store a skipped marker (excluded downstream)
+                                    addAnswer({
+                                      questionId: question.id,
+                                      answer: false,
+                                      skipped: true,
+                                    });
+                                  } else {
+                                    // Toggle off skip clears answer entirely
+                                    removeAnswer(question.id);
+                                  }
+                                }}
+                              >
+                                [S] Skip
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                </div>
+              )}
+
+            {(instructionsTyped || isNavigatingBack) && !noPlantMessage && (
+              <div className="additional-comments-section">
+                Any additional observations:
+                <div className="comments-container">
+                  <textarea
+                    value={additionalComments}
+                    onChange={(e) => setAdditionalComments(e.target.value)}
+                    className="comments-textarea"
+                    placeholder="Describe any other symptoms, changes, etc."
+                    rows={3}
+                  />
+                </div>
               </div>
             )}
 
-          {(instructionsTyped || isNavigatingBack) && !noPlantMessage && (
-            <div className="additional-comments-section">
-              Any additional observations:
-              <div className="comments-container">
-                <textarea
-                  value={additionalComments}
-                  onChange={(e) => setAdditionalComments(e.target.value)}
-                  className="comments-textarea"
-                  placeholder="Describe any other symptoms, changes, etc."
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
+            {pageState === PageState.SHOWING_CONTENT &&
+              !noPlantMessage &&
+              questions.length === 0 &&
+              (plantNameTyped || isNavigatingBack) && (
+                <div className="no-questions">
+                  <TypingText
+                    text="No additional questions needed. Proceeding to diagnosis..."
+                    speed={80}
+                  />
+                </div>
+              )}
+          </div>
 
-          {pageState === PageState.SHOWING_CONTENT &&
-            !noPlantMessage &&
-            questions.length === 0 &&
-            (plantNameTyped || isNavigatingBack) && (
-              <div className="no-questions">
-                <TypingText text="No additional questions needed. Proceeding to diagnosis..." speed={80} />
-              </div>
-            )}
-        </div>
-
-        {/* Only show buttons when content is displayed or there's an error */}
-        {(pageState === PageState.SHOWING_CONTENT ||
-          pageState === PageState.ERROR) && (
+          {/* Only show buttons when content is displayed or there's an error */}
+          {(pageState === PageState.SHOWING_CONTENT ||
+            pageState === PageState.ERROR) && (
             <div className="page-actions">
               <ActionButton variant="reset" onClick={handleReset}>
                 Reset
@@ -577,7 +586,9 @@ export default function QuestionsPage() {
               </ActionButton>
             </div>
           )}
-      </div>
-    </TerminalLayout>
+        </div>
+      </TerminalLayout>
+      <ResetConfirmModal />
+    </>
   );
 }

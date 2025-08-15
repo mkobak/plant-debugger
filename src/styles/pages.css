@@ -72,22 +72,21 @@
 
 /* Questions Page Specific Styles */
 .terminal-line {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-xs);
   line-height: 1;
+  margin-bottom: var(--spacing-xs);
 }
 
 .terminal-line .typing-text {
-  display: inline-block;
+  display: inline;
   margin: 0;
-  flex: 0 0 auto;
 }
 
 .terminal-line .terminal-spinner {
   display: inline-block;
   margin-left: var(--spacing-xs);
-  flex: 0 0 auto;
+  vertical-align: baseline; /* align with text */
+  position: relative;
+  top: 0;
 }
 
 .no-plant-message-text {
@@ -151,8 +150,7 @@
   grid-column: 2;
 }
 
-
- .answer-button {
+.answer-button {
   background: var(--grey-4);
   border: 0px;
   color: var(--grey-0);
@@ -162,22 +160,23 @@
   font-size: var(--font-size-md);
   transition: all 0.2s ease-in-out;
   line-height: 1.2;
- }
+}
 
- .answer-button:hover {
+.answer-button:hover {
   color: var(--white);
- }
+}
 
- .answer-button.selected {
+.answer-button.selected {
   color: var(--green);
-  text-shadow: 0 0 2px var(--green), 0 0 2px var(--green);
- }
+  text-shadow:
+    0 0 2px var(--green),
+    0 0 2px var(--green);
+}
 
- .answer-button:disabled {
+.answer-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
- }
-
+}
 
 .additional-comments-section {
   color: var(--grey-0);
@@ -220,6 +219,78 @@
   margin-top: 0;
 }
 
+/* Report export tweaks */
+[data-report-root] .result-section,
+[data-report-root] .care-section,
+[data-report-root] .detailed-section,
+[data-report-root] .summary-content {
+  border-radius: 0 !important;
+}
+[data-report-root] .report-block:first-child {
+  margin-top: 0;
+}
+[data-report-root] .report-block {
+  padding-top: 2px;
+}
+[data-report-root] .detail-button {
+  display: none;
+}
+[data-report-root] .section-divider::after {
+  font-size: 10px;
+}
+[data-report-root] .summary-content-title {
+  margin-top: 12px;
+}
+[data-report-root] .result-section > div:first-child strong {
+  font-size: 1.05em;
+}
+
+/* Larger primary headings mimic UI typing text result */
+[data-report-root] .typing-text {
+  font-size: 1.05rem;
+}
+
+/* Image grid aspect ratio & up to 3 per row in report */
+[data-report-root] .page-images .image-preview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+[data-report-root] .page-images .image-preview-grid > div {
+  flex: 1 1 calc(33.333% - 8px);
+  max-width: calc(33.333% - 8px);
+}
+@media (max-width: 680px) {
+  [data-report-root] .page-images .image-preview-grid > div {
+    flex: 1 1 calc(50% - 8px);
+    max-width: calc(50% - 8px);
+  }
+}
+@media (max-width: 480px) {
+  [data-report-root] .page-images .image-preview-grid > div {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+[data-report-root] .page-images img {
+  width: 100%;
+  height: auto !important;
+  object-fit: contain;
+}
+
+/* While exporting: enlarge images slightly */
+.report-exporting .page-images .image-preview-grid > div {
+  flex: 1 1 calc(33.333% - 8px);
+  max-width: calc(33.333% - 8px);
+}
+.report-exporting .image-preview-grid__img {
+  transform: scale(1.15);
+  transform-origin: center;
+}
+.report-exporting .detail-button {
+  display: none !important;
+}
+
 .result-section {
   margin-bottom: var(--spacing-md);
 }
@@ -235,7 +306,7 @@
 }
 
 .section-divider::after {
-  content: '──────────────────────────────────────────────────────────────────────────────────────────────────────────────────';
+  content: '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────';
 }
 
 .confidence-indicator {
@@ -254,7 +325,8 @@
 
 .summary-content {
   margin: 0;
-  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md)
+    var(--spacing-md);
   line-height: 1.5;
   color: var(--white);
 }
@@ -354,9 +426,9 @@
 }
 
 /* Make the first bold token at the start of bullet items extra prominent */
-.summary-content .custom-bullet-item .bullet-content>strong:first-child,
-.care-section .custom-bullet-item .bullet-content>strong:first-child,
-.detailed-section .custom-bullet-item .bullet-content>strong:first-child {
+.summary-content .custom-bullet-item .bullet-content > strong:first-child,
+.care-section .custom-bullet-item .bullet-content > strong:first-child,
+.detailed-section .custom-bullet-item .bullet-content > strong:first-child {
   font-weight: var(--font-weight-bold);
 }
 

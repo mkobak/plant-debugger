@@ -61,7 +61,10 @@ export default function ImagePreviewModal({
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <div className="image-preview-modal ascii-frame" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="image-preview-modal ascii-frame"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header with close button */}
         <div className="image-preview-header">
           <button

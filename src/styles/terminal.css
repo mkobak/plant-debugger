@@ -116,6 +116,12 @@
   margin-bottom: 10px;
 }
 
+/* Clickable logo wrapper */
+.ascii-logo-wrapper.clickable {
+  cursor: pointer;
+  display: inline-block;
+}
+
 .ascii-logo-image.plant,
 .ascii-logo-image.plant-logo {
   width: auto;
@@ -266,13 +272,19 @@
 }
 
 /* Loading compact styles */
+
 .questions-loading-screen.compact,
 .loading-screen.compact {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
   color: var(--grey-1);
   margin: var(--spacing-md) 0;
+}
+
+.questions-loading-screen.compact .terminal-spinner,
+.loading-screen.compact .terminal-spinner {
+  margin-left: var(--spacing-xs);
+  position: relative;
+  top: 0;
+  vertical-align: baseline;
 }
 
 .questions-loading-screen.compact .typing-text,
@@ -280,7 +292,6 @@
   color: var(--grey-1);
 }
 
-/* Width constraint for results for readability */
 .diagnosis-results {
   max-width: 85ch;
 }

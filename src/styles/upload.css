@@ -123,12 +123,12 @@
   margin-bottom: var(--spacing-sm);
 }
 
- .image-upload__camera-button:hover:not(:disabled) {
+.image-upload__camera-button:hover:not(:disabled) {
   color: var(--white);
   background-color: var(--grey-3);
   box-shadow: none;
   border-color: var(--grey-2);
- }
+}
 
 .image-upload__camera-button:disabled {
   opacity: 0.5;
@@ -214,7 +214,7 @@
   color: var(--grey-1);
 }
 
- .image-preview__remove {
+.image-preview__remove {
   width: 100%;
   white-space: nowrap;
   background: transparent !important;
@@ -222,8 +222,8 @@
   color: var(--red) !important;
   padding: var(--spacing-2xs) 0 !important;
   text-align: center;
- }
- .image-preview__remove:hover:not(:disabled) {
+}
+.image-preview__remove:hover:not(:disabled) {
   color: var(--white) !important;
   background: transparent !important;
- }
+}

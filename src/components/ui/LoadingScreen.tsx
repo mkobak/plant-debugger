@@ -46,7 +46,8 @@ export default function LoadingScreen({
   if (compact) {
     let status = 'Processing answers';
     if (isAggregating) status = 'Investigating possible bugs';
-    if (aggregatingComplete && isGeneratingTreatment) status = 'Generating report';
+    if (aggregatingComplete && isGeneratingTreatment)
+      status = 'Generating report';
     if (finalDiagnosisComplete) status = 'Finalizing';
     return (
       <div className="loading-screen compact">
@@ -57,8 +58,9 @@ export default function LoadingScreen({
           onComplete={() => {
             if (finalDiagnosisComplete) handleLine3Complete();
           }}
-        />
-        <LoadingSpinner />
+        >
+          <LoadingSpinner />
+        </TypingText>
       </div>
     );
   }
@@ -80,8 +82,9 @@ export default function LoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
-          />
-          {isAggregating && <LoadingSpinner />}
+          >
+            {isAggregating && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
       {line2Complete && aggregatingComplete && (
@@ -91,8 +94,9 @@ export default function LoadingScreen({
             speed={60}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}
-          />
-          {isGeneratingTreatment && <LoadingSpinner />}
+          >
+            {isGeneratingTreatment && <LoadingSpinner />}
+          </TypingText>
         </div>
       )}
     </div>

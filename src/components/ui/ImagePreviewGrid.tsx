@@ -29,11 +29,10 @@ export default function ImagePreviewGrid({
   // Dynamically compute a frame width that adapts to number of images (max 3 columns typical)
   const frameStyle = useMemo(() => {
     const count = images.length;
-    // Base thumbnail size (matches CSS 80px) + gap (var spacing-sm ~ 8px) approximated inline (we'll rely on CSS variable if available)
-    const thumb = 80;
-    const gap = 8; // fallback
-    const cols = Math.min(count, 3); // cap at 3 columns visual frame
-    const width = cols * thumb + (cols - 1) * gap + 16; // + padding inside frame
+    const thumb = 80; // matches CSS
+    const gap = 8; // spacing-sm fallback
+    const cols = Math.min(count, 3);
+    const width = cols * thumb + (cols - 1) * gap + 16; // include frame padding
     return { maxWidth: width, width: 'fit-content' } as React.CSSProperties;
   }, [images.length]);
 
@@ -44,6 +43,7 @@ export default function ImagePreviewGrid({
       <div
         className={`image-preview-grid ascii-frame ${className}`}
         style={frameStyle}
+        data-image-count={images.length}
       >
         {images.map((image) => (
           <div
