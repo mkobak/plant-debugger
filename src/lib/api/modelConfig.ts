@@ -1,5 +1,5 @@
 export type ModelKey = 'modelHigh' | 'modelMedium' | 'modelLow';
-export type ModelBucket = 'flash' | 'flash' | 'flash-lite';
+export type ModelBucket = 'pro' | 'flash' | 'flash-lite';
 
 // Map ModelKey to concrete Gemini model names
 export const MODEL_BY_KEY: Record<ModelKey, string> = {
