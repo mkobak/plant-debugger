@@ -185,6 +185,8 @@ export default function QuestionsPage() {
         setCtxIsGeneratingQuestions(false);
         const imgSig = computeImagesSignature();
         qaRunLocks.delete(imgSig);
+        setQaProcessingSignature(null);
+        setLastQAImagesSignature(null);
         processStartedRef.current = false;
         return;
       }
@@ -194,6 +196,7 @@ export default function QuestionsPage() {
       setPageState(PageState.ERROR);
       const imgSig = computeImagesSignature();
       qaRunLocks.delete(imgSig);
+      setQaProcessingSignature(null);
       processStartedRef.current = false;
     }
   }, [
@@ -346,16 +349,21 @@ export default function QuestionsPage() {
           onLogoClick={requestReset}
         />
 
-        <div className="prompt-line">
-          <Prompt path="~/questions" />
-        </div>
-        <br />
-
         {/* Images show immediately now */}
         {images.length > 0 && (
           <div className="page-images">
             <ImagePreviewGrid images={images} />
           </div>
+        )}
+
+        {/* Prompt only during loading, below images and above status/loading screen */}
+        {pageState === PageState.LOADING && (
+          <>
+            <div className="prompt-line">
+              <Prompt path="~/questions" />
+            </div>
+            <br />
+          </>
         )}
 
         <div className="questions-page">
@@ -384,6 +392,12 @@ export default function QuestionsPage() {
                     // Abort and go back to upload
                     processStartedRef.current = false;
                     if (abortRef.current) abortRef.current.abort();
+                    try {
+                      const sig = computeImagesSignature();
+                      qaRunLocks.delete(sig);
+                    } catch {}
+                    setQaProcessingSignature(null);
+                    setLastQAImagesSignature(null);
                     setCtxIsIdentifying(false);
                     setCtxIsGeneratingQuestions(false);
                     setQuestions([]);

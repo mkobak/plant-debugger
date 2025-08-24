@@ -120,10 +120,6 @@ export default function UploadPage() {
       />
       <div className="upload-page">
         <div className="terminal-text">
-          <div className="prompt-line">
-            <Prompt path="~/upload" />
-          </div>
-          <br />
           {!isNavigatingBack ? (
             <TypingText
               text="Upload photos of your plant."
@@ -131,31 +127,39 @@ export default function UploadPage() {
               onComplete={() => setTitleComplete(true)}
             />
           ) : (
-            <div>Upload photos of your plant.</div>
+            <div className="terminal-text-line">
+              Upload photos of your plant.
+            </div>
           )}
           {error && (
             <div className="error-message">
               <TypingText text={`ERROR: ${error}`} className="error-text" />
             </div>
           )}
-          {titleComplete && (
-            <div className="upload-tip">
-              {!isNavigatingBack ? (
+          <div className="upload-tip">
+            {titleComplete ? (
+              !isNavigatingBack ? (
                 <TypingText
                   text="Tip: For best results, upload clear, well-lit photos showing the whole plant and close-ups of any affected parts."
                   speed={200}
                   onComplete={() => setTipComplete(true)}
                 />
               ) : (
-                <div>
+                <div className="terminal-text-line">
                   Tip: For best results, upload clear, well-lit photos showing
                   the whole plant and close-ups of any affected parts.
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : (
+              <div className="upload-tip-placeholder" />
+            )}
+          </div>
           {tipComplete && (
             <>
+              {/* Prompt moved below instructional text and above upload box */}
+              <div className="prompt-line">
+                <Prompt path="~/upload" />
+              </div>
               <ImageUpload
                 images={images}
                 isUploading={isUploading}

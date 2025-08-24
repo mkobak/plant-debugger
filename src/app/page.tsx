@@ -15,7 +15,7 @@ export default function HomePage() {
       <div className="home-content">
         <div className="terminal-text home-text">
           <div className="home-intro-copy">
-            <p>Is your plant experiencing some compilation issues?</p>
+            <p>Is your plant experiencing compilation issues?</p>
             <p>Click the button below to start debugging.</p>
           </div>
           <div className="home-start-line">
