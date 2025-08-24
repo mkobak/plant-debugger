@@ -283,6 +283,14 @@
   color: var(--grey-0);
   vertical-align: middle;
   line-height: 1;
+  position: relative;
+  top: -2px;
+  margin-left: 0.5ch;
+}
+
+.typing-text > .terminal-spinner {
+  margin-left: 0.75ch;
+  top: -2px;
 }
 
 .terminal-spinner--sm {
@@ -302,7 +310,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, 80px);
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  margin-top: var(--spacing-xs);
   max-width: 300px;
 }
 

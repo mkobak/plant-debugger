@@ -151,7 +151,23 @@ export async function exportElementToSinglePagePdf({
   document.body.appendChild(wrapper);
 
   const effectiveWidth = originalWidth * scaleFactor;
-  const dpr = Math.min(4, (window.devicePixelRatio || 1) * 2.5);
+
+  // Adaptive DPR: very tall documents on high-DPR mobile browsers (iOS/Android)
+  // can exceed the maximum canvas dimension (often 16384 or 32767 px) causing
+  // the rendered canvas to be silently truncated after the first portion.
+  // We estimate the transformed height (layout height * scaleFactor) and then
+  // cap the effective devicePixelRatio so the final canvas height stays safely
+  // below a MAX dimension. This preserves full content while keeping quality
+  // acceptable.
+  const MAX_CANVAS_DIMENSION = 16000; // conservative to support mobile Safari
+  const baseDeviceScale = Math.min(3, window.devicePixelRatio || 1); // avoid huge DPRs
+  // Because we apply a CSS transform scale, the layout height doesn't reflect
+  // the visual height; multiply by scaleFactor to approximate final rendered height.
+  const estimatedScaledHeight = clone.scrollHeight * scaleFactor;
+  let dpr = baseDeviceScale;
+  if (estimatedScaledHeight * dpr > MAX_CANVAS_DIMENSION) {
+    dpr = Math.max(1, MAX_CANVAS_DIMENSION / estimatedScaledHeight);
+  }
 
   if (headerLogoLoaded) {
     try {

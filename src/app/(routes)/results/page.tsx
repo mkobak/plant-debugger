@@ -399,18 +399,23 @@ export default function ResultsPage() {
           onLogoClick={requestReset}
         />
 
-        <div className="prompt-line">
-          <Prompt path="~/results" />
-        </div>
-        <br />
-
         {/* Export root now wraps images + results so images appear in PDF */}
         <div ref={reportRef}>
-          {/* Image Preview Grid shows only after prompt */}
+          {/* Image Preview Grid always first */}
           {images.length > 0 && (
             <div className="page-images">
               <ImagePreviewGrid images={images} />
             </div>
+          )}
+
+          {/* Prompt only during diagnosing (loading), below images and above status/loading screen */}
+          {isDiagnosing && !loadingComplete && (
+            <>
+              <div className="prompt-line">
+                <Prompt path="~/results" />
+              </div>
+              <br />
+            </>
           )}
 
           <div className="results-page">
@@ -506,7 +511,7 @@ export default function ResultsPage() {
                     )}
 
                     {/* Visual Divider */}
-                    {currentDiagnosisResult?.plant && (
+                    {currentDiagnosisResult?.plant && plantTitleDone && (
                       <div className="result-section report-block">
                         <div className="section-divider"></div>
                       </div>
@@ -616,9 +621,11 @@ export default function ResultsPage() {
                     {currentDiagnosisResult?.secondary && plantTitleDone && (
                       <>
                         {/* Visual Divider */}
-                        <div className="result-section report-block">
-                          <div className="section-divider"></div>
-                        </div>
+                        {plantTitleDone && (
+                          <div className="result-section report-block">
+                            <div className="section-divider"></div>
+                          </div>
+                        )}
 
                         <div className="result-section report-block">
                           <div>{`Another possible bug: ${currentDiagnosisResult.secondary.condition}`}</div>
@@ -724,9 +731,11 @@ export default function ResultsPage() {
                       </>
                     )}
                     {/* Visual Divider */}
-                    <div className="result-section report-block">
-                      <div className="section-divider"></div>
-                    </div>
+                    {plantTitleDone && (
+                      <div className="result-section report-block">
+                        <div className="section-divider"></div>
+                      </div>
+                    )}
                   </div>
                 )}
             </div>

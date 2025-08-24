@@ -20,21 +20,12 @@ export function Prompt({
   host = 'plant-debugger',
   className = '',
   showCursor,
-  cursorDurationMs = 2500,
 }: PromptProps) {
-  const [visible, setVisible] = useState(showCursor !== false); // default visible unless explicitly false
+  const [visible, setVisible] = useState(showCursor !== false);
 
   useEffect(() => {
-    if (showCursor === false) {
-      setVisible(false);
-      return;
-    }
-    setVisible(true);
-    if (cursorDurationMs > 0) {
-      const t = window.setTimeout(() => setVisible(false), cursorDurationMs);
-      return () => window.clearTimeout(t);
-    }
-  }, [showCursor, cursorDurationMs, path]);
+    setVisible(showCursor !== false);
+  }, [showCursor, path]);
 
   return (
     <span className={['pd-prompt', className].filter(Boolean).join(' ')}>

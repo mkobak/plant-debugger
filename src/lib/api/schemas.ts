@@ -42,32 +42,38 @@ export const finalDiagnosisSchema = {
     },
     secondaryDiagnosis: {
       type: 'string',
+      nullable: true,
       description:
         'Secondary diagnosis in case there is another likely possibility of what the issue with the plant could be, other than the primary diagnosis.',
     },
     secondaryConfidence: {
       type: 'string',
+      nullable: true,
       enum: ['High', 'Medium', 'Low'],
       description:
         'Confidence level in the secondary diagnosis. Rate your confidence realistically given the available information.',
     },
     secondaryReasoning: {
       type: 'string',
+      nullable: true,
       description:
         'Brief explanation of how the secondary diagnosis was reached, referencing visual evidence and user context, in Markdown. Maximum 2 sentences.',
     },
     secondaryTreatmentPlan: {
       type: 'string',
+      nullable: true,
       description:
         'Brief step-by-step guide for the user to resolve the issue in case of the secondary diagnosis, in Markdown. Maximum 3 bullet points.',
     },
     secondaryPreventionTips: {
       type: 'string',
+      nullable: true,
       description:
         'Brief actionable advice to prevent recurrence in case of the secondary diagnosis, in Markdown. Maximum 3 bullet points.',
     },
     secondarySummary: {
       type: 'string',
+      nullable: true,
       description:
         'Summary of the reasoning, treatment plan, and prevention tips for the secondary diagnosis, in Markdown. Maximum 3-4 bullet points. Include programming humor.',
     },
@@ -104,16 +110,19 @@ export const questionsSchema = {
     },
     Q3: {
       type: 'string',
+      nullable: true,
       description:
         'Short yes/no question to help narrow down a plant diagnosis.',
     },
     Q4: {
       type: 'string',
+      nullable: true,
       description:
         'Short yes/no question to help narrow down a plant diagnosis.',
     },
     Q5: {
       type: 'string',
+      nullable: true,
       description:
         'Short yes/no question to help narrow down a plant diagnosis.',
     },

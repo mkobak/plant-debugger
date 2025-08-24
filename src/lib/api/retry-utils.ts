@@ -68,6 +68,15 @@ export async function withRetry<T>(
         error
       );
 
+      if (
+        (error instanceof Error && error.name === 'AbortError') ||
+        (typeof (error as any)?.message === 'string' &&
+          /(aborted|abort)/i.test((error as any).message))
+      ) {
+        console.log(`[RETRY] ${context} - Aborted, stopping retries`);
+        throw error;
+      }
+
       // If this is the last attempt, don't retry
       if (attempt === opts.maxRetries) {
         console.error(
@@ -91,9 +100,10 @@ export async function withRetry<T>(
   }
 
   // If we got here, all attempts failed
-  throw new Error(
-    `${context} failed after ${opts.maxRetries + 1} attempts. Last error: ${lastError?.message || 'Unknown error'}`
-  );
+  const msg = `${context} failed after ${opts.maxRetries + 1} attempts. Last error: ${lastError?.message || 'Unknown error'}`;
+  const wrapped = new Error(msg);
+  (wrapped as any).cause = lastError;
+  throw wrapped;
 }
 
 /**

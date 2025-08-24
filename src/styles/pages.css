@@ -23,6 +23,7 @@
 /* Page Images */
 .page-images {
   margin-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 /* Error message styling */
@@ -83,10 +84,10 @@
 
 .terminal-line .terminal-spinner {
   display: inline-block;
-  margin-left: var(--spacing-xs);
-  vertical-align: baseline; /* align with text */
+  margin-left: 0.75ch;
+  vertical-align: baseline;
   position: relative;
-  top: 0;
+  top: -2px;
 }
 
 .no-plant-message-text {

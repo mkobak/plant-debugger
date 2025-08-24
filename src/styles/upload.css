@@ -11,6 +11,11 @@
   color: var(--grey-0);
 }
 
+.upload-page .upload-tip-placeholder {
+  min-height: 1.3em;
+  margin-bottom: var(--spacing-sm);
+}
+
 /* Image Upload Component Styles */
 
 .image-upload {
