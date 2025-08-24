@@ -6,6 +6,7 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useRef,
 } from 'react';
 import { typingSession } from '@/lib/typingSession';
 import {
@@ -16,6 +17,11 @@ import {
   DiagnosisResult,
 } from '@/types';
 import { costTracker } from '@/lib/costTracker';
+import {
+  saveDiagnosisState,
+  loadDiagnosisState,
+  clearDiagnosisState,
+} from '@/lib/persistence';
 
 interface DiagnosisContextType {
   images: PlantImage[];
@@ -75,6 +81,8 @@ interface DiagnosisProviderProps {
 
 export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [images, setImages] = useState<PlantImage[]>([]);
+  const hasLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<number | null>(null);
   // Only domain data is stored here; UI/step flags are local to components
 
   // Plant identification state
@@ -198,7 +206,67 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     try {
       fetch('/api/reset-costs', { method: 'POST' });
     } catch {}
+    // Clear persisted state
+    clearDiagnosisState();
   };
+
+  // Initial load from persistence (client-side only)
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    let cancelled = false;
+    (async () => {
+      const loaded = await loadDiagnosisState();
+      if (cancelled || !loaded) {
+        hasLoadedRef.current = true;
+        return;
+      }
+      setImages(loaded.images || []);
+      setPlantIdentification(loaded.plantIdentification || null);
+      setQuestions(loaded.questions || []);
+      setAnswers(loaded.answers || []);
+      setAdditionalComments(loaded.additionalComments || '');
+      setNoPlantMessage(loaded.noPlantMessage || '');
+      setDiagnosisResult(loaded.diagnosisResult || null);
+      setLastDiagnosisSignature(loaded.lastDiagnosisSignature || null);
+      setLastQAImagesSignature(loaded.lastQAImagesSignature || null);
+      hasLoadedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist state (throttled) when relevant parts change
+  useEffect(() => {
+    if (!hasLoadedRef.current) return; // avoid saving empty before load
+    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = window.setTimeout(() => {
+      saveDiagnosisState({
+        images,
+        plantIdentification,
+        questions,
+        answers,
+        additionalComments,
+        noPlantMessage,
+        diagnosisResult,
+        lastDiagnosisSignature,
+        lastQAImagesSignature,
+      });
+    }, 300); // debounce writes
+    return () => {
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    };
+  }, [
+    images,
+    plantIdentification,
+    questions,
+    answers,
+    additionalComments,
+    noPlantMessage,
+    diagnosisResult,
+    lastDiagnosisSignature,
+    lastQAImagesSignature,
+  ]);
 
   const value = {
     images,
