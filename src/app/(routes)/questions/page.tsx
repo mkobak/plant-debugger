@@ -51,7 +51,6 @@ export default function QuestionsPage() {
     setQuestions,
     answers,
     addAnswer,
-    removeAnswer,
     additionalComments,
     setAdditionalComments,
     noPlantMessage,
@@ -493,7 +492,7 @@ export default function QuestionsPage() {
                 <div className="questions-section">
                   {!isNavigatingBack ? (
                     <TypingText
-                      text="Please answer the following questions:"
+                      text="Please answer the following questions (optional):"
                       speed={80}
                       onceKey={`${typingSessionKey}|instructions`}
                       onComplete={() => {
@@ -502,7 +501,7 @@ export default function QuestionsPage() {
                       }}
                     />
                   ) : (
-                    <div>Please answer the following questions:</div>
+                    <div>Please answer the following questions (optional):</div>
                   )}
 
                   {(instructionsTyped || isNavigatingBack) &&
@@ -530,17 +529,11 @@ export default function QuestionsPage() {
                               <button
                                 className={`answer-button ${existing?.skipped ? 'selected' : ''}`}
                                 onClick={() => {
-                                  if (!existing || !existing.skipped) {
-                                    // Store a skipped marker (excluded downstream)
-                                    addAnswer({
-                                      questionId: question.id,
-                                      answer: false,
-                                      skipped: true,
-                                    });
-                                  } else {
-                                    // Toggle off skip clears answer entirely
-                                    removeAnswer(question.id);
-                                  }
+                                  addAnswer({
+                                    questionId: question.id,
+                                    answer: false,
+                                    skipped: true,
+                                  });
                                 }}
                               >
                                 [S] Skip
