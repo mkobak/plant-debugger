@@ -3,14 +3,14 @@ export type ModelBucket = 'pro' | 'flash' | 'flash-lite';
 
 // Map ModelKey to concrete Gemini model names
 export const MODEL_BY_KEY: Record<ModelKey, string> = {
-  modelHigh: 'gemini-2.5-flash',
+  modelHigh: 'gemini-2.5-pro',
   modelMedium: 'gemini-2.5-flash',
   modelLow: 'gemini-2.5-flash-lite',
 };
 
 // Map ModelKey to pricing bucket
 export const BUCKET_BY_KEY: Record<ModelKey, ModelBucket> = {
-  modelHigh: 'flash',
+  modelHigh: 'pro',
   modelMedium: 'flash',
   modelLow: 'flash-lite',
 };

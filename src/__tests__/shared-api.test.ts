@@ -62,10 +62,12 @@ describe('shared api helpers', () => {
     fd.append('images[1]', f2);
     fd.append('questionsAndAnswers', 'qa');
     fd.append('rankedDiagnoses', 'rd');
+    fd.append('userComment', 'note');
     const res = await processFormData(fd);
     expect(res.images).toHaveLength(2);
     expect(res.questionsAndAnswers).toBe('qa');
     expect(res.rankedDiagnoses).toBe('rd');
+    expect(res.userComment).toBe('note');
   });
 
   it('convertImagesToBase64 returns inlineData', async () => {

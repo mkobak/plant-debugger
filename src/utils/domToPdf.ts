@@ -71,7 +71,8 @@ export async function exportElementToSinglePagePdf({
 
     const ts = document.createElement('div');
     ts.style.fontSize = '12px';
-    ts.style.fontFamily = 'monospace';
+    // Use the app's monospaced font (Source Code Pro) directly for export consistency
+    ts.style.fontFamily = "'Source Code Pro','Courier New',Courier,monospace";
     ts.style.color = '#6dcf43'; // match brand green
     ts.style.textAlign = 'left';
     ts.style.opacity = '0.9';

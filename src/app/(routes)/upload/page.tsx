@@ -26,7 +26,12 @@ export default function UploadPage() {
 
   const [shouldNavigate, setShouldNavigate] = useState(false);
 
-  const { images: contextImages, setImages: setContextImages } = useDiagnosis();
+  const {
+    images: contextImages,
+    setImages: setContextImages,
+    additionalComments,
+    setAdditionalComments,
+  } = useDiagnosis();
   const { requestReset, ResetConfirmModal } = useConfirmReset();
 
   const {
@@ -170,6 +175,18 @@ export default function UploadPage() {
                 onImageRemove={handleImageRemove}
                 onImagePreview={handleImagePreview}
               />
+              <div className="additional-comments-section">
+                Additional comments (optional):
+                <div className="comments-container">
+                  <textarea
+                    value={additionalComments}
+                    onChange={(e) => setAdditionalComments(e.target.value)}
+                    className="comments-textarea"
+                    placeholder="e.g., description of issue, pests seen, care changes, etc."
+                    rows={3}
+                  />
+                </div>
+              </div>
               <div className="page-actions">
                 <ActionButton
                   variant="reset"

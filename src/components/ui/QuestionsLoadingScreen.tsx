@@ -6,7 +6,8 @@ import LoadingSpinner from './LoadingSpinner';
 
 interface QuestionsLoadingScreenProps {
   isIdentifying: boolean;
-  isGeneratingQuestions: boolean;
+  isInvestigating: boolean; // initial diagnoses aggregation phase
+  isGeneratingQuestions: boolean; // clarifying questions phase
   identificationComplete: boolean;
   questionsGenerated: boolean;
   onComplete?: () => void;
@@ -17,6 +18,7 @@ interface QuestionsLoadingScreenProps {
 
 export default function QuestionsLoadingScreen({
   isIdentifying,
+  isInvestigating,
   isGeneratingQuestions,
   identificationComplete,
   questionsGenerated,
@@ -45,7 +47,9 @@ export default function QuestionsLoadingScreen({
     // Single-line dynamic status
     let status = 'Analyzing images';
     if (isIdentifying) status = 'Identifying plant';
-    if (identificationComplete && isGeneratingQuestions)
+    if (identificationComplete && isInvestigating)
+      status = 'Investigating possible bugs';
+    if (!isInvestigating && isGeneratingQuestions && !questionsGenerated)
       status = 'Generating questions';
     if (questionsGenerated) status = 'Finalizing';
 
@@ -53,8 +57,11 @@ export default function QuestionsLoadingScreen({
       <div className="questions-loading-screen compact">
         <TypingText
           text={`Status: ${status}...`}
-          speed={40}
-          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|compact` : undefined}
+          speed={100}
+          // Include status so each transition retypes once
+          onceKey={
+            onceKeyPrefix ? `${onceKeyPrefix}|compact|${status}` : undefined
+          }
           onComplete={() => {
             if (questionsGenerated) setLine3Complete(true);
           }}
@@ -71,8 +78,8 @@ export default function QuestionsLoadingScreen({
       <div className="terminal-line">
         <TypingText
           text="> Analyzing images..."
-          speed={60}
-          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
+          speed={100}
+          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|analyzing` : undefined}
           onComplete={() => setLine1Complete(true)}
         />
       </div>
@@ -80,8 +87,8 @@ export default function QuestionsLoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Identifying plant..."
-            speed={60}
-            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
+            speed={100}
+            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|identifying` : undefined}
             onComplete={() => setLine2Complete(true)}
           >
             {isIdentifying && <LoadingSpinner />}
@@ -91,9 +98,27 @@ export default function QuestionsLoadingScreen({
       {line2Complete && identificationComplete && (
         <div className="terminal-line">
           <TypingText
+            text="> Investigating possible bugs..."
+            speed={100}
+            onceKey={
+              onceKeyPrefix ? `${onceKeyPrefix}|investigating` : undefined
+            }
+            onComplete={() => setLine3Complete(true)}
+          >
+            {isInvestigating && <LoadingSpinner />}
+          </TypingText>
+        </div>
+      )}
+      {line3Complete && identificationComplete && !questionsGenerated && (
+        <div className="terminal-line">
+          <TypingText
             text="> Generating questions..."
-            speed={60}
-            onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
+            speed={100}
+            onceKey={
+              onceKeyPrefix
+                ? `${onceKeyPrefix}|generating_questions`
+                : undefined
+            }
             onComplete={() => setLine3Complete(true)}
           >
             {isGeneratingQuestions && <LoadingSpinner />}

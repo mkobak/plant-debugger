@@ -18,7 +18,7 @@ export default function TypingCommand({
   command,
   href,
   delay = 300,
-  speed = 60,
+  speed = 100,
   onComplete,
 }: TypingCommandProps) {
   const promptTyping = useTyping({ text: prompt, delay, cps: speed });

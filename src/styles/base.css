@@ -39,7 +39,7 @@
   --transition-slow: 0.3s ease;
 
   /* Font */
-  --font-family: 'Courier New', Courier, monospace;
+  --font-family: 'Source Code Pro', 'Courier New', Courier, monospace;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-md: 14px;
@@ -65,7 +65,8 @@ html {
 
 body {
   font-size: var(--font-size-lg);
-  font-family: var(--font-family);
+  /* Directly apply the Source Code Pro stack so descendants can inherit even if variable precedence conflicts */
+  font-family: 'Source Code Pro', 'Courier New', Courier, monospace;
   font-weight: var(--font-weight-normal);
   background-color: var(--grey-7);
   color: var(--white);
@@ -90,4 +91,5 @@ input,
 textarea,
 select {
   font-weight: inherit;
+  font-family: inherit;
 }

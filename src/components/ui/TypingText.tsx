@@ -19,7 +19,7 @@ export default function TypingText({
   delay = 300,
   className = '',
   onComplete,
-  speed = 60,
+  speed = 100,
   as = 'p',
   onceKey,
   children,

@@ -16,6 +16,7 @@ import {
   identifyPlant,
   generateQuestions,
   getNoPlantResponse,
+  getInitialDiagnosis,
 } from '@/lib/api/diagnosis';
 
 // Prevent duplicate QA runs across React StrictMode remounts
@@ -31,6 +32,7 @@ enum PageState {
 enum LoadingPhase {
   ANALYZING = 'analyzing',
   IDENTIFYING = 'identifying',
+  INITIAL_DIAGNOSIS = 'initial_diagnosis',
   GENERATING_QUESTIONS = 'generating_questions',
   COMPLETE = 'complete',
 }
@@ -52,7 +54,10 @@ export default function QuestionsPage() {
     answers,
     addAnswer,
     additionalComments,
-    setAdditionalComments,
+    rawInitialDiagnoses,
+    setRawInitialDiagnoses,
+    rankedDiagnoses,
+    setRankedDiagnoses,
     noPlantMessage,
     setNoPlantMessage,
     lastQAImagesSignature,
@@ -77,7 +82,7 @@ export default function QuestionsPage() {
   const [plantNameTyped, setPlantNameTyped] = useState(false);
   const [instructionsTyped, setInstructionsTyped] = useState(false);
   const [commentsLabelTyped, setCommentsLabelTyped] = useState(false);
-  const [promptComplete, setPromptComplete] = useState(true); // prompt and content render immediately
+  const [promptComplete, setPromptComplete] = useState(true);
 
   const computeImagesSignature = useCallback(
     () => images.map((i) => i.id).join('|'),
@@ -147,11 +152,27 @@ export default function QuestionsPage() {
         return;
       }
 
-      // Step 2: Generate questions
-      console.log('Step 2: Generating questions...');
-      setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
+      // Step 2: Initial diagnoses (pro + flash aggregation)
+      console.log('Step 2: Generating initial diagnoses...');
+      setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
       setCtxIsGeneratingQuestions(true);
-      const generatedQuestions = await generateQuestions(images, signal);
+      const initialDiag = await getInitialDiagnosis(
+        images,
+        additionalComments || '',
+        signal
+      );
+      setRawInitialDiagnoses(initialDiag.rawDiagnoses);
+      setRankedDiagnoses(initialDiag.rankedDiagnoses);
+      // Transition to question generation phase
+      setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
+      // Step 3: Clarifying questions based on ranked diagnoses + comment
+      console.log('Step 3: Generating questions...');
+      const generatedQuestions = await generateQuestions(
+        images,
+        initialDiag.rankedDiagnoses,
+        additionalComments || '',
+        signal
+      );
       setCtxIsGeneratingQuestions(false);
       console.log('Questions generated:', generatedQuestions.length);
       setQuestions(generatedQuestions);
@@ -209,6 +230,9 @@ export default function QuestionsPage() {
     setPlantIdentification,
     setQaProcessingSignature,
     setQuestions,
+    additionalComments,
+    setRawInitialDiagnoses,
+    setRankedDiagnoses,
   ]);
 
   // Detect navigation back and restore state if possible
@@ -331,9 +355,11 @@ export default function QuestionsPage() {
 
   // Loading state calculations for the loading screen
   const isIdentifying = loadingPhase === LoadingPhase.IDENTIFYING;
+  const isInvestigating = loadingPhase === LoadingPhase.INITIAL_DIAGNOSIS;
   const isGeneratingQuestions =
     loadingPhase === LoadingPhase.GENERATING_QUESTIONS;
   const identificationComplete =
+    loadingPhase === LoadingPhase.INITIAL_DIAGNOSIS ||
     loadingPhase === LoadingPhase.GENERATING_QUESTIONS ||
     loadingPhase === LoadingPhase.COMPLETE;
   const questionsGenerated = loadingPhase === LoadingPhase.COMPLETE;
@@ -371,6 +397,7 @@ export default function QuestionsPage() {
             {pageState === PageState.LOADING && (
               <QuestionsLoadingScreen
                 isIdentifying={isIdentifying}
+                isInvestigating={isInvestigating}
                 isGeneratingQuestions={isGeneratingQuestions}
                 identificationComplete={identificationComplete}
                 questionsGenerated={questionsGenerated}
@@ -413,7 +440,7 @@ export default function QuestionsPage() {
             {/* Show error message */}
             {error && (
               <div className="error-message">
-                <TypingText text={`Error: ${error}`} speed={80} />
+                <TypingText text={`Error: ${error}`} speed={100} />
                 <div className="error-actions">
                   <button
                     onClick={() => {
@@ -457,7 +484,7 @@ export default function QuestionsPage() {
                   {!isNavigatingBack ? (
                     <TypingText
                       text={`Plant name:`}
-                      speed={80}
+                      speed={100}
                       onceKey={`${typingSessionKey}|plant-label`}
                       onComplete={() => {
                         console.log('Plant name typing complete');
@@ -493,7 +520,7 @@ export default function QuestionsPage() {
                   {!isNavigatingBack ? (
                     <TypingText
                       text="Please answer the following questions (optional):"
-                      speed={80}
+                      speed={100}
                       onceKey={`${typingSessionKey}|instructions`}
                       onComplete={() => {
                         console.log('Instructions typing complete');
@@ -546,21 +573,6 @@ export default function QuestionsPage() {
                 </div>
               )}
 
-            {(instructionsTyped || isNavigatingBack) && !noPlantMessage && (
-              <div className="additional-comments-section">
-                Any additional observations:
-                <div className="comments-container">
-                  <textarea
-                    value={additionalComments}
-                    onChange={(e) => setAdditionalComments(e.target.value)}
-                    className="comments-textarea"
-                    placeholder="Describe any other symptoms, changes, etc."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-
             {pageState === PageState.SHOWING_CONTENT &&
               !noPlantMessage &&
               questions.length === 0 &&
@@ -568,7 +580,7 @@ export default function QuestionsPage() {
                 <div className="no-questions">
                   <TypingText
                     text="No additional questions needed. Proceeding to diagnosis..."
-                    speed={80}
+                    speed={100}
                   />
                 </div>
               )}
