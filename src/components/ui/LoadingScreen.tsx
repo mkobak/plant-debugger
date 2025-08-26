@@ -53,8 +53,10 @@ export default function LoadingScreen({
       <div className="loading-screen compact">
         <TypingText
           text={`Status: ${status}...`}
-          speed={45}
-          onceKey={onceKeyPrefix ? `${onceKeyPrefix}|compact` : undefined}
+          speed={100}
+          onceKey={
+            onceKeyPrefix ? `${onceKeyPrefix}|compact|${status}` : undefined
+          }
           onComplete={() => {
             if (finalDiagnosisComplete) handleLine3Complete();
           }}
@@ -70,7 +72,7 @@ export default function LoadingScreen({
       <div className="terminal-line">
         <TypingText
           text="> Processing answers..."
-          speed={60}
+          speed={100}
           onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
           onComplete={() => setLine1Complete(true)}
         />
@@ -79,7 +81,7 @@ export default function LoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Investigating possible bugs..."
-            speed={60}
+            speed={100}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
           >
@@ -91,7 +93,7 @@ export default function LoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Generating report..."
-            speed={60}
+            speed={100}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}
           >

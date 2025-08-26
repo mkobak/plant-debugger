@@ -111,6 +111,8 @@ export async function getNoPlantResponse(
 
 export async function generateQuestions(
   images: PlantImage[],
+  rankedDiagnoses: string,
+  userComment: string,
   signal?: AbortSignal
 ): Promise<DiagnosticQuestion[]> {
   console.log('generateQuestions called with images:', images.length);
@@ -123,6 +125,8 @@ export async function generateQuestions(
 
   return withRetry(async () => {
     const formData = createImageFormData(images);
+    formData.append('rankedDiagnoses', rankedDiagnoses);
+    formData.append('userComment', userComment);
     logFormDataEntries(formData, 'Question generation FormData');
 
     const response = await fetch('/api/generate-questions', {
@@ -156,7 +160,7 @@ export async function generateQuestions(
 
 export async function getInitialDiagnosis(
   images: PlantImage[],
-  questionsAndAnswers: string,
+  userComment: string,
   signal?: AbortSignal
 ): Promise<{ rawDiagnoses: string[]; rankedDiagnoses: string }> {
   console.log('getInitialDiagnosis called with images:', images.length);
@@ -168,7 +172,7 @@ export async function getInitialDiagnosis(
   return initialDiagnosisCircuitBreaker.call(async () => {
     return withRetry(async () => {
       const formData = createImageFormData(images);
-      formData.append('questionsAndAnswers', questionsAndAnswers);
+      formData.append('userComment', userComment);
 
       const response = await fetch('/api/initial-diagnosis', {
         method: 'POST',
@@ -213,6 +217,7 @@ export async function getFinalDiagnosis(
   images: PlantImage[],
   questionsAndAnswers: string,
   rankedDiagnoses: string,
+  userComment: string,
   signal?: AbortSignal
 ): Promise<DiagnosisResult> {
   console.log('getFinalDiagnosis called with images:', images.length);
@@ -226,6 +231,7 @@ export async function getFinalDiagnosis(
       const formData = createImageFormData(images);
       formData.append('questionsAndAnswers', questionsAndAnswers);
       formData.append('rankedDiagnoses', rankedDiagnoses);
+      if (userComment) formData.append('userComment', userComment);
 
       const response = await fetch('/api/final-diagnosis', {
         method: 'POST',

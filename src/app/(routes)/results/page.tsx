@@ -24,6 +24,7 @@ export default function ResultsPage() {
     answers,
     additionalComments,
     plantIdentification,
+    rankedDiagnoses,
     diagnosisResult: contextDiagnosisResult,
     setDiagnosisResult: setContextDiagnosisResult,
     lastDiagnosisSignature,
@@ -65,12 +66,6 @@ export default function ResultsPage() {
       parts.push(answeredQuestions.join('\n'));
     }
 
-    // Only include additional comments if they exist and are not empty
-    if (additionalComments && additionalComments.trim()) {
-      if (parts.length > 0) parts.push('\n');
-      parts.push(`Additional user comment: ${additionalComments.trim()}`);
-    }
-
     return parts.length > 0
       ? parts.join('')
       : 'No additional questions were answered.';
@@ -79,48 +74,88 @@ export default function ResultsPage() {
   const formatWithMarkdown = (text: string) => {
     if (!text) return '';
 
-    const lines = text.split('\n').filter((line) => line.trim());
-    const processedLines: string[] = [];
-    let bulletItems: string[] = [];
+    // Normalize line endings
+    const normalized = text.replace(/\r\n?/g, '\n').trim();
 
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-      if (trimmed.match(/^[\*\-•]\s*/)) {
-        const content = trimmed.replace(/^[\*\-•]\s*/, '');
-        const formattedContent = content
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/__(.*?)__/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/_(.*?)_/g, '<em>$1</em>');
+    // Helper to apply inline markdown formatting (bold/italic)
+    const applyInlineMd = (s: string) =>
+      s
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.*?)__/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/_(.*?)_/g, '<em>$1</em>');
 
-        bulletItems.push(
-          `<div class="custom-bullet-item"><span class="bullet-symbol">*</span><span class="bullet-content">${formattedContent}</span></div>`
-        );
+    const processed: string[] = [];
+    let bulletBuffer: string[] = [];
+
+    const flushBullets = () => {
+      if (bulletBuffer.length === 0) return;
+      processed.push(
+        `<div class="custom-bullet-list">${bulletBuffer
+          .map(
+            (b) =>
+              `<div class="custom-bullet-item"><span class="bullet-symbol">*</span><span class="bullet-content">${applyInlineMd(
+                b
+              )}</span></div>`
+          )
+          .join('')}</div>`
+      );
+      bulletBuffer = [];
+    };
+
+    // Split into lines first
+    const rawLines = normalized.split('\n');
+
+    rawLines.forEach((rawLine) => {
+      const line = rawLine.trim();
+      if (!line) {
+        flushBullets();
+        return; // skip empty
+      }
+
+      const bulletLine = /^[-*•]\s+/.test(line);
+
+      if (bulletLine) {
+        // Remove initial bullet marker
+        const content = line.replace(/^[-*•]\s+/, '').trim();
+
+        // Handle inline extra bullets joined by " - " (model sometimes collapses them)
+        // Split on ' - ' only when it appears to start a new sentence (followed by capital letter) to reduce false positives
+        let parts = [content];
+        if (/\s-\s+/.test(content)) {
+          const splitParts = content
+            .split(/\s-\s+(?=[A-Z0-9])/)
+            .map((p) => p.trim());
+          if (splitParts.length > 1 && splitParts.every((p) => p.length > 3)) {
+            parts = splitParts;
+          }
+        }
+        parts.forEach((p) => bulletBuffer.push(p));
       } else {
-        if (bulletItems.length > 0) {
-          processedLines.push(
-            `<div class="custom-bullet-list">${bulletItems.join('')}</div>`
-          );
-          bulletItems = [];
+        // If the line isn't marked as a bullet but contains multiple inline hyphen bullets starting with '* ' pattern earlier
+        // Attempt detection for asterisk-start style collapsed into one line (edge case)
+        if (/^\*/.test(line) && line.includes(' - ')) {
+          // Remove initial '*'
+          const afterStar = line.replace(/^\*\s*/, '').trim();
+          const candidateParts = afterStar
+            .split(/\s-\s+(?=[A-Z0-9])/)
+            .map((p) => p.trim());
+          if (candidateParts.length > 1) {
+            bulletBuffer.push(candidateParts[0]);
+            candidateParts.slice(1).forEach((p) => bulletBuffer.push(p));
+            return; // treat whole line as bullet list
+          }
         }
-        if (trimmed) {
-          const formattedParagraph = trimmed
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/__(.*?)__/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/_(.*?)_/g, '<em>$1</em>');
-          processedLines.push(`<p>${formattedParagraph}</p>`);
-        }
+
+        // Not a bullet line
+        flushBullets();
+        processed.push(`<p>${applyInlineMd(line)}</p>`);
       }
     });
 
-    if (bulletItems.length > 0) {
-      processedLines.push(
-        `<div class="custom-bullet-list">${bulletItems.join('')}</div>`
-      );
-    }
+    flushBullets();
 
-    return processedLines.join('');
+    return processed.join('');
   };
 
   const questionsAndAnswers = formatQuestionsAndAnswers();
@@ -135,7 +170,12 @@ export default function ResultsPage() {
     resetDiagnosis,
     cancelDiagnosis,
     isReady,
-  } = useDiagnosisFlow({ images, questionsAndAnswers });
+  } = useDiagnosisFlow({
+    images,
+    questionsAndAnswers,
+    rankedDiagnoses,
+    userComment: additionalComments,
+  });
 
   // Signatures to detect rerun conditions
   const imagesSignature = useMemo(
@@ -438,7 +478,7 @@ export default function ResultsPage() {
 
               {error && (
                 <div className="error-message">
-                  <TypingText text={`> Error: ${error}`} speed={80} />
+                  <TypingText text={`> Error: ${error}`} speed={100} />
                   <div className="error-actions" style={{ marginTop: '10px' }}>
                     <button
                       className="retry-button"
@@ -450,7 +490,6 @@ export default function ResultsPage() {
                         border: 'none',
                         padding: '8px 16px',
                         cursor: isDiagnosing ? 'not-allowed' : 'pointer',
-                        fontFamily: 'monospace',
                         fontSize: '14px',
                         opacity: isDiagnosing ? 0.6 : 1,
                       }}
@@ -471,7 +510,7 @@ export default function ResultsPage() {
                       <div className="result-section report-block">
                         <TypingText
                           text={`Plant name: ${currentDiagnosisResult.plant}`}
-                          speed={60}
+                          speed={100}
                           onceKey={`${typingKeyPrefix}|plant`}
                           onComplete={() => setPlantTitleDone(true)}
                         />

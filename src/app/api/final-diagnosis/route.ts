@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const { images, questionsAndAnswers, rankedDiagnoses } =
+    const { images, questionsAndAnswers, userComment, rankedDiagnoses } =
       await processFormData(formData);
 
     validateImages(images);
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
 
     const MAIN_DIAGNOSIS_PROMPT = createFinalDiagnosisPrompt(
       questionsAndAnswers || '',
+      userComment || '',
       rankedDiagnoses || ''
     );
     // Print prompt exactly once (gated by PB_DEBUG_VERBOSE)
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     console.log(
       `[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`
     );
-    const genPromise = models.modelHigh.generateContent({
+    const genPromise = models.modelMedium.generateContent({
       contents: [
         {
           role: 'user',
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
     // Print full response exactly once (gated)
     printResponse(`[FINAL-DIAGNOSIS:${requestId}]`, response);
     const usage = result.response?.usageMetadata || {};
-    recordUsageForRequest(request, 'modelHigh', usage);
+    recordUsageForRequest(request, 'modelMedium', usage);
     console.log(
       `[FINAL-DIAGNOSIS:${requestId}] AI response received | candidates: ${response.candidates?.length || 0}`
     );
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       diagnosisResult,
-      usage: { modelKey: 'modelHigh', usage },
+      usage: { modelKey: 'modelMedium', usage },
     });
   } catch (error) {
     console.error(`[FINAL-DIAGNOSIS:${requestId}] ERROR`, error);

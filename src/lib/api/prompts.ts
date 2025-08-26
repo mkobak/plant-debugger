@@ -15,27 +15,38 @@ If no plant is detected, reply with 'No plant detected'.
 If only a part of a plant is visible, e.g., just the stem, make a best guess and reply with the plant name.
 `;
 
-export const QUESTIONS_GENERATION_PROMPT = `
-You are an expert botanist. The user has given you image(s) of a sick plant for diagnosis. 
-You have the chance to ask the user some clarifying yes/no questions that could help you narrow down your diagnosis and differentiate between different diagnoses that might have similar visual symptoms. 
-Study the images closely and think deeply about what questions would be the most helpful to provide the most accurate diagnosis.
-Ask specifically about aspects which are not easily inferred from the images. Use your expertise to come up with 2 - 5 yes/no questions. 
-Make sure each question is unique and succinct and can be answered with a simple 'yes' or 'no'.
-For example, if you suspect the issue could be overwatering leading to root rot, ask about the watering habits, the type of soil in which the plant is, current state of the soil etc.
-Consider also asking about watering frequency and amount, i.e., watering often but with little amount could lead to underwatering and root death as some roots are never getting saturated.
-If you are asking about exposure to direct sunlight, make sure to differentiate between morning sun and harsh afternoon sun, and the length of exposure.
-You are talking to a programmer so use programming terms where appropriate.
+// Generates clarifying yes/no questions after an initial ranked list of diagnoses exists.
+export const createQuestionsGenerationPrompt = (
+  rankedDiagnoses: string,
+  userComment: string
+): string => `
+You are an expert botanist. The user has provided image(s) of a sick plant and a preliminary ranked list of possible diagnoses already exists.
+Ranked diagnoses (most likely first): ${rankedDiagnoses || 'None'}.
+User comment: ${userComment || 'None provided'}.
+
+Your task now is to ask 2 - 5 highly discriminative yes/no questions that would best differentiate between these candidate diagnoses or validate / falsify the leading possibilities.
+Focus only on information that cannot be confidently inferred from the images (e.g., recent watering frequency and volume, soil composition/drainage, fertilization patterns, light exposure timing and intensity, airflow, pest sightings, recent repotting, temperature swings).
+Rules:
+ - Each question must be answerable with a simple Yes or No.
+ - Avoid multi-part questions; keep each question focused on a single aspect.
+ - An average person who is not an expert in plant care should be able to answer the questions.
+ - Avoid redundant or overlapping questions; each should target a distinct axis of differentiation.
+ - If the ranked list is empty, fall back to broad high-yield questions (watering pattern, drainage, light exposure, recent changes, pests presence).
+You may optionally include mild programming metaphors inside the question wording where natural, but keep them subtle.
+
 Return ONLY a JSON object matching the questions schema (keys Q1..Q5). Do not include commentary outside JSON.
 `;
 
-export const createInitialDiagnosisPrompt = (
-  questionsAndAnswers: string
-): string => `
-You are an expert botanist. Based on the image(s), what are the most likely possible diagnoses for the plant's issue? Provide up to three diagnoses if multiple options seem likely.
-Only reply with the concrete diagnosis names, separated by commas, and nothing else. Inspect the images very closely for any signs of early issues, such as pest activity. 
-If you can't find any issues with the plant, respond with 'No bugs identified'. If no plant appears in the images, respond with 'No plant detected'.
-base your diagnosis primarily on the image(s), but take into consideration also the user provided questions and answers below. However, never base your diagnoses solely on the Q&A, always base it primarily on the image(s), in case the answers are in contradiction. 
-Q&A: ${questionsAndAnswers}
+export const createInitialDiagnosisPrompt = (userComment: string): string => `
+You are an expert botanist. Based strictly on the provided image(s) (primary source) and optionally the user's brief comment (secondary source), list up to three distinct, most likely diagnoses explaining the plant's issue.
+User comment: ${userComment || 'None provided'}
+
+Instructions:
+ - Output ONLY the diagnosis names, comma-separated (no numbering, no extra text).
+ - Prefer concise canonical condition names (e.g., "Spider mites", "Root rot", "Sun scorch", "Nitrogen deficiency").
+ - If the plant appears healthy: respond exactly with 'No bugs identified'.
+ - If no plant is clearly visible: respond exactly with 'No plant detected'.
+ - Inspect the images very closely for any signs of early issues, such as pest activity.
 `;
 
 export const createAggregationPrompt = (diagnosisResults: string[]): string => `
@@ -52,6 +63,7 @@ Example output: "Root rot, Spider mites, Nitrogen deficiency"
 
 export const createFinalDiagnosisPrompt = (
   questionsAndAnswers: string,
+  userComment: string,
   rankedDiagnoses: string
 ): string => `
 You are an expert botanist and plant pathologist specializing in diagnosing plant issues from images.
@@ -64,15 +76,26 @@ Don't make it too obvious, but make subtle references that a programmer would un
 Avoid using quotation marks and starting sentences with 'think of it as' or 'this/it is like'.
 
 The user has provided image(s) of their plant, which you treat as the primary source of information.
-Take also into consideration the user provided questions and answers below, but never base your diagnosis solely on the answers, especially when the answers are in contradiction. 
+Take also into consideration the user provided questions and answers below, but never base your diagnosis solely on the answers, especially when the answers are in contradiction to the images. 
 Q&A: ${questionsAndAnswers}
+User comment: ${userComment || 'None provided'}
 
 Inspect the image(s) very closely for any signs of early issues such as pest activity. 
 
 The following diagnoses were ranked by frequency by other plant experts: ${rankedDiagnoses}.
-Consider this ranked list in your answer, but rely mainly on your own judgment. Do not mention the other experts in your response.
+Use this information to inform your final diagnosis. Do not mention the other experts in your response.
+\nSTRICT MARKDOWN FORMATTING RULES FOR BULLET POINT FIELDS:
+ - Each bullet MUST start on its own line beginning with a single hyphen and one space: "- Like this".
+ - Never use asterisks * for bullets.
+ - Never put multiple bullets on the same line. One bullet per line only.
+ - Do not number the bullets.
+ - Do not wrap bullet text in backticks unless referring to literal code identifiers.
+ - Keep each bullet concise (single sentence when possible).
+ - Do not include surrounding blank lines inside the field value.
 
-Return ONLY a JSON object matching the final diagnosis schema. Include programming humor in the response. Do not include commentary outside JSON. If including a secondary diagnosis, make sure to include all sections.
+If a field requires sentences (reasoning) limit to the maximum specified sentences, no bullets unless requested.
+
+Return ONLY a JSON object matching the final diagnosis schema. Do not include commentary outside JSON. If including a secondary diagnosis, include all its required sections. Preserve newline characters inside field strings where you separate bullet points so that each bullet point appears on its own line.
 `;
 
 export const NO_PLANT_PROMPT = `

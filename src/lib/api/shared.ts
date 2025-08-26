@@ -55,6 +55,7 @@ export interface ProcessedFormData {
   images: File[];
   questionsAndAnswers?: string;
   rankedDiagnoses?: string;
+  userComment?: string;
 }
 
 export async function processFormData(
@@ -63,6 +64,7 @@ export async function processFormData(
   const images: File[] = [];
   let questionsAndAnswers = '';
   let rankedDiagnoses = '';
+  let userComment = '';
 
   const formDataEntries = Array.from(formData.entries());
   let totalImageBytes = 0;
@@ -74,6 +76,8 @@ export async function processFormData(
       questionsAndAnswers = value.toString();
     } else if (key === 'rankedDiagnoses') {
       rankedDiagnoses = value.toString();
+    } else if (key === 'userComment') {
+      userComment = value.toString();
     }
   }
   // Log concise summary for debugging
@@ -84,9 +88,11 @@ export async function processFormData(
     '| Q&A len:',
     questionsAndAnswers?.length || 0,
     '| ranked len:',
-    rankedDiagnoses?.length || 0
+    rankedDiagnoses?.length || 0,
+    '| comment len:',
+    userComment?.length || 0
   );
-  return { images, questionsAndAnswers, rankedDiagnoses };
+  return { images, questionsAndAnswers, rankedDiagnoses, userComment };
 }
 
 export async function convertImagesToBase64(

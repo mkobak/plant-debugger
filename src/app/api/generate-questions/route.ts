@@ -6,7 +6,7 @@ import {
   convertImagesToBase64,
   validateImages,
 } from '@/lib/api/shared';
-import { QUESTIONS_GENERATION_PROMPT } from '@/lib/api/prompts';
+import { createQuestionsGenerationPrompt } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
 import { printPrompt, printResponse } from '@/lib/api/logging';
 
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const { images } = await processFormData(formData);
+    const { images, rankedDiagnoses, userComment } =
+      await processFormData(formData);
 
     validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
@@ -52,6 +53,10 @@ export async function POST(request: NextRequest) {
     );
 
     // Print prompt exactly once (gated)
+    const QUESTIONS_GENERATION_PROMPT = createQuestionsGenerationPrompt(
+      rankedDiagnoses || '',
+      userComment || ''
+    );
     printPrompt(
       `[GENERATE-QUESTIONS:${requestId}]`,
       QUESTIONS_GENERATION_PROMPT

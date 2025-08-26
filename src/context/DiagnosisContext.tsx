@@ -51,6 +51,10 @@ interface DiagnosisContextType {
   // Diagnosis result and related state
   diagnosisResult: DiagnosisResult | null;
   setDiagnosisResult: (result: DiagnosisResult | null) => void;
+  rawInitialDiagnoses?: string[];
+  setRawInitialDiagnoses: (d: string[] | undefined) => void;
+  rankedDiagnoses?: string;
+  setRankedDiagnoses: (r: string | undefined) => void;
   lastDiagnosisSignature: string | null;
   setLastDiagnosisSignature: (sig: string | null) => void;
   lastQAImagesSignature: string | null;
@@ -98,6 +102,12 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   // Diagnosis result and related state
   const [diagnosisResult, setDiagnosisResult] =
     useState<DiagnosisResult | null>(null);
+  const [rawInitialDiagnoses, setRawInitialDiagnoses] = useState<
+    string[] | undefined
+  >(undefined);
+  const [rankedDiagnoses, setRankedDiagnoses] = useState<string | undefined>(
+    undefined
+  );
   const [lastDiagnosisSignature, setLastDiagnosisSignature] = useState<
     string | null
   >(null);
@@ -125,6 +135,8 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
         setAdditionalComments('');
         setNoPlantMessage('');
         setDiagnosisResult(null);
+        setRawInitialDiagnoses(undefined);
+        setRankedDiagnoses(undefined);
         setLastDiagnosisSignature(null);
         setLastQAImagesSignature(null);
         setQaProcessingSignature(null);
@@ -179,6 +191,8 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   useEffect(() => {
     if (diagnosisResult || lastDiagnosisSignature) {
       setDiagnosisResult(null);
+      setRawInitialDiagnoses(undefined);
+      setRankedDiagnoses(undefined);
       setLastDiagnosisSignature(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -192,6 +206,8 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setAdditionalComments('');
     setNoPlantMessage('');
     setDiagnosisResult(null);
+    setRawInitialDiagnoses(undefined);
+    setRankedDiagnoses(undefined);
     setLastDiagnosisSignature(null);
     setLastQAImagesSignature(null);
     setQaProcessingSignature(null);
@@ -227,6 +243,8 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
       setAdditionalComments(loaded.additionalComments || '');
       setNoPlantMessage(loaded.noPlantMessage || '');
       setDiagnosisResult(loaded.diagnosisResult || null);
+      setRawInitialDiagnoses(undefined); // not persisted yet
+      setRankedDiagnoses(undefined);
       setLastDiagnosisSignature(loaded.lastDiagnosisSignature || null);
       setLastQAImagesSignature(loaded.lastQAImagesSignature || null);
       hasLoadedRef.current = true;
@@ -289,6 +307,10 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setNoPlantMessage,
     diagnosisResult,
     setDiagnosisResult,
+    rawInitialDiagnoses,
+    setRawInitialDiagnoses,
+    rankedDiagnoses,
+    setRankedDiagnoses,
     lastDiagnosisSignature,
     setLastDiagnosisSignature,
     lastQAImagesSignature,

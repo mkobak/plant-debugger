@@ -5,7 +5,7 @@
   background: var(--grey-5);
   border: 1px solid var(--green);
   color: var(--green);
-  font-family: var(--font-family);
+  font-family: inherit;
   font-size: var(--font-size-md);
   padding: var(--spacing-xs) var(--spacing-lg);
   cursor: pointer;
@@ -77,7 +77,7 @@
 .action-button {
   background: var(--grey-5);
   border: 1px solid var(--green);
-  font-family: var(--font-family);
+  font-family: inherit;
   font-size: var(--font-size-lg);
   padding: var(--spacing-xs) var(--spacing-lg);
   cursor: pointer;
@@ -284,13 +284,13 @@
   vertical-align: middle;
   line-height: 1;
   position: relative;
-  top: -2px;
+  top: -3px;
   margin-left: 0.5ch;
 }
 
 .typing-text > .terminal-spinner {
   margin-left: 0.75ch;
-  top: -2px;
+  top: -3px;
 }
 
 .terminal-spinner--sm {
@@ -310,8 +310,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, 80px);
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
-  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-2xl);
+  margin-top: var(--spacing-lg);
   max-width: 300px;
 }
 
@@ -432,7 +432,7 @@
   justify-content: center;
   flex-direction: column;
   z-index: 10000; /* above everything */
-  font-family: var(--font-family);
+  font-family: inherit;
   color: var(--white);
   backdrop-filter: blur(4px);
 }

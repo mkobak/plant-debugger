@@ -119,7 +119,7 @@
   border: 1px solid var(--grey-2);
   color: var(--grey-1);
   padding: var(--spacing-md) var(--spacing-xl);
-  font-family: var(--font-family-mono);
+  font-family: inherit;
   font-size: var(--font-size-md);
   cursor: pointer;
   transition: var(--transition-normal);

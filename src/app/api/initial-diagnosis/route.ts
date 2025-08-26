@@ -49,11 +49,11 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const { images, questionsAndAnswers } = await processFormData(formData);
+    const { images, userComment } = await processFormData(formData);
 
     validateImages(images);
     console.log(
-      `[INITIAL-DIAGNOSIS:${requestId}] client: ${clientId} | images: ${images.length} | Q&A len: ${questionsAndAnswers?.length || 0}`
+      `[INITIAL-DIAGNOSIS:${requestId}] client: ${clientId} | images: ${images.length} | comment len: ${userComment?.length || 0}`
     );
 
     // Additional protection: if there are multiple rapid requests, add a delay
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     );
 
     const INITIAL_DIAGNOSIS_PROMPT = createInitialDiagnosisPrompt(
-      questionsAndAnswers || ''
+      userComment || ''
     );
     // Print prompt exactly once (gated)
     printPrompt(`[INITIAL-DIAGNOSIS:${requestId}]`, INITIAL_DIAGNOSIS_PROMPT);
@@ -87,38 +87,59 @@ export async function POST(request: NextRequest) {
 
     // Run 3 parallel diagnosis calls for consensus with slight sampling variation
     console.log(
-      `[INITIAL-DIAGNOSIS:${requestId}] Starting 3 parallel diagnosis calls...`
+      `[INITIAL-DIAGNOSIS:${requestId}] Starting 1x pro + 2x flash diagnosis calls...`
     );
-    const temperatures = [0.4, 0.5, 0.6];
-    const topPs = [0.6, 0.8, 1];
-    const diagnosisPromises = Array.from({ length: 3 }, async (_, index) => {
-      if (signal?.aborted) {
-        console.warn(
-          `[INITIAL-DIAGNOSIS] Abort detected before call ${index + 1}, skipping`
-        );
-        return Promise.reject(new Error('aborted'));
-      }
+    const callConfigs: {
+      model: 'modelHigh' | 'modelMedium';
+      temperature: number;
+      topP: number;
+      variant: string;
+      maxOutputTokens?: number;
+    }[] = [
+      // Start with no explicit cap for pro; escalate if empty
+      { model: 'modelHigh', temperature: 0.25, topP: 0.5, variant: 'pro' },
+      { model: 'modelMedium', temperature: 0.45, topP: 0.7, variant: 'flashA' },
+      {
+        model: 'modelMedium',
+        temperature: 0.55,
+        topP: 0.85,
+        variant: 'flashB',
+      },
+    ];
+    const runSingleDiagnosis = async (
+      cfg: (typeof callConfigs)[number],
+      index: number,
+      attempt: number,
+      opts?: { overrideMaxTokens?: number }
+    ): Promise<{
+      text: string;
+      usage: any;
+      modelKey: 'modelHigh' | 'modelMedium';
+      meta: Record<string, any>;
+    }> => {
+      if (signal?.aborted) throw new Error('aborted');
+      const attemptTag = `attempt=${attempt}`;
       console.log(
-        `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 | temp=${temperatures[index]} topP=${topPs[index]}`
+        `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 ${attemptTag} | model=${cfg.model} temp=${cfg.temperature} topP=${cfg.topP}`
       );
-      const genPromise = models.modelLow.generateContent({
+      const effectiveMax = opts?.overrideMaxTokens ?? cfg.maxOutputTokens;
+      const genPromise = (models as any)[cfg.model].generateContent({
         contents: [
           {
             role: 'user',
             parts: [
               { text: INITIAL_DIAGNOSIS_PROMPT },
-              // Add a tiny expert variant token to encourage diverse sampling
-              { text: `\n\n[expert_variant:${index + 1}]` },
+              { text: `\n\n[variant:${cfg.variant}]` },
               ...imageParts,
             ],
           },
         ],
         generationConfig: {
-          temperature: temperatures[index],
-          topP: topPs[index],
+          temperature: cfg.temperature,
+          topP: cfg.topP,
+          ...(effectiveMax ? { maxOutputTokens: effectiveMax } : {}),
         },
       });
-      // Race the generation against abort
       const result = await new Promise<
         typeof genPromise extends Promise<infer R> ? R : never
       >((resolve, reject) => {
@@ -126,25 +147,96 @@ export async function POST(request: NextRequest) {
         const onAbort = () => reject(new Error('aborted'));
         signal?.addEventListener?.('abort', onAbort, { once: true });
         genPromise
-          .then((r) => {
+          .then((r: any) => {
             signal?.removeEventListener?.('abort', onAbort);
             resolve(r);
           })
-          .catch((err) => {
+          .catch((err: any) => {
             signal?.removeEventListener?.('abort', onAbort);
             reject(err);
           });
       });
-      const response = result.response.text().trim();
-      const usage = result.response?.usageMetadata || {};
-      recordUsageForRequest(request, 'modelLow', usage);
+      const respObj = (result as any).response;
+      const text = respObj?.text?.() ?? '';
+      // capture metadata for debugging empties/safety
+      const usage = respObj?.usageMetadata || {};
+      const finishReason = respObj?.candidates?.[0]?.finishReason;
+      const blockReason = respObj?.promptFeedback?.blockReason;
+      const safetyRatings = respObj?.candidates?.[0]?.safetyRatings;
+      recordUsageForRequest(request, cfg.model, usage);
       console.log(
-        `[INITIAL-DIAGNOSIS] Diagnosis call ${index + 1}/3 completed`
+        `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 ${attemptTag} meta | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.trim().length}`
       );
-      return { text: response, usage };
-    });
+      if (blockReason) {
+        console.warn(
+          `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 blocked: ${blockReason} safetyRatings=${JSON.stringify(
+            safetyRatings || []
+          )}`
+        );
+      }
+      return {
+        text: text.trim(),
+        usage,
+        modelKey: cfg.model,
+        meta: { finishReason, blockReason },
+      };
+    };
 
-    let diagnosisResults: { text: string; usage: any }[];
+    const robustDiagnosis = async (
+      cfg: (typeof callConfigs)[number],
+      index: number
+    ) => {
+      if (cfg.model === 'modelHigh') {
+        // First attempt (no explicit max tokens to allow thinking)
+        const first = await runSingleDiagnosis(cfg, index, 1);
+        if (first.text.length > 0 || first.meta.blockReason) return first;
+        console.warn(
+          `[INITIAL-DIAGNOSIS:${requestId}] modelHigh empty (finish=${first.meta.finishReason}); retrying once with expanded tokens...`
+        );
+        const second = await runSingleDiagnosis(cfg, index, 2, {
+          overrideMaxTokens: 1536,
+        });
+        if (second.text.length > 0 || second.meta.blockReason) return second;
+        console.warn(
+          `[INITIAL-DIAGNOSIS:${requestId}] modelHigh still empty; falling back to modelMedium.`
+        );
+        const fallbackCfg: (typeof callConfigs)[number] = {
+          model: 'modelMedium',
+          temperature: 0.35,
+          topP: 0.7,
+          variant: 'highFallback',
+          maxOutputTokens: 768,
+        };
+        const fallback = await runSingleDiagnosis(fallbackCfg, index, 1, {
+          overrideMaxTokens: 768,
+        });
+        return fallback;
+      } else {
+        // modelMedium strategy: one retry if empty and not blocked
+        const first = await runSingleDiagnosis(cfg, index, 1);
+        if (first.text.length > 0 || first.meta.blockReason) return first;
+        if (
+          first.meta.finishReason === 'MAX_TOKENS' ||
+          first.meta.finishReason === 'STOP' ||
+          first.meta.finishReason === undefined
+        ) {
+          console.warn(
+            `[INITIAL-DIAGNOSIS:${requestId}] ${cfg.model} empty; retrying with expanded tokens...`
+          );
+          const second = await runSingleDiagnosis(cfg, index, 2, {
+            overrideMaxTokens: 1024,
+          });
+          return second;
+        }
+        return first;
+      }
+    };
+
+    const diagnosisPromises = callConfigs.map((cfg, i) =>
+      robustDiagnosis(cfg, i)
+    );
+
+    let diagnosisResults: { text: string; usage: any; modelKey?: string }[];
     try {
       diagnosisResults = await Promise.all(diagnosisPromises);
     } catch (e) {
@@ -159,7 +251,95 @@ export async function POST(request: NextRequest) {
       }
       throw e;
     }
-    // Print the 3 individual responses in full exactly once
+    // If the high model returned empty while flashes have content, fall back by cloning a flash variant
+    const highIndex = diagnosisResults.findIndex(
+      (r) => (r as any).modelKey === 'modelHigh'
+    );
+    if (
+      highIndex >= 0 &&
+      diagnosisResults[highIndex].text.length === 0 &&
+      diagnosisResults.some(
+        (r, i) => i !== highIndex && r.text && r.text.length > 0
+      )
+    ) {
+      console.warn(
+        `[INITIAL-DIAGNOSIS:${requestId}] modelHigh empty; performing flash fallback variant...`
+      );
+      try {
+        const fallbackCfg: (typeof callConfigs)[number] = {
+          model: 'modelMedium',
+          temperature: 0.35,
+          topP: 0.65,
+          variant: 'flashFallback',
+          maxOutputTokens: 384,
+        };
+        const fallbackResult = await robustDiagnosis(fallbackCfg, 3);
+        diagnosisResults[highIndex] = {
+          text: fallbackResult.text,
+          usage: fallbackResult.usage,
+          modelKey: fallbackResult.modelKey,
+        };
+        console.log(
+          `[INITIAL-DIAGNOSIS:${requestId}] flash fallback completed length=${fallbackResult.text.length}`
+        );
+      } catch (err) {
+        console.warn(
+          `[INITIAL-DIAGNOSIS:${requestId}] flash fallback failed: ${(err as Error)?.message}`
+        );
+      }
+    }
+    // Emergency fallback if still all empty
+    if (diagnosisResults.every((r) => !r.text)) {
+      console.warn(
+        `[INITIAL-DIAGNOSIS:${requestId}] All diagnosis attempts empty after retries; invoking emergency fallback.`
+      );
+      for (let i = 0; i < diagnosisResults.length; i++) {
+        try {
+          const fallbackGen = (models as any).modelMedium.generateContent({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: INITIAL_DIAGNOSIS_PROMPT },
+                  { text: `\n\n[fallback:${i}]` },
+                  ...imageParts,
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.35,
+              topP: 0.7,
+              maxOutputTokens: 512,
+            },
+          });
+          const fallbackRes: any = await fallbackGen;
+          const txt = fallbackRes?.response?.text?.() || '';
+          if (txt.trim()) {
+            const usage = fallbackRes.response?.usageMetadata || {};
+            recordUsageForRequest(request, 'modelMedium', usage);
+            diagnosisResults[i].text = txt.trim();
+            console.log(
+              `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback produced length=${txt.trim().length}`
+            );
+          }
+        } catch (err) {
+          console.warn(
+            `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback attempt failed: ${(err as Error)?.message}`
+          );
+        }
+      }
+      // If STILL empty, insert a placeholder so UI isn't broken
+      if (diagnosisResults.every((r) => !r.text)) {
+        console.warn(
+          `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback also empty; inserting placeholder.`
+        );
+        diagnosisResults = diagnosisResults.map((r) => ({
+          ...r,
+          text: 'No responses returned',
+        }));
+      }
+    }
+
     diagnosisResults.forEach((d, i) => {
       console.log(`[INITIAL-DIAGNOSIS:${requestId}] RESPONSE ${i + 1}/3 FULL:`);
       console.log(d.text);
@@ -229,8 +409,8 @@ export async function POST(request: NextRequest) {
       rawDiagnoses: diagnosisResults.map((d) => d.text),
       rankedDiagnoses,
       usage: [
-        ...diagnosisResults.map((d) => ({
-          modelKey: 'modelLow',
+        ...diagnosisResults.map((d: any) => ({
+          modelKey: d.modelKey as 'modelHigh' | 'modelMedium',
           usage: d.usage,
         })),
         { modelKey: 'modelLow', usage: aggregationUsage },

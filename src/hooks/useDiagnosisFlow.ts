@@ -5,11 +5,15 @@ import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
 interface UseDiagnosisFlowProps {
   images: PlantImage[];
   questionsAndAnswers: string;
+  rankedDiagnoses?: string; // if provided, skip initial diagnosis API
+  userComment?: string; // propagate standalone user comment to final diagnosis
 }
 
 export function useDiagnosisFlow({
   images,
   questionsAndAnswers,
+  rankedDiagnoses,
+  userComment,
 }: UseDiagnosisFlowProps) {
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [initialDiagnosisComplete, setInitialDiagnosisComplete] =
@@ -80,21 +84,21 @@ export function useDiagnosisFlow({
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
 
-      // Step 1: Get initial diagnosis from multiple experts
-      console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
-      const initialResult = await getInitialDiagnosis(
-        images,
-        questionsAndAnswers,
-        signal
-      );
+      let ranked = rankedDiagnoses;
+      if (!rankedDiagnoses) {
+        console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
+        const initialResult = await getInitialDiagnosis(images, '', signal);
+        console.log(
+          'useDiagnosisFlow: Initial diagnosis complete:',
+          initialResult
+        );
+        ranked = initialResult.rankedDiagnoses;
+        setInitialDiagnosisComplete(true);
+      } else {
+        setInitialDiagnosisComplete(true); // already done earlier
+      }
 
-      console.log(
-        'useDiagnosisFlow: Initial diagnosis complete:',
-        initialResult
-      );
-      setInitialDiagnosisComplete(true);
-
-      // Step 2: Try final diagnosis; if it fails, retry only the final step.
+      // Try final diagnosis; if it fails, retry only the final step.
       const runFinal = async () => {
         try {
           if (canceledRef.current) {
@@ -106,7 +110,8 @@ export function useDiagnosisFlow({
           const finalResult = await getFinalDiagnosis(
             images,
             questionsAndAnswers,
-            initialResult.rankedDiagnoses,
+            ranked || '',
+            userComment || '',
             abortRef.current?.signal
           );
 
@@ -184,7 +189,7 @@ export function useDiagnosisFlow({
       diagnosisStartedRef.current = false;
       retryCountRef.current = 0;
     }
-  }, [images, questionsAndAnswers, isDiagnosing]);
+  }, [images, questionsAndAnswers, rankedDiagnoses, userComment, isDiagnosing]);
 
   const cancelDiagnosis = useCallback(() => {
     console.log('useDiagnosisFlow: cancelDiagnosis called');

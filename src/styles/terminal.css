@@ -103,7 +103,7 @@
 }
 
 .nav-step {
-  font-family: var(--font-family);
+  font-family: inherit;
   font-size: var(--font-size-xl);
   transition: var(--transition-normal);
 }
@@ -179,7 +179,6 @@
 /* Logo underline using precise character calculation */
 .logo-underline {
   position: relative;
-  margin-bottom: var(--spacing-xs);
   margin-top: var(--spacing-xs);
   width: 100%;
   height: 0.9rem;
@@ -187,7 +186,7 @@
   overflow: hidden;
   /* Hide overflow characters */
   line-height: 0.9rem;
-  font-family: monospace;
+  font-family: 'Source Code Pro', monospace;
   font-size: 0.9rem;
   color: var(--grey-2);
   pointer-events: none;
@@ -205,7 +204,7 @@
 /* Navigation section styling */
 .navigation-section {
   width: 100%;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
 }
 
 .navigation-steps {
@@ -321,7 +320,7 @@
 .questions-loading-screen.compact .terminal-spinner,
 .loading-screen.compact .terminal-spinner {
   position: relative;
-  top: -2px;
+  top: -3px;
   vertical-align: middle;
   margin-left: 0.75ch;
 }
@@ -341,7 +340,7 @@
 
 /* Shell prompt */
 .pd-prompt {
-  font-family: var(--font-family);
+  font-family: inherit;
   font-size: var(--font-size-lg);
   white-space: nowrap;
 }
@@ -379,11 +378,11 @@
 
 /* Status bar style navigation */
 .terminal-status-bar {
-  margin-top: var(--spacing-xs);
+  margin-top: 0px;
 }
 
 .terminal-status-line {
-  font-family: var(--font-family);
+  font-family: inherit;
   font-size: var(--font-size-lg);
   color: var(--grey-2);
   display: flex;
