@@ -181,7 +181,8 @@
 
 .additional-comments-section {
   color: var(--grey-0);
-  margin-top: var(--spacing-2xl);
+  margin: var(--spacing-xl) auto 0 auto;
+  max-width: 600px;
 }
 
 .comments-container {

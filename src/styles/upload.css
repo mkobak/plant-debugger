@@ -111,7 +111,7 @@
   display: none; /* Hidden by default, shown on mobile */
   flex-direction: column;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-sm);
 }
 
 .image-upload__camera-button {
@@ -236,4 +236,27 @@
   border: none !important;
   box-shadow: none !important; /* Ensure no green border glow on hover */
   outline: none !important;
+}
+
+/* Sample Image Hint */
+.sample-image-hint {
+  margin-top: var(--spacing-2xl);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-md);
+  color: var(--grey-1);
+}
+
+.sample-image-link {
+  background: none;
+  border: none;
+  color: var(--grey-1);
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.sample-image-link:hover {
+  color: var(--white);
 }

@@ -387,7 +387,6 @@ export default function QuestionsPage() {
             <div className="prompt-line">
               <Prompt path="~/analysis" />
             </div>
-            <br />
           </>
         )}
 

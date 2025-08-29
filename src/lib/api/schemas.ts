@@ -28,17 +28,17 @@ export const finalDiagnosisSchema = {
     primaryTreatmentPlan: {
       type: 'string',
       description:
-        'Brief step-by-step guide for the user to resolve the issue in case of the primary diagnosis, in Markdown. Maximum 3 bullet points.',
+        "Brief step-by-step guide for the user to resolve the issue in case of the primary diagnosis, in Markdown. STRICT FORMAT: 2-3 bullet points, each on its own line starting with '- '.",
     },
     primaryPreventionTips: {
       type: 'string',
       description:
-        'Brief actionable advice to prevent recurrence in case of the primary diagnosis, in Markdown. Maximum 3 bullet points.',
+        "Brief actionable advice to prevent recurrence in case of the primary diagnosis, in Markdown. STRICT FORMAT: 2-3 bullet points, each on its own line starting with '- '.",
     },
     primarySummary: {
       type: 'string',
       description:
-        'Summary of the reasoning, treatment plan, and prevention tips for the primary diagnosis, in Markdown. Maximum 3-4 bullet points. Include programming humor.',
+        "Summary of the reasoning, treatment plan, and prevention tips for the primary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor.",
     },
     secondaryDiagnosis: {
       type: 'string',
@@ -63,24 +63,24 @@ export const finalDiagnosisSchema = {
       type: 'string',
       nullable: true,
       description:
-        'Brief step-by-step guide for the user to resolve the issue in case of the secondary diagnosis, in Markdown. Maximum 3 bullet points.',
+        "Brief step-by-step guide for the user to resolve the issue in case of the secondary diagnosis, in Markdown. STRICT FORMAT: 2-3 bullet points, each on its own line starting with '- '.",
     },
     secondaryPreventionTips: {
       type: 'string',
       nullable: true,
       description:
-        'Brief actionable advice to prevent recurrence in case of the secondary diagnosis, in Markdown. Maximum 3 bullet points.',
+        "Brief actionable advice to prevent recurrence in case of the secondary diagnosis, in Markdown. STRICT FORMAT: 2-3 bullet points, each on its own line starting with '- '.",
     },
     secondarySummary: {
       type: 'string',
       nullable: true,
       description:
-        'Summary of the reasoning, treatment plan, and prevention tips for the secondary diagnosis, in Markdown. Maximum 3-4 bullet points. Include programming humor.',
+        "Summary of the reasoning, treatment plan, and prevention tips for the secondary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor.",
     },
     careTips: {
       type: 'string',
       description:
-        "Provide general care tips and best practices specific for the user's plant and the plant's situation as seen on the pictures, such as optimal light conditions, optimal soil type, watering schedule, fertilizer use, etc., in Markdown. Maximum 5-10 bullet points. Include programming humor.",
+        "Provide general care tips and best practices specific for the user's plant and the plant's situation as seen on the pictures (light, soil, watering, humidity, fertilizer, temperature, pruning/repotting) in Markdown. STRICT FORMAT: 5-8 bullet points ONLY, each on its own line starting with '- '. Start each bullet with a bolded category label like '- **Light:**'. Include programming humor.",
     },
   },
   required: [
