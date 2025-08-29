@@ -106,6 +106,15 @@ export default function ResultsPage() {
     // Split into lines first
     const rawLines = normalized.split('\n');
 
+    // Regex to split inline collapsed bullets where the model outputs: "- **Light:** ... - **Watering:** ..."
+    // Allows an optional markdown bold/underline wrapper before the capitalized word.
+    // Split points for inline collapsed bullets. Handles:
+    // 1. " - **Light:**" (space-hyphen-space)
+    // 2. ".- **Watering:**" (period directly before hyphen, model sometimes omits space)
+    // 3. Similar after ! or ?
+    const inlineBulletSplit =
+      /(?:\s-\s+|(?<=[.!?])-\s+)(?=(?:\*\*|__)?[A-Z0-9])/g;
+
     rawLines.forEach((rawLine) => {
       const line = rawLine.trim();
       if (!line) {
@@ -124,11 +133,16 @@ export default function ResultsPage() {
         let parts = [content];
         if (/\s-\s+/.test(content)) {
           const splitParts = content
-            .split(/\s-\s+(?=[A-Z0-9])/)
+            .split(inlineBulletSplit)
             .map((p) => p.trim());
           if (splitParts.length > 1 && splitParts.every((p) => p.length > 3)) {
             parts = splitParts;
           }
+        }
+        // Fallback: if still only one part but contains multiple bold sections prefixed by dashes, attempt second pass
+        if (parts.length === 1 && /\s-\s+(?:\*\*|__)?[A-Z]/.test(parts[0])) {
+          const second = parts[0].split(inlineBulletSplit).map((p) => p.trim());
+          if (second.length > 1) parts = second;
         }
         parts.forEach((p) => bulletBuffer.push(p));
       } else {
@@ -138,12 +152,37 @@ export default function ResultsPage() {
           // Remove initial '*'
           const afterStar = line.replace(/^\*\s*/, '').trim();
           const candidateParts = afterStar
-            .split(/\s-\s+(?=[A-Z0-9])/)
+            .split(inlineBulletSplit)
             .map((p) => p.trim());
           if (candidateParts.length > 1) {
             bulletBuffer.push(candidateParts[0]);
             candidateParts.slice(1).forEach((p) => bulletBuffer.push(p));
             return; // treat whole line as bullet list
+          }
+        }
+
+        // General fallback: detect lines with multiple inline dashes that look like bullets even if line doesn't start with a bullet marker.
+        // Example: "Summary: - **Cause:** ... - **Effect:** ... - **Fix:** ..."
+        if (line.includes(' - ')) {
+          const occurrences = line.match(/(?:^|\s)-\s+(?:\*\*|__)?[A-Z0-9]/g);
+          if (occurrences && occurrences.length >= 2) {
+            // Split prelude (text before first dash) from bullet portion
+            const firstDash = line.indexOf(' - ');
+            const prelude = line.slice(0, firstDash).trim();
+            const bulletsSegment = line.slice(firstDash).trim();
+            if (prelude) {
+              flushBullets(); // End any previous list before heading paragraph
+              processed.push(`<p>${applyInlineMd(prelude)}</p>`);
+            }
+            const listParts = bulletsSegment
+              .replace(/^-\s+/, '')
+              .split(inlineBulletSplit)
+              .map((p) => p.trim())
+              .filter(Boolean);
+            if (listParts.length > 1) {
+              listParts.forEach((p) => bulletBuffer.push(p));
+              return; // Defer flushing to allow subsequent bullet lines to join
+            }
           }
         }
 
@@ -454,7 +493,6 @@ export default function ResultsPage() {
               <div className="prompt-line">
                 <Prompt path="~/results" />
               </div>
-              <br />
             </>
           )}
 

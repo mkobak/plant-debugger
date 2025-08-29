@@ -116,6 +116,35 @@ export default function UploadPage() {
 
   const canProceed = images.length > 0 && !isUploading;
 
+  const handleAddSampleImage = async () => {
+    if (isUploading) return;
+    try {
+      const res = await fetch('/api/sample-image');
+      if (!res.ok) {
+        setError('No sample images available.');
+        return;
+      }
+      const { url, filename } = await res.json();
+      const imgRes = await fetch(url);
+      if (!imgRes.ok) {
+        setError('Failed to fetch sample image.');
+        return;
+      }
+      const blob = await imgRes.blob();
+      const fileName = filename || 'sample-image';
+      const file = new File([blob], fileName, {
+        type: blob.type || 'image/jpeg',
+      });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      await processFiles(dt.files);
+      setError('');
+    } catch (e) {
+      console.error('Error adding sample image', e);
+      setError('Failed to load sample image.');
+    }
+  };
+
   return (
     <TerminalLayout title="Plant Debugger">
       <SharedHeader
@@ -187,6 +216,20 @@ export default function UploadPage() {
                   />
                 </div>
               </div>
+              {images.length === 0 && canAddMore && !isUploading && (
+                <div className="sample-image-hint">
+                  <span className="sample-image-text">
+                    No sad plants around?{' '}
+                  </span>
+                  <button
+                    type="button"
+                    className="sample-image-link"
+                    onClick={handleAddSampleImage}
+                  >
+                    Try the debugger with a sample image.
+                  </button>
+                </div>
+              )}
               <div className="page-actions">
                 <ActionButton
                   variant="reset"

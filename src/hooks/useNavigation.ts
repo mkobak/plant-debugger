@@ -18,7 +18,7 @@ export function useNavigation() {
   };
 
   const goToQuestions = () => {
-    if (images.length > 0) push('/questions');
+    if (images.length > 0) push('/analysis');
     else push('/upload');
   };
 

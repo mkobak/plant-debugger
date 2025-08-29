@@ -275,6 +275,7 @@
   border: 1px solid var(--grey-2);
   background: rgba(255, 255, 255, 0.01);
   display: inline-block;
+  margin: var(--spacing-md) 0 var(--spacing-xl) 0 !important;
 }
 
 /* Tighter variant for image grid */
@@ -313,7 +314,7 @@
   align-items: baseline;
   gap: var(--spacing-sm);
   color: var(--grey-1);
-  margin: var(--spacing-md) 0;
+  margin: 0;
 }
 
 /* Fine tune spinner vertical position in compact mode if needed */

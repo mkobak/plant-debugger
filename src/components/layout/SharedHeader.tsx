@@ -39,7 +39,7 @@ export default function SharedHeader({
 
   const navigationSteps: NavigationStep[] = [
     { step: 1, label: 'Upload', route: '/upload' },
-    { step: 2, label: 'Questions', route: '/questions' },
+    { step: 2, label: 'Analysis', route: '/analysis' },
     { step: 3, label: 'Results', route: '/results' },
   ];
 

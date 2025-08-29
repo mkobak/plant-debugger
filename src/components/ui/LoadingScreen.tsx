@@ -47,7 +47,7 @@ export default function LoadingScreen({
     let status = 'Processing answers';
     if (isAggregating) status = 'Investigating possible bugs';
     if (aggregatingComplete && isGeneratingTreatment)
-      status = 'Generating report';
+      status = 'Finalizing debugging report';
     if (finalDiagnosisComplete) status = 'Finalizing';
     return (
       <div className="loading-screen compact">
@@ -92,7 +92,7 @@ export default function LoadingScreen({
       {line2Complete && aggregatingComplete && (
         <div className="terminal-line">
           <TypingText
-            text="> Generating report..."
+            text="> Finalizing debugging report..."
             speed={100}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}

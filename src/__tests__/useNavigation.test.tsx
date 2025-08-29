@@ -57,7 +57,7 @@ describe('useNavigation', () => {
       ]);
     });
     (window as any).__nav.goToQuestions();
-    expect(mockedRouter.push).toHaveBeenLastCalledWith('/questions');
+    expect(mockedRouter.push).toHaveBeenLastCalledWith('/analysis');
   });
 
   it('goToResults routes based on images presence', () => {

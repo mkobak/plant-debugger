@@ -385,9 +385,8 @@ export default function QuestionsPage() {
         {pageState === PageState.LOADING && (
           <>
             <div className="prompt-line">
-              <Prompt path="~/questions" />
+              <Prompt path="~/analysis" />
             </div>
-            <br />
           </>
         )}
 

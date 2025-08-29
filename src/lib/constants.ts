@@ -24,7 +24,7 @@ export const API_ENDPOINTS = {
 export const DIAGNOSIS_STEPS = {
   UPLOAD: 'upload',
   ANALYSIS: 'analysis',
-  QUESTIONS: 'questions',
+  QUESTIONS: 'analysis',
   RESULTS: 'results',
 } as const;
 
