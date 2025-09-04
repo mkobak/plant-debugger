@@ -8,6 +8,7 @@ import '@/styles/modal.css';
 import '@/styles/upload.css';
 import '@/styles/pages.css';
 import '@/styles/responsive.css';
+import { ViewportHeightProvider } from '@/components/layout/ViewportHeightProvider';
 
 export const metadata: Metadata = {
   title: 'Plant Debugger',
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={sourceCodePro.variable}>
       <body className={sourceCodePro.className}>
+        <ViewportHeightProvider />
         <DiagnosisProvider>
           <div id="root">{children}</div>
         </DiagnosisProvider>

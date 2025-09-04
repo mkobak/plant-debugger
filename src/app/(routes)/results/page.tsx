@@ -128,23 +128,33 @@ export default function ResultsPage() {
         // Remove initial bullet marker
         const content = line.replace(/^[-*•]\s+/, '').trim();
 
-        // Handle inline extra bullets joined by " - " (model sometimes collapses them)
-        // Split on ' - ' only when it appears to start a new sentence (followed by capital letter) to reduce false positives
+        const inlineSplitter = new RegExp(inlineBulletSplit.source, 'g');
+
         let parts = [content];
-        if (/\s-\s+/.test(content)) {
+
+        // If we detect ANY inline bullet boundary (space-hyphen-space OR punctuation-hyphen-space), split.
+        if (inlineSplitter.test(content)) {
           const splitParts = content
-            .split(inlineBulletSplit)
+            .split(new RegExp(inlineBulletSplit.source, 'g'))
             .map((p) => p.trim());
-          if (splitParts.length > 1 && splitParts.every((p) => p.length > 3)) {
+          if (splitParts.length > 1 && splitParts.every((p) => p.length > 2)) {
             parts = splitParts;
           }
         }
-        // Fallback: if still only one part but contains multiple bold sections prefixed by dashes, attempt second pass
-        if (parts.length === 1 && /\s-\s+(?:\*\*|__)?[A-Z]/.test(parts[0])) {
-          const second = parts[0].split(inlineBulletSplit).map((p) => p.trim());
-          if (second.length > 1) parts = second;
+
+        // Secondary fallback: if still one part, but we have at least two occurrences of punctuation-hyphen or space-hyphen patterns followed by capital, attempt split.
+        if (parts.length === 1) {
+          const boundaryMatches = content.match(
+            /(?:\s-|[.!?]-)\s+(?:\*\*|__)?[A-Z0-9]/g
+          );
+          if (boundaryMatches && boundaryMatches.length >= 2) {
+            parts = content
+              .split(new RegExp(inlineBulletSplit.source, 'g'))
+              .map((p) => p.trim());
+          }
         }
-        parts.forEach((p) => bulletBuffer.push(p));
+
+        parts.forEach((p) => p && bulletBuffer.push(p));
       } else {
         // If the line isn't marked as a bullet but contains multiple inline hyphen bullets starting with '* ' pattern earlier
         // Attempt detection for asterisk-start style collapsed into one line (edge case)
