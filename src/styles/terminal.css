@@ -23,10 +23,21 @@
   .terminal-container {
     --terminal-margin: 0;
     margin: 0;
-    height: auto;
-    min-height: 100dvh;
+    height: auto !important;
+    min-height: 100dvh; /* fallback dynamic */
+    min-height: 100svh; /* small viewport (iOS safari when URL bar visible) */
+    min-height: 100lvh; /* large viewport (expanded) */
+    min-height: 100vh; /* legacy */
     border-radius: 0;
     overflow: visible;
+    background-color: var(--grey-6);
+  }
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    background-color: var(--grey-6);
   }
 }
 
@@ -75,6 +86,39 @@
   overflow-y: auto; /* sole scrollbar on desktop */
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Dark mode scrollbar styling */
+.terminal-content {
+  scrollbar-width: auto;
+  scrollbar-color: var(--grey-3) var(--grey-6);
+}
+
+.terminal-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.terminal-content::-webkit-scrollbar-track {
+  background: var(--grey-6);
+}
+
+.terminal-content::-webkit-scrollbar-thumb {
+  background: var(--grey-3);
+  border-radius: 6px;
+  border: 2px solid var(--grey-6);
+}
+
+.terminal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--grey-2);
+}
+
+@media (max-width: 880px) {
+  .terminal-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  .terminal-content {
+    scrollbar-width: thin;
+  }
 }
 
 @media (max-height: 700px) and (min-width: 769px) {
