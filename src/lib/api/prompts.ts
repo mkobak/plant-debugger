@@ -32,7 +32,7 @@ Rules:
  - An average person who is not an expert in plant care should be able to answer the questions.
  - Avoid redundant or overlapping questions; each should target a distinct axis of differentiation.
  - If the ranked list is empty, fall back to broad high-yield questions (watering pattern, drainage, light exposure, recent changes, pests presence).
-You may optionally include mild programming metaphors inside the question wording where natural, but keep them subtle.
+You may optionally include mild programming metaphors inside the question wording where natural, but keep them subtle. Do not use quotation marks.
 
 Return ONLY a JSON object matching the questions schema (keys Q1..Q5). Do not include commentary outside JSON.
 `;
