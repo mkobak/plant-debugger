@@ -38,7 +38,7 @@ export const finalDiagnosisSchema = {
     primarySummary: {
       type: 'string',
       description:
-        "Summary of the reasoning, treatment plan, and prevention tips for the primary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor.",
+        "Summary of the reasoning, treatment plan, and prevention tips for the primary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor in the text, not as a separate bullet.",
     },
     secondaryDiagnosis: {
       type: 'string',
@@ -75,7 +75,7 @@ export const finalDiagnosisSchema = {
       type: 'string',
       nullable: true,
       description:
-        "Summary of the reasoning, treatment plan, and prevention tips for the secondary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor.",
+        "Summary of the reasoning, treatment plan, and prevention tips for the secondary diagnosis, in Markdown. STRICT FORMAT: 3-4 bullet points only, each on a new line starting with '- '. Bold and short leading label (e.g., '- **Cause:** ...'). Include programming humor in the text, not as a separate bullet.",
     },
     careTips: {
       type: 'string',
