@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
-import { PlantImage, DiagnosisResult } from '@/types';
+import { PlantImage } from '@/types';
 import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
+import { useDiagnosis } from '@/context/DiagnosisContext';
 
 import { logger } from '@/lib/logger';
 interface UseDiagnosisFlowProps {
@@ -16,12 +17,13 @@ export function useDiagnosisFlow({
   rankedDiagnoses,
   userComment,
 }: UseDiagnosisFlowProps) {
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  // Diagnosis result and loading state live in the context — the single
+  // source of truth shared with the rest of the app
+  const { diagnosisResult, setDiagnosisResult, isDiagnosing, setIsDiagnosing } =
+    useDiagnosis();
   const [initialDiagnosisComplete, setInitialDiagnosisComplete] =
     useState(false);
   const [finalDiagnosisComplete, setFinalDiagnosisComplete] = useState(false);
-  const [diagnosisResult, setDiagnosisResult] =
-    useState<DiagnosisResult | null>(null);
   const [error, setError] = useState<string>('');
 
   const diagnosisStartedRef = useRef(false);
@@ -186,7 +188,15 @@ export function useDiagnosisFlow({
       diagnosisStartedRef.current = false;
       retryCountRef.current = 0;
     }
-  }, [images, questionsAndAnswers, rankedDiagnoses, userComment, isDiagnosing]);
+  }, [
+    images,
+    questionsAndAnswers,
+    rankedDiagnoses,
+    userComment,
+    isDiagnosing,
+    setDiagnosisResult,
+    setIsDiagnosing,
+  ]);
 
   const cancelDiagnosis = useCallback(() => {
     logger.debug('useDiagnosisFlow: cancelDiagnosis called');
@@ -196,7 +206,7 @@ export function useDiagnosisFlow({
     }
     setIsDiagnosing(false);
     diagnosisStartedRef.current = false;
-  }, []);
+  }, [setIsDiagnosing]);
 
   const resetDiagnosis = useCallback(() => {
     logger.debug('useDiagnosisFlow: resetDiagnosis called');
@@ -208,7 +218,7 @@ export function useDiagnosisFlow({
     diagnosisStartedRef.current = false;
     lastDiagnosisAttemptRef.current = 0;
     retryCountRef.current = 0; // Reset retry count
-  }, []);
+  }, [setDiagnosisResult, setIsDiagnosing]);
 
   return {
     isDiagnosing,

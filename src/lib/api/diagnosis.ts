@@ -14,10 +14,36 @@ import {
   getClientHeaders,
 } from './client-utils';
 import { withRetry } from './retry-utils';
-import { costTracker } from '@/lib/costTracker';
+import { costTracker, type UsageMetadata } from '@/lib/costTracker';
 import type { ModelKey } from '@/lib/api/modelConfig';
 
 import { logger } from '@/lib/logger';
+
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
+async function throwHttpError(
+  response: Response,
+  fallback: string
+): Promise<never> {
+  const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+  if (response.status === 429) {
+    throw new HttpError(
+      'API rate limit reached. Please wait a few minutes before trying again.',
+      429
+    );
+  }
+  throw new HttpError(
+    error.error || `HTTP ${response.status}: ${fallback}`,
+    response.status
+  );
+}
 export async function getNoPlantResponse(
   images: PlantImage[],
   signal?: AbortSignal
@@ -35,12 +61,7 @@ export async function getNoPlantResponse(
         signal,
       });
       if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: 'Unknown error' }));
-        throw new Error(
-          error.error || `HTTP ${response.status}: Failed to generate message`
-        );
+        await throwHttpError(response, 'Failed to generate message');
       }
       const data = await response.json();
       if (data?.usage?.usage) {
@@ -82,12 +103,7 @@ export async function generateQuestions(
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }));
-      throw new Error(
-        error.error || `HTTP ${response.status}: Failed to generate questions`
-      );
+      await throwHttpError(response, 'Failed to generate questions');
     }
 
     const data = await response.json();
@@ -130,18 +146,7 @@ export async function getInitialDiagnosis(
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }));
-      if (response.status === 429) {
-        throw new Error(
-          'API rate limit reached. Please wait a few minutes before trying again.'
-        );
-      }
-      throw new Error(
-        error.error ||
-          `HTTP ${response.status}: Failed to get initial diagnosis`
-      );
+      await throwHttpError(response, 'Failed to get initial diagnosis');
     }
 
     const data = await response.json();
@@ -187,17 +192,7 @@ export async function getFinalDiagnosis(
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }));
-      if (response.status === 429) {
-        throw new Error(
-          'API rate limit reached. Please wait a few minutes before trying again.'
-        );
-      }
-      throw new Error(
-        error.error || `HTTP ${response.status}: Failed to get final diagnosis`
-      );
+      await throwHttpError(response, 'Failed to get final diagnosis');
     }
 
     const data = await response.json();

@@ -18,6 +18,11 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
     if (error instanceof TypeError && error.message.includes('fetch')) {
       return true; // Network error
     }
+    // HttpError from the API layer carries the response status
+    const status: unknown = error?.status;
+    if (typeof status === 'number') {
+      return status === 429 || status >= 500;
+    }
     if (error.message.includes('429') || error.message.includes('rate limit')) {
       return true; // Rate limit error
     }
