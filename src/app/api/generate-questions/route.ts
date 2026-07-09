@@ -1,180 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { models } from '@/lib/api/gemini';
+import { NextResponse } from 'next/server';
+import { withApiRoute } from '@/lib/api/withApiRoute';
+import { geminiCall } from '@/lib/api/geminiCall';
 import { questionsSchema } from '@/lib/api/schemas';
-import { processFormData, convertImagesToBase64 } from '@/lib/api/shared';
-import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
-import {
-  validateImages,
-  validateTextFields,
-  ValidationError,
-} from '@/lib/api/validation';
 import { createQuestionsGenerationPrompt } from '@/lib/api/prompts';
-import { recordUsageForRequest } from '@/lib/api/costServer';
-import { logger, printPrompt, printResponse } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
-export async function POST(request: NextRequest) {
-  const requestId = Math.random().toString(36).slice(2, 8);
-  logger.debug(`[GENERATE-QUESTIONS:${requestId}] START`);
+export const maxDuration = 30;
 
-  try {
-    const { signal } = request as unknown as { signal?: AbortSignal };
-    signal?.addEventListener?.('abort', () => {
-      logger.warn(
-        `[GENERATE-QUESTIONS:${requestId}] Request aborted by client`
-      );
-    });
-
-    if (!checkRateLimit(getClientIp(request))) {
-      logger.warn(`[GENERATE-QUESTIONS:${requestId}] Rate limit exceeded`);
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait before trying again.' },
-        { status: 429 }
-      );
-    }
-
-    if (signal?.aborted) {
-      logger.warn(
-        `[GENERATE-QUESTIONS:${requestId}] Aborted before reading form data`
-      );
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    const formData = await request.formData();
-    const { images, rankedDiagnoses, userComment } =
-      await processFormData(formData);
-
-    await validateImages(images);
-    validateTextFields({ userComment, rankedDiagnoses });
-    const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
-    logger.debug(
-      `[GENERATE-QUESTIONS:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
+export const POST = withApiRoute(
+  'GENERATE-QUESTIONS',
+  { errorMessage: 'Failed to generate questions' },
+  async ({ request, tag, signal, data, imageParts }) => {
+    const prompt = createQuestionsGenerationPrompt(
+      data.rankedDiagnoses || '',
+      data.userComment || ''
     );
 
-    if (signal?.aborted) {
-      logger.warn(
-        `[GENERATE-QUESTIONS:${requestId}] Aborted before converting images`
-      );
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    // Convert images to base64 for Gemini
-    const imageParts = await convertImagesToBase64(images);
-    logger.debug(
-      `[GENERATE-QUESTIONS:${requestId}] Converted ${imageParts.length} images to base64`
-    );
-
-    // Print prompt exactly once (gated)
-    const QUESTIONS_GENERATION_PROMPT = createQuestionsGenerationPrompt(
-      rankedDiagnoses || '',
-      userComment || ''
-    );
-    printPrompt(
-      `[GENERATE-QUESTIONS:${requestId}]`,
-      QUESTIONS_GENERATION_PROMPT
-    );
-
-    // Concise send summary
-    logger.debug(
-      `[GENERATE-QUESTIONS:${requestId}] Sending to AI | images: ${imageParts.length} | schema: questions`
-    );
-
-    // Call Gemini API for questions generation
-    if (signal?.aborted) {
-      logger.warn(
-        `[GENERATE-QUESTIONS:${requestId}] Aborted before model call`
-      );
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    const result = await models.modelMedium.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: QUESTIONS_GENERATION_PROMPT }, ...imageParts],
-        },
-      ],
+    const { text, usage } = await geminiCall({
+      request,
+      modelKey: 'modelMedium',
+      parts: [{ text: prompt }, ...imageParts],
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
         responseMimeType: 'application/json',
         responseSchema: questionsSchema as any,
       },
+      signal,
+      timeoutMs: 30_000,
+      tag,
     });
 
-    // Print full response exactly once (gated)
-    printResponse(`[GENERATE-QUESTIONS:${requestId}]`, result.response);
-    const usage = (result.response?.usageMetadata || {}) as any;
-    if (
-      !usage ||
-      ((usage?.promptTokenCount ?? 0) === 0 &&
-        (usage?.candidatesTokenCount ?? 0) === 0)
-    ) {
-      logger.warn(
-        `[GENERATE-QUESTIONS:${requestId}] Missing or zero usage metadata`
-      );
-    }
-    recordUsageForRequest(request, 'modelMedium', usage);
-
-    // Structured JSON response parsing
-    let questionsData: any;
+    let questionsData: Record<string, string>;
     try {
-      const jsonText = result.response.text();
-      if (typeof jsonText !== 'string' || !jsonText.trim()) {
-        throw new Error('Empty JSON response');
-      }
-      questionsData = JSON.parse(jsonText);
-      logger.debug(
-        `[GENERATE-QUESTIONS:${requestId}] Parsed JSON keys: ${Object.keys(questionsData || {}).join(', ')}`
-      );
+      if (!text) throw new Error('Empty JSON response');
+      questionsData = JSON.parse(text);
     } catch (e) {
-      logger.error(
-        `[GENERATE-QUESTIONS:${requestId}] Failed to parse structured JSON response`,
-        e
-      );
+      logger.error(`${tag} Failed to parse structured JSON response`, e);
       throw new Error('Invalid structured questions response');
     }
 
-    // Convert the function call response to our questions format
     const questions = [];
     const questionKeys = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5'];
-
     for (let i = 0; i < questionKeys.length; i++) {
-      const key = questionKeys[i];
-      if (questionsData[key] && questionsData[key].trim()) {
+      const value = questionsData[questionKeys[i]];
+      if (value && value.trim()) {
         questions.push({
           id: `q${i + 1}`,
-          question: questionsData[key].trim(),
+          question: value.trim(),
           type: 'yes_no' as const,
           required: false,
         });
       }
     }
-
-    logger.debug(
-      `[GENERATE-QUESTIONS:${requestId}] Extracted questions: ${questions.length}`
-    );
-    logger.debug(`[GENERATE-QUESTIONS:${requestId}] SUCCESS`);
+    logger.debug(`${tag} Extracted questions: ${questions.length}`);
 
     return NextResponse.json({
       questions,
       usage: { modelKey: 'modelMedium', usage },
     });
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    logger.error(`[GENERATE-QUESTIONS:${requestId}] ERROR`, error);
-    if (error instanceof Error && error.stack) {
-      logger.error(`[GENERATE-QUESTIONS:${requestId}] STACK`, error.stack);
-    }
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to generate questions' },
-      { status: 500 }
-    );
   }
-}
+);

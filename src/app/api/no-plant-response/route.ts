@@ -1,117 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { models } from '@/lib/api/gemini';
-import { processFormData, convertImagesToBase64 } from '@/lib/api/shared';
-import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
-import { validateImages, ValidationError } from '@/lib/api/validation';
-import {
-  recordUsageForRequest,
-  printAndResetForRequest,
-} from '@/lib/api/costServer';
+import { NextResponse } from 'next/server';
+import { withApiRoute } from '@/lib/api/withApiRoute';
+import { geminiCall } from '@/lib/api/geminiCall';
 import { NO_PLANT_PROMPT } from '@/lib/api/prompts';
-import { logger, printPrompt, printResponse } from '@/lib/logger';
+import { printAndResetForRequest } from '@/lib/api/costServer';
 
-export async function POST(request: NextRequest) {
-  const requestId = Math.random().toString(36).slice(2, 8);
-  logger.debug(`[NO-PLANT:${requestId}] START`);
-  try {
-    const { signal } = request as unknown as { signal?: AbortSignal };
-    signal?.addEventListener?.('abort', () => {
-      logger.warn(`[NO-PLANT:${requestId}] Request aborted by client`);
+export const maxDuration = 30;
+
+export const POST = withApiRoute(
+  'NO-PLANT',
+  { errorMessage: 'Failed to generate message' },
+  async ({ request, tag, signal, imageParts }) => {
+    const { text: message, usage } = await geminiCall({
+      request,
+      modelKey: 'modelLow',
+      parts: [{ text: NO_PLANT_PROMPT }, ...imageParts],
+      generationConfig: { temperature: 0.6, topP: 0.9 },
+      signal,
+      timeoutMs: 20_000,
+      tag,
     });
 
-    if (!checkRateLimit(getClientIp(request))) {
-      logger.warn(`[NO-PLANT:${requestId}] Rate limit exceeded`);
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait before trying again.' },
-        { status: 429 }
-      );
-    }
-
-    if (signal?.aborted) {
-      logger.warn(`[NO-PLANT:${requestId}] Aborted before reading form data`);
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    const formData = await request.formData();
-    const { images } = await processFormData(formData);
-
-    await validateImages(images);
-    const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
-    logger.debug(
-      `[NO-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
-    );
-
-    const imageParts = await convertImagesToBase64(images);
-    logger.debug(
-      `[NO-PLANT:${requestId}] Converted ${imageParts.length} images to base64`
-    );
-
-    // Print prompt exactly once (gated)
-    printPrompt(`[NO-PLANT:${requestId}]`, NO_PLANT_PROMPT);
-    logger.debug(`[NO-PLANT:${requestId}] Sending to AI`);
-    const genPromise = models.modelLow.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: NO_PLANT_PROMPT }, ...imageParts],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.6,
-        topP: 0.9,
-      },
-    });
-
-    const result = await new Promise<
-      typeof genPromise extends Promise<infer R> ? R : never
-    >((resolve, reject) => {
-      if (signal?.aborted) return reject(new Error('aborted'));
-      const onAbort = () => reject(new Error('aborted'));
-      signal?.addEventListener?.('abort', onAbort, { once: true });
-      genPromise
-        .then((r) => {
-          signal?.removeEventListener?.('abort', onAbort);
-          resolve(r);
-        })
-        .catch((err) => {
-          signal?.removeEventListener?.('abort', onAbort);
-          reject(err);
-        });
-    });
-
-    // Print full response exactly once (gated)
-    printResponse(`[NO-PLANT:${requestId}]`, result.response);
-    const message = result.response.text().trim();
-    const usage = result.response?.usageMetadata || {};
-    recordUsageForRequest(request, 'modelLow', usage);
-    logger.debug(
-      `[NO-PLANT:${requestId}] AI response length: ${message.length}`
-    );
-    logger.debug(`[NO-PLANT:${requestId}] SUCCESS`);
-
-    // Print a server-side summary for this early-termination path
+    // Print a server-side cost summary for this early-termination path
     printAndResetForRequest(request, 'Plant Debugger (no plant)');
 
     return NextResponse.json({
       message,
       usage: { modelKey: 'modelLow', usage },
     });
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    logger.error(`[NO-PLANT:${requestId}] ERROR`, error);
-    if (error instanceof Error && error.stack) {
-      logger.error(`[NO-PLANT:${requestId}] STACK`, error.stack);
-    }
-
-    if (error instanceof Error && error.message === 'aborted') {
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to generate message' },
-      { status: 500 }
-    );
   }
-}
+);

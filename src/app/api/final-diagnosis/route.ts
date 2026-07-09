@@ -1,176 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { models } from '@/lib/api/gemini';
+import { NextResponse } from 'next/server';
+import { withApiRoute } from '@/lib/api/withApiRoute';
+import { geminiCall } from '@/lib/api/geminiCall';
 import { finalDiagnosisSchema } from '@/lib/api/schemas';
-import {
-  getClientId,
-  processFormData,
-  convertImagesToBase64,
-} from '@/lib/api/shared';
-import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
-import {
-  validateImages,
-  validateTextFields,
-  ValidationError,
-} from '@/lib/api/validation';
 import { createFinalDiagnosisPrompt } from '@/lib/api/prompts';
-import {
-  recordUsageForRequest,
-  printAndResetForRequest,
-} from '@/lib/api/costServer';
-import {
-  logger,
-  printPrompt,
-  printResponse,
-  safeStringify,
-} from '@/lib/logger';
+import { printAndResetForRequest } from '@/lib/api/costServer';
+import { logger } from '@/lib/logger';
 
-export async function POST(request: NextRequest) {
-  const requestId = Math.random().toString(36).slice(2, 8);
-  logger.debug(`[FINAL-DIAGNOSIS:${requestId}] START`);
+export const maxDuration = 60;
 
-  try {
-    const { signal } = request as unknown as { signal?: AbortSignal };
-    signal?.addEventListener?.('abort', () => {
-      logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Request aborted by client`);
-    });
-
-    const clientId = getClientId(request);
-
-    if (!checkRateLimit(getClientIp(request))) {
-      logger.warn(
-        `[FINAL-DIAGNOSIS:${requestId}] Rate limit exceeded for IP: ${getClientIp(request)}`
-      );
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait before trying again.' },
-        { status: 429 }
-      );
-    }
-
-    if (signal?.aborted) {
-      logger.warn(
-        `[FINAL-DIAGNOSIS:${requestId}] Aborted before reading form data`
-      );
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    const formData = await request.formData();
-    const { images, questionsAndAnswers, userComment, rankedDiagnoses } =
-      await processFormData(formData);
-
-    await validateImages(images);
-    validateTextFields({ userComment, questionsAndAnswers, rankedDiagnoses });
-    const totalImageBytes = images.reduce((sum, f) => sum + (f.size || 0), 0);
-    logger.debug(
-      `[FINAL-DIAGNOSIS:${requestId}] Client: ${clientId} | images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB) | Q&A len: ${questionsAndAnswers?.length || 0} | ranked len: ${rankedDiagnoses?.length || 0}`
+export const POST = withApiRoute(
+  'FINAL-DIAGNOSIS',
+  { errorMessage: 'Failed to generate final diagnosis' },
+  async ({ request, tag, signal, data, imageParts }) => {
+    const prompt = createFinalDiagnosisPrompt(
+      data.questionsAndAnswers || '',
+      data.userComment || '',
+      data.rankedDiagnoses || ''
     );
 
-    if (signal?.aborted) {
-      logger.warn(
-        `[FINAL-DIAGNOSIS:${requestId}] Aborted before converting images`
-      );
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    // Convert images to base64 for Gemini
-    const imageParts = await convertImagesToBase64(images);
-    logger.debug(
-      `[FINAL-DIAGNOSIS:${requestId}] Converted ${imageParts.length} images to base64`
-    );
-
-    const MAIN_DIAGNOSIS_PROMPT = createFinalDiagnosisPrompt(
-      questionsAndAnswers || '',
-      userComment || '',
-      rankedDiagnoses || ''
-    );
-    // Print prompt exactly once (gated by PB_DEBUG_VERBOSE)
-    printPrompt(`[FINAL-DIAGNOSIS:${requestId}]`, MAIN_DIAGNOSIS_PROMPT);
-
-    // Concise request summary
-    logger.debug(
-      `[FINAL-DIAGNOSIS:${requestId}] Sending to AI | prompt len: ${MAIN_DIAGNOSIS_PROMPT.length} | images: ${imageParts.length} | schema: finalDiagnosis`
-    );
-
-    // Call Gemini API for final structured diagnosis
-    if (signal?.aborted) {
-      logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Aborted before model call`);
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    logger.debug(
-      `[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`
-    );
-    const genPromise = models.modelMedium.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: MAIN_DIAGNOSIS_PROMPT }, ...imageParts],
-        },
-      ],
+    const { text, usage } = await geminiCall({
+      request,
+      modelKey: 'modelMedium',
+      parts: [{ text: prompt }, ...imageParts],
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
         responseMimeType: 'application/json',
         responseSchema: finalDiagnosisSchema as any,
       },
-    });
-    // Race with abort to stop further processing early if canceled
-    const result = await new Promise<
-      typeof genPromise extends Promise<infer R> ? R : never
-    >((resolve, reject) => {
-      if (signal?.aborted) return reject(new Error('aborted'));
-      const onAbort = () => reject(new Error('aborted'));
-      signal?.addEventListener?.('abort', onAbort, { once: true });
-      genPromise
-        .then((r) => {
-          signal?.removeEventListener?.('abort', onAbort);
-          resolve(r);
-        })
-        .catch((err) => {
-          signal?.removeEventListener?.('abort', onAbort);
-          reject(err);
-        });
-    }).catch((err) => {
-      if ((err as Error)?.message === 'aborted') {
-        logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Aborted during model call`);
-        throw new Error('aborted');
-      }
-      throw err;
+      signal,
+      timeoutMs: 45_000,
+      tag,
     });
 
-    // Parse the function call response
-    const response = result.response;
-    // Print full response exactly once (gated)
-    printResponse(`[FINAL-DIAGNOSIS:${requestId}]`, response);
-    const usage = result.response?.usageMetadata || {};
-    recordUsageForRequest(request, 'modelMedium', usage);
-    logger.debug(
-      `[FINAL-DIAGNOSIS:${requestId}] AI response received | candidates: ${response.candidates?.length || 0}`
-    );
-
-    if (!response.candidates || response.candidates.length === 0) {
-      throw new Error('No response candidates received from AI');
-    }
-
-    // In JSON mode the SDK exposes text() which will already be valid JSON string
     let diagnosisData: any;
     try {
-      const jsonText = response.text();
-      if (typeof jsonText !== 'string' || !jsonText.trim()) {
-        throw new Error('Empty JSON response text');
-      }
-      diagnosisData = JSON.parse(jsonText);
-      logger.debug(
-        `[FINAL-DIAGNOSIS:${requestId}] Parsed JSON keys: ${Object.keys(diagnosisData || {}).join(', ')}`
-      );
+      if (!text) throw new Error('Empty JSON response text');
+      diagnosisData = JSON.parse(text);
     } catch (e) {
-      logger.error(
-        `[FINAL-DIAGNOSIS:${requestId}] Failed to parse structured JSON response`,
-        e
-      );
+      logger.error(`${tag} Failed to parse structured JSON response`, e);
       throw new Error('Invalid structured diagnosis response');
     }
 
-    // Format the response according to our DiagnosisResult interface
     const diagnosisResult = {
       primary: {
         condition: diagnosisData.primaryDiagnosis,
@@ -194,31 +65,12 @@ export async function POST(request: NextRequest) {
       plant: diagnosisData.plant,
     };
 
-    logger.debug(`[FINAL-DIAGNOSIS:${requestId}] SUCCESS`);
-
-    // Print a server-side summary in the terminal
+    // Print a server-side cost summary in the terminal
     printAndResetForRequest(request, 'Plant Debugger');
 
     return NextResponse.json({
       diagnosisResult,
       usage: { modelKey: 'modelMedium', usage },
     });
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    logger.error(`[FINAL-DIAGNOSIS:${requestId}] ERROR`, error);
-    if (error instanceof Error && error.stack) {
-      logger.error(`[FINAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
-    }
-
-    if (error instanceof Error && error.message === 'aborted') {
-      return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to generate final diagnosis' },
-      { status: 500 }
-    );
   }
-}
+);
