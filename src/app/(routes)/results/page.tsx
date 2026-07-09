@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-// Removed duplicate import of useMemo
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -16,6 +15,7 @@ import { exportElementToSinglePagePdf } from '@/utils/domToPdf';
 import { useRef } from 'react';
 import useConfirmReset from '@/hooks/useConfirmReset';
 
+import { logger } from '@/lib/logger';
 export default function ResultsPage() {
   const { goHome, goToUpload, goToQuestions } = useNavigation();
   const {
@@ -259,7 +259,7 @@ export default function ResultsPage() {
 
   // Handle redirects and start diagnosis
   useEffect(() => {
-    console.log(
+    logger.debug(
       'ResultsPage: Main effect - images:',
       images.length,
       'stepInitialized:',
@@ -274,14 +274,14 @@ export default function ResultsPage() {
 
     // Redirect if no images
     if (images.length === 0) {
-      console.log('ResultsPage: No images, redirecting to upload');
+      logger.debug('ResultsPage: No images, redirecting to upload');
       goToUpload();
       return;
     }
 
     // If we already have a diagnosis result in context, we're navigating back - don't restart the process
     if (contextDiagnosisResult) {
-      console.log(
+      logger.debug(
         'ResultsPage: Context diagnosis result already exists, skipping diagnosis'
       );
       setIsNavigatingBack(true);
@@ -292,7 +292,7 @@ export default function ResultsPage() {
 
     // If we already have a diagnosis result from the hook, we're navigating back - don't restart the process
     if (diagnosisResult) {
-      console.log(
+      logger.debug(
         'ResultsPage: Hook diagnosis result already exists, skipping diagnosis'
       );
       setIsNavigatingBack(true);
@@ -308,14 +308,14 @@ export default function ResultsPage() {
         lastDiagnosisSignature &&
         lastDiagnosisSignature !== diagnosisSignature
       ) {
-        console.log(
+        logger.debug(
           'ResultsPage: Inputs changed, clearing previous diagnosis and restarting'
         );
         setContextDiagnosisResult(null);
         setLoadingComplete(false);
       }
       if (!contextDiagnosisResult) {
-        console.log('ResultsPage: Starting diagnosis...');
+        logger.debug('ResultsPage: Starting diagnosis...');
         startDiagnosis();
       }
     }
@@ -335,7 +335,7 @@ export default function ResultsPage() {
   // Save diagnosis result to context when it's completed
   useEffect(() => {
     if (diagnosisResult && !contextDiagnosisResult) {
-      console.log('ResultsPage: Saving diagnosis result to context');
+      logger.debug('ResultsPage: Saving diagnosis result to context');
       setContextDiagnosisResult(diagnosisResult);
     }
   }, [diagnosisResult, contextDiagnosisResult, setContextDiagnosisResult]);
@@ -379,7 +379,7 @@ export default function ResultsPage() {
   // Reset hook state if context diagnosis result is cleared (e.g., after reset)
   useEffect(() => {
     if (!contextDiagnosisResult && diagnosisResult) {
-      console.log('ResultsPage: Context was reset, resetting hook state');
+      logger.debug('ResultsPage: Context was reset, resetting hook state');
       resetDiagnosis();
     }
     // Also reset typing animation flag when context is cleared
@@ -454,7 +454,7 @@ export default function ResultsPage() {
       setShowPrimaryDetails(prevShowPrimaryDetails);
       setShowSecondaryDetails(prevShowSecondaryDetails);
     } catch (e) {
-      console.error('Failed to generate report', e);
+      logger.error('Failed to generate report', e);
       alert('Failed to generate report. Please try again.');
     } finally {
       setIsExporting(false);

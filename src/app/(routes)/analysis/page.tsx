@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -19,6 +18,7 @@ import {
   getInitialDiagnosis,
 } from '@/lib/api/diagnosis';
 
+import { logger } from '@/lib/logger';
 // Prevent duplicate QA runs across React StrictMode remounts
 const qaRunLocks = new Set<string>();
 
@@ -38,7 +38,6 @@ enum LoadingPhase {
 }
 
 export default function QuestionsPage() {
-  const router = useRouter();
   const processStartedRef = useRef(false);
   const initialRenderRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
@@ -94,16 +93,16 @@ export default function QuestionsPage() {
 
   // On mount: redirect to home if no images are present
   useEffect(() => {
-    console.log('QuestionsPage mounting');
+    logger.debug('QuestionsPage mounting');
     // Redirect if no images are present
     if (images.length === 0) {
       const timeout = setTimeout(() => {
-        console.log('No images found, redirecting to home');
+        logger.debug('No images found, redirecting to home');
         goHome();
       }, 100);
       return () => clearTimeout(timeout);
     }
-  }, [images.length, router, goHome]);
+  }, [images.length, goHome]);
 
   // Wrapped async process to identify plant and generate questions
   const startDiagnosisProcess = useCallback(async () => {
@@ -116,19 +115,19 @@ export default function QuestionsPage() {
       const signal = abortRef.current.signal;
 
       // Step 1: Identify plant
-      console.log('Step 1: Identifying plant...');
+      logger.debug('Step 1: Identifying plant...');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
       // identifying flag already set true before calling this
       const identification = await identifyPlant(images, signal);
       setCtxIsIdentifying(false);
       if (!identification) throw new Error('Failed to identify plant');
-      console.log('Plant identified:', identification);
+      logger.debug('Plant identified:', identification);
       setPlantIdentification(identification);
       setEditablePlantName(identification.name || 'Unknown plant');
 
       // If no plant detected, get a message and skip questions
       if (!identification.name) {
-        console.log('No plant detected, generating message...');
+        logger.debug('No plant detected, generating message...');
         try {
           // Only fetch once per image set
           if (!noPlantMessage) {
@@ -136,7 +135,7 @@ export default function QuestionsPage() {
             setNoPlantMessage(message);
           }
         } catch (e) {
-          console.error('Failed to get message:', e);
+          logger.error('Failed to get message:', e);
           setNoPlantMessage(
             '404 plant not found. Looks like our classifier threw a null pointer on foliage.'
           );
@@ -153,7 +152,7 @@ export default function QuestionsPage() {
       }
 
       // Step 2: Initial diagnoses (pro + flash aggregation)
-      console.log('Step 2: Generating initial diagnoses...');
+      logger.debug('Step 2: Generating initial diagnoses...');
       setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
       setCtxIsGeneratingQuestions(true);
       const initialDiag = await getInitialDiagnosis(
@@ -166,7 +165,7 @@ export default function QuestionsPage() {
       // Transition to question generation phase
       setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
       // Step 3: Clarifying questions based on ranked diagnoses + comment
-      console.log('Step 3: Generating questions...');
+      logger.debug('Step 3: Generating questions...');
       const generatedQuestions = await generateQuestions(
         images,
         initialDiag.rankedDiagnoses,
@@ -174,7 +173,7 @@ export default function QuestionsPage() {
         signal
       );
       setCtxIsGeneratingQuestions(false);
-      console.log('Questions generated:', generatedQuestions.length);
+      logger.debug('Questions generated:', generatedQuestions.length);
       setQuestions(generatedQuestions);
       // Record signature so we can detect changes next time
       const imgSig = computeImagesSignature();
@@ -185,7 +184,7 @@ export default function QuestionsPage() {
 
       // Show content after a brief delay
       setTimeout(() => {
-        console.log('Process complete, showing content');
+        logger.debug('Process complete, showing content');
         // Reset all typing states when transitioning to content
         setPlantNameTyped(false);
         setInstructionsTyped(false);
@@ -193,14 +192,14 @@ export default function QuestionsPage() {
         setPageState(PageState.SHOWING_CONTENT);
       }, 500);
     } catch (error: any) {
-      console.error('Diagnosis process failed:', error);
+      logger.error('Diagnosis process failed:', error);
       const aborted =
         (error instanceof Error && error.name === 'AbortError') ||
         (typeof error?.message === 'string' &&
           error.message.toLowerCase().includes('aborted')) ||
         abortRef.current?.signal.aborted;
       if (aborted) {
-        console.log('QuestionsPage: aborted by user');
+        logger.debug('QuestionsPage: aborted by user');
         setCtxIsIdentifying(false);
         setCtxIsGeneratingQuestions(false);
         const imgSig = computeImagesSignature();
@@ -237,11 +236,11 @@ export default function QuestionsPage() {
 
   // Detect navigation back and restore state if possible
   useEffect(() => {
-    console.log('Navigation check useEffect triggered');
-    console.log('- questions.length:', questions.length);
-    console.log('- plantIdentification:', !!plantIdentification);
-    console.log('- pageState:', pageState);
-    console.log('- processStartedRef.current:', processStartedRef.current);
+    logger.debug('Navigation check useEffect triggered');
+    logger.debug('- questions.length:', questions.length);
+    logger.debug('- plantIdentification:', !!plantIdentification);
+    logger.debug('- pageState:', pageState);
+    logger.debug('- processStartedRef.current:', processStartedRef.current);
 
     const imgSig = computeImagesSignature();
 
@@ -256,7 +255,7 @@ export default function QuestionsPage() {
       plantIdentification &&
       !processStartedRef.current
     ) {
-      console.log('DETECTING NAVIGATION BACK - setting states');
+      logger.debug('DETECTING NAVIGATION BACK - setting states');
       setIsNavigatingBack(true);
       setEditablePlantName(plantIdentification.name || '');
       setPlantNameTyped(true);
@@ -268,7 +267,7 @@ export default function QuestionsPage() {
 
     // Restore state if previously detected no-plant for these images
     if (!signatureChanged && noPlantMessage && !processStartedRef.current) {
-      console.log(
+      logger.debug(
         'DETECTING NAVIGATION BACK (no-plant) - restoring content without rerun'
       );
       setIsNavigatingBack(true);
@@ -291,7 +290,7 @@ export default function QuestionsPage() {
       // Extra guard: global lock for remounts
       !qaRunLocks.has(imgSig)
     ) {
-      console.log('Starting identification and question generation process');
+      logger.debug('Starting identification and question generation process');
       processStartedRef.current = true;
       // Clear old data if signature changed
       if (signatureChanged) {
@@ -486,7 +485,7 @@ export default function QuestionsPage() {
                       speed={100}
                       onceKey={`${typingSessionKey}|plant-label`}
                       onComplete={() => {
-                        console.log('Plant name typing complete');
+                        logger.debug('Plant name typing complete');
                         setPlantNameTyped(true);
                       }}
                     />
@@ -522,7 +521,7 @@ export default function QuestionsPage() {
                       speed={100}
                       onceKey={`${typingSessionKey}|instructions`}
                       onComplete={() => {
-                        console.log('Instructions typing complete');
+                        logger.debug('Instructions typing complete');
                         setInstructionsTyped(true);
                       }}
                     />

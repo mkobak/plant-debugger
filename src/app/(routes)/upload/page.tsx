@@ -14,8 +14,9 @@ import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { PlantImage } from '@/types';
 
+import { logger } from '@/lib/logger';
 export default function UploadPage() {
-  const { goHome, goToQuestions } = useNavigation();
+  const { goToQuestions } = useNavigation();
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
@@ -45,7 +46,7 @@ export default function UploadPage() {
   } = useImageUpload({
     initialImages: contextImages,
     onUploadComplete: (uploadedImages: PlantImage[]) => {
-      console.log(
+      logger.debug(
         'onUploadComplete called with',
         uploadedImages.length,
         'images'
@@ -54,7 +55,7 @@ export default function UploadPage() {
       setError('');
     },
     onError: (errorMessage: string) => {
-      console.log('Upload error:', errorMessage);
+      logger.debug('Upload error:', errorMessage);
       setError(errorMessage);
     },
   });
@@ -72,7 +73,7 @@ export default function UploadPage() {
   // Handle navigation after context images are updated
   useEffect(() => {
     if (shouldNavigate && contextImages.length > 0) {
-      console.log('Context images updated, navigating to questions...');
+      logger.debug('Context images updated, navigating to questions...');
       setShouldNavigate(false);
       // Use a small delay to ensure context is fully updated
       setTimeout(() => {
@@ -98,19 +99,19 @@ export default function UploadPage() {
   };
 
   const handleNext = async () => {
-    console.log('handleNext called, images length:', images.length);
+    logger.debug('handleNext called, images length:', images.length);
 
     if (images.length > 0) {
-      console.log('Setting context images and preparing to navigate...');
+      logger.debug('Setting context images and preparing to navigate...');
       setContextImages(images);
       setShouldNavigate(true);
     } else {
-      console.log('No images to proceed with');
+      logger.debug('No images to proceed with');
     }
   };
 
   const handleReset = () => {
-    console.log('handleReset called');
+    logger.debug('handleReset called');
     requestReset();
   };
 
@@ -140,7 +141,7 @@ export default function UploadPage() {
       await processFiles(dt.files);
       setError('');
     } catch (e) {
-      console.error('Error adding sample image', e);
+      logger.error('Error adding sample image', e);
       setError('Failed to load sample image.');
     }
   };

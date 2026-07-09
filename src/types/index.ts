@@ -8,13 +8,6 @@ export interface PlantImage {
   size: number;
 }
 
-export interface DiagnosisStep {
-  upload: boolean;
-  analysis: boolean;
-  questions: boolean;
-  results: boolean;
-}
-
 export interface PlantIdentification {
   name: string; // empty string means not identified / no plant
 }
@@ -52,13 +45,4 @@ export interface DiagnosisResult {
   };
   careTips: string;
   plant?: string;
-}
-
-export interface DiagnosisState {
-  step: keyof DiagnosisStep;
-  images: PlantImage[];
-  plantIdentification?: PlantIdentification;
-  questions: DiagnosticQuestion[];
-  answers: DiagnosticAnswer[];
-  results?: DiagnosisResult;
 }

@@ -10,6 +10,7 @@ import {
   DiagnosisResult,
 } from '@/types';
 
+import { logger } from '@/lib/logger';
 const DB_NAME = 'plantDebuggerDB';
 const DB_VERSION = 1;
 const IMAGE_STORE = 'images';
@@ -126,7 +127,7 @@ export async function saveDiagnosisState(params: {
     db.close();
   } catch (e) {
     // Non-fatal
-    console.warn('[persistence] save failed', e);
+    logger.warn('[persistence] save failed', e);
   }
 }
 
@@ -198,7 +199,7 @@ export async function loadDiagnosisState(): Promise<{
       lastQAImagesSignature: stateData.lastQAImagesSignature || null,
     };
   } catch (e) {
-    console.warn('[persistence] load failed', e);
+    logger.warn('[persistence] load failed', e);
     return null;
   }
 }
@@ -217,7 +218,7 @@ export async function clearDiagnosisState(): Promise<void> {
     });
     db.close();
   } catch (e) {
-    console.warn('[persistence] clear failed', e);
+    logger.warn('[persistence] clear failed', e);
   }
 }
 

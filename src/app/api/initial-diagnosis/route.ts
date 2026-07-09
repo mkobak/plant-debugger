@@ -13,26 +13,24 @@ import {
   createAggregationPrompt,
 } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
-import { printPrompt } from '@/lib/api/logging';
+import { logger, printPrompt } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.log(`[INITIAL-DIAGNOSIS:${requestId}] START`);
+  logger.debug(`[INITIAL-DIAGNOSIS:${requestId}] START`);
 
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     // Log when client disconnects/aborts
     signal?.addEventListener?.('abort', () => {
-      console.warn(
-        `[INITIAL-DIAGNOSIS:${requestId}] Request aborted by client`
-      );
+      logger.warn(`[INITIAL-DIAGNOSIS:${requestId}] Request aborted by client`);
     });
 
     // Rate limiting check
     const clientId = getClientId(request);
 
     if (!checkRateLimit(clientId)) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] Rate limit exceeded for client: ${clientId}`
       );
       return NextResponse.json(
@@ -42,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] Aborted before reading form data`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -52,7 +50,7 @@ export async function POST(request: NextRequest) {
     const { images, userComment } = await processFormData(formData);
 
     validateImages(images);
-    console.log(
+    logger.debug(
       `[INITIAL-DIAGNOSIS:${requestId}] client: ${clientId} | images: ${images.length} | comment len: ${userComment?.length || 0}`
     );
 
@@ -60,7 +58,7 @@ export async function POST(request: NextRequest) {
     await addRateLimitDelay(clientId);
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] Aborted before converting images`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -68,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
-    console.log(
+    logger.debug(
       `[INITIAL-DIAGNOSIS:${requestId}] Converted ${imageParts.length} images to base64`
     );
 
@@ -81,12 +79,12 @@ export async function POST(request: NextRequest) {
     // Removed old verbose payload dump (prompt already printed once)
 
     if (signal?.aborted) {
-      console.warn('[INITIAL-DIAGNOSIS] Aborted before starting model calls');
+      logger.warn('[INITIAL-DIAGNOSIS] Aborted before starting model calls');
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
     // Run 3 parallel diagnosis calls for consensus with slight sampling variation
-    console.log(
+    logger.debug(
       `[INITIAL-DIAGNOSIS:${requestId}] Starting 1x pro + 2x flash diagnosis calls...`
     );
     const callConfigs: {
@@ -119,7 +117,7 @@ export async function POST(request: NextRequest) {
     }> => {
       if (signal?.aborted) throw new Error('aborted');
       const attemptTag = `attempt=${attempt}`;
-      console.log(
+      logger.debug(
         `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 ${attemptTag} | model=${cfg.model} temp=${cfg.temperature} topP=${cfg.topP}`
       );
       const effectiveMax = opts?.overrideMaxTokens ?? cfg.maxOutputTokens;
@@ -164,11 +162,11 @@ export async function POST(request: NextRequest) {
       const blockReason = respObj?.promptFeedback?.blockReason;
       const safetyRatings = respObj?.candidates?.[0]?.safetyRatings;
       recordUsageForRequest(request, cfg.model, usage);
-      console.log(
+      logger.debug(
         `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 ${attemptTag} meta | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.trim().length}`
       );
       if (blockReason) {
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] Call ${index + 1}/3 blocked: ${blockReason} safetyRatings=${JSON.stringify(
             safetyRatings || []
           )}`
@@ -190,14 +188,14 @@ export async function POST(request: NextRequest) {
         // First attempt (no explicit max tokens to allow thinking)
         const first = await runSingleDiagnosis(cfg, index, 1);
         if (first.text.length > 0 || first.meta.blockReason) return first;
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] modelHigh empty (finish=${first.meta.finishReason}); retrying once with expanded tokens...`
         );
         const second = await runSingleDiagnosis(cfg, index, 2, {
           overrideMaxTokens: 1536,
         });
         if (second.text.length > 0 || second.meta.blockReason) return second;
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] modelHigh still empty; falling back to modelMedium.`
         );
         const fallbackCfg: (typeof callConfigs)[number] = {
@@ -220,7 +218,7 @@ export async function POST(request: NextRequest) {
           first.meta.finishReason === 'STOP' ||
           first.meta.finishReason === undefined
         ) {
-          console.warn(
+          logger.warn(
             `[INITIAL-DIAGNOSIS:${requestId}] ${cfg.model} empty; retrying with expanded tokens...`
           );
           const second = await runSingleDiagnosis(cfg, index, 2, {
@@ -241,7 +239,7 @@ export async function POST(request: NextRequest) {
       diagnosisResults = await Promise.all(diagnosisPromises);
     } catch (e) {
       if (signal?.aborted) {
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] Aborted during diagnosis calls`
         );
         return NextResponse.json(
@@ -262,7 +260,7 @@ export async function POST(request: NextRequest) {
         (r, i) => i !== highIndex && r.text && r.text.length > 0
       )
     ) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] modelHigh empty; performing flash fallback variant...`
       );
       try {
@@ -279,18 +277,18 @@ export async function POST(request: NextRequest) {
           usage: fallbackResult.usage,
           modelKey: fallbackResult.modelKey,
         };
-        console.log(
+        logger.debug(
           `[INITIAL-DIAGNOSIS:${requestId}] flash fallback completed length=${fallbackResult.text.length}`
         );
       } catch (err) {
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] flash fallback failed: ${(err as Error)?.message}`
         );
       }
     }
     // Emergency fallback if still all empty
     if (diagnosisResults.every((r) => !r.text)) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] All diagnosis attempts empty after retries; invoking emergency fallback.`
       );
       for (let i = 0; i < diagnosisResults.length; i++) {
@@ -318,19 +316,19 @@ export async function POST(request: NextRequest) {
             const usage = fallbackRes.response?.usageMetadata || {};
             recordUsageForRequest(request, 'modelMedium', usage);
             diagnosisResults[i].text = txt.trim();
-            console.log(
+            logger.debug(
               `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback produced length=${txt.trim().length}`
             );
           }
         } catch (err) {
-          console.warn(
+          logger.warn(
             `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback attempt failed: ${(err as Error)?.message}`
           );
         }
       }
       // If STILL empty, insert a placeholder so UI isn't broken
       if (diagnosisResults.every((r) => !r.text)) {
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] Emergency fallback also empty; inserting placeholder.`
         );
         diagnosisResults = diagnosisResults.map((r) => ({
@@ -341,8 +339,10 @@ export async function POST(request: NextRequest) {
     }
 
     diagnosisResults.forEach((d, i) => {
-      console.log(`[INITIAL-DIAGNOSIS:${requestId}] RESPONSE ${i + 1}/3 FULL:`);
-      console.log(d.text);
+      logger.debug(
+        `[INITIAL-DIAGNOSIS:${requestId}] RESPONSE ${i + 1}/3 FULL:`
+      );
+      logger.debug(d.text);
     });
 
     // Aggregate the diagnoses
@@ -350,12 +350,12 @@ export async function POST(request: NextRequest) {
       diagnosisResults.map((d) => d.text)
     );
     // Print aggregation prompt exactly once
-    console.log(
+    logger.debug(
       `[INITIAL-DIAGNOSIS:${requestId}] AGG PROMPT:\n${AGGREGATION_PROMPT}`
     );
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[INITIAL-DIAGNOSIS:${requestId}] Aborted before aggregation`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -390,7 +390,7 @@ export async function POST(request: NextRequest) {
         });
     }).catch((err) => {
       if ((err as Error)?.message === 'aborted') {
-        console.warn(
+        logger.warn(
           `[INITIAL-DIAGNOSIS:${requestId}] Aborted during aggregation`
         );
         throw new Error('aborted');
@@ -402,8 +402,8 @@ export async function POST(request: NextRequest) {
     const aggregationUsage = aggregationResult.response?.usageMetadata || {};
     recordUsageForRequest(request, 'modelLow', aggregationUsage);
     // Print aggregation response exactly once
-    console.log(`[INITIAL-DIAGNOSIS:${requestId}] AGG RESPONSE FULL:`);
-    console.log(rankedDiagnoses);
+    logger.debug(`[INITIAL-DIAGNOSIS:${requestId}] AGG RESPONSE FULL:`);
+    logger.debug(rankedDiagnoses);
 
     const result = {
       rawDiagnoses: diagnosisResults.map((d) => d.text),
@@ -417,13 +417,13 @@ export async function POST(request: NextRequest) {
       ],
     } as const;
 
-    console.log(`[INITIAL-DIAGNOSIS:${requestId}] SUCCESS`);
+    logger.debug(`[INITIAL-DIAGNOSIS:${requestId}] SUCCESS`);
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error(`[INITIAL-DIAGNOSIS:${requestId}] ERROR`, error);
+    logger.error(`[INITIAL-DIAGNOSIS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
-      console.error(`[INITIAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
+      logger.error(`[INITIAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
     }
 
     return NextResponse.json(

@@ -7,6 +7,7 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import { formatFileSize } from '@/utils';
 import { MAX_FILES, ACCEPTED_IMAGE_TYPES } from '@/lib/constants';
 
+import { logger } from '@/lib/logger';
 interface ImageUploadProps {
   images: PlantImage[];
   isUploading: boolean;
@@ -61,7 +62,7 @@ export default function ImageUpload({
     const files = e.target.files;
     if (files && files.length > 0) {
       // Log for debugging mobile issues
-      console.log(
+      logger.debug(
         `File input received ${files.length} files:`,
         Array.from(files).map((f) => f.name)
       );
@@ -85,7 +86,7 @@ export default function ImageUpload({
     handleDragEvents(e);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      console.log(
+      logger.debug(
         `Drop received ${files.length} files:`,
         Array.from(files).map((f) => f.name)
       );
@@ -112,7 +113,7 @@ export default function ImageUpload({
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
-        console.log(
+        logger.debug(
           `Camera input received ${files.length} files:`,
           Array.from(files).map((f) => f.name)
         );

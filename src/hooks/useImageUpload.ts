@@ -4,6 +4,7 @@ import { PlantImage } from '@/types';
 import { generateId, isValidImageFile, createObjectURL } from '@/utils';
 import { MAX_FILE_SIZE, ACCEPTED_IMAGE_TYPES } from '@/lib/constants';
 
+import { logger } from '@/lib/logger';
 interface UseImageUploadOptions {
   maxFiles?: number;
   maxFileSize?: number;
@@ -41,7 +42,7 @@ export function useImageUpload({
         const compressedFile = await imageCompression(file, options);
         return compressedFile;
       } catch (error) {
-        console.error('Image compression failed:', error);
+        logger.error('Image compression failed:', error);
         throw new Error('Failed to compress image');
       }
     },
@@ -51,7 +52,7 @@ export function useImageUpload({
   const processFiles = useCallback(
     async (files: FileList) => {
       const fileArray = Array.from(files);
-      console.log(
+      logger.debug(
         `processFiles called with ${files.length} files:`,
         fileArray.map((f) => `${f.name} (${f.size} bytes)`)
       );
@@ -79,7 +80,7 @@ export function useImageUpload({
               return currentImages;
             }
 
-            console.log(
+            logger.debug(
               `Will process ${filesToProcess.length} out of ${fileArray.length} selected files`
             );
 
@@ -90,14 +91,14 @@ export function useImageUpload({
 
                 for (let i = 0; i < filesToProcess.length; i++) {
                   const file = filesToProcess[i];
-                  console.log(
+                  logger.debug(
                     `Processing file ${i + 1}/${filesToProcess.length}: ${file.name}`
                   );
 
                   try {
                     // Validate file type
                     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                      console.warn(`Invalid file type: ${file.name}`);
+                      logger.warn(`Invalid file type: ${file.name}`);
                       onError?.(
                         `Invalid file type: ${file.name}. Only JPG and PNG files are allowed.`
                       );
@@ -109,7 +110,7 @@ export function useImageUpload({
 
                     // Final validation after compression
                     if (!isValidImageFile(compressedFile)) {
-                      console.warn(
+                      logger.warn(
                         `File too large after compression: ${file.name}`
                       );
                       onError?.(
@@ -127,7 +128,7 @@ export function useImageUpload({
                     };
 
                     newImages.push(plantImage);
-                    console.log(
+                    logger.debug(
                       `Successfully processed ${file.name}, total processed: ${newImages.length}`
                     );
 
@@ -135,7 +136,7 @@ export function useImageUpload({
                     const progress = ((i + 1) / filesToProcess.length) * 100;
                     setUploadProgress(progress);
                   } catch (error) {
-                    console.error(`Error processing ${file.name}:`, error);
+                    logger.error(`Error processing ${file.name}:`, error);
                     onError?.(
                       error instanceof Error
                         ? error.message
@@ -146,10 +147,10 @@ export function useImageUpload({
 
                 // Final result
                 const updatedImages = [...currentImages, ...newImages];
-                console.log(
+                logger.debug(
                   `Finished processing. New images: ${newImages.length}, existing images: ${currentImages.length}`
                 );
-                console.log(`Final image count: ${updatedImages.length}`);
+                logger.debug(`Final image count: ${updatedImages.length}`);
                 resolve(updatedImages);
               } catch (error) {
                 reject(error);
@@ -164,7 +165,7 @@ export function useImageUpload({
         setImages(result);
         onUploadComplete?.(result);
       } catch (error) {
-        console.error('Error in processFiles:', error);
+        logger.error('Error in processFiles:', error);
         onError?.(error instanceof Error ? error.message : 'Upload failed');
       } finally {
         setIsUploading(false);

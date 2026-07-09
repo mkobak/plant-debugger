@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { getClientId } from './shared';
 import { BUCKET_BY_KEY, PRICES, type ModelKey } from './modelConfig';
 
+import { logger } from '@/lib/logger';
 export interface UsageMetadata {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
@@ -94,7 +95,7 @@ export function recordUsageForRequest(
   m.input += pt;
   m.output += ct;
   m.cost += incIn + incOut;
-  console.log(
+  logger.debug(
     `(CostServer) ${modelKey}@${id}: input ${pt}, output ${ct}, cost ~$${(incIn + incOut).toFixed(4)}`
   );
 }
@@ -125,33 +126,33 @@ export function printAndResetForRequest(
   const totals = store.get(id);
   const callsLine = `Client: ${id} (localhost)`;
   if (!totals) {
-    console.log('====================================');
-    console.log(`${context}: No usage recorded`);
-    console.log(callsLine);
-    console.log('====================================');
+    logger.debug('====================================');
+    logger.debug(`${context}: No usage recorded`);
+    logger.debug(callsLine);
+    logger.debug('====================================');
     return;
   }
   const total = totals.inputCost + totals.outputCost;
-  console.log('====================================');
-  console.log(`${context}: Gemini API cost summary`);
-  console.log(callsLine);
-  console.log(
+  logger.debug('====================================');
+  logger.debug(`${context}: Gemini API cost summary`);
+  logger.debug(callsLine);
+  logger.debug(
     `- modelHigh: ${totals.byModel.modelHigh.calls} calls (~$${totals.byModel.modelHigh.cost.toFixed(4)})`
   );
-  console.log(
+  logger.debug(
     `- modelMedium: ${totals.byModel.modelMedium.calls} calls (~$${totals.byModel.modelMedium.cost.toFixed(4)})`
   );
-  console.log(
+  logger.debug(
     `- modelLow: ${totals.byModel.modelLow.calls} calls (~$${totals.byModel.modelLow.cost.toFixed(4)})`
   );
-  console.log(
+  logger.debug(
     `Input tokens: ${totals.prompt.toLocaleString()} (~$${totals.inputCost.toFixed(4)})`
   );
-  console.log(
+  logger.debug(
     `Output tokens: ${totals.output.toLocaleString()} (~$${totals.outputCost.toFixed(4)})`
   );
-  console.log(`Total cost: $${total.toFixed(4)}`);
-  console.log('====================================');
+  logger.debug(`Total cost: $${total.toFixed(4)}`);
+  logger.debug('====================================');
   store.delete(id);
 }
 

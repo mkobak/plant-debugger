@@ -14,8 +14,6 @@ import {
 } from '@/utils/circuitBreaker';
 import {
   createImageFormData,
-  logFormDataEntries,
-  logImageDetails,
   validateImages,
   getClientHeaders,
 } from './client-utils';
@@ -23,21 +21,19 @@ import { withRetry, withRetryAllowEmpty } from './retry-utils';
 import { costTracker } from '@/lib/costTracker';
 import type { ModelKey } from '@/lib/api/modelConfig';
 
+import { logger } from '@/lib/logger';
 export async function identifyPlant(
   images: PlantImage[],
   signal?: AbortSignal
 ): Promise<PlantIdentification> {
-  console.log('identifyPlant called with images:', images.length);
+  logger.debug('identifyPlant called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to identifyPlant function');
   }
 
-  logImageDetails(images, 'Plant identification');
-
   return withRetryAllowEmpty(async () => {
     const formData = createImageFormData(images);
-    logFormDataEntries(formData, 'Plant identification FormData');
 
     const response = await fetch('/api/identify-plant', {
       method: 'POST',
@@ -56,7 +52,7 @@ export async function identifyPlant(
     }
 
     const data = await response.json();
-    console.log('identifyPlant response:', data);
+    logger.debug('identifyPlant response:', data);
     if (data?.usage?.usage) {
       costTracker.record({
         modelKey: (data.usage.modelKey || 'modelLow') as ModelKey,
@@ -74,7 +70,7 @@ export async function getNoPlantResponse(
   images: PlantImage[],
   signal?: AbortSignal
 ): Promise<string> {
-  console.log('getNoPlantResponse called with images:', images.length);
+  logger.debug('getNoPlantResponse called with images:', images.length);
   validateImages(images);
   // No retries for no-plant messages to avoid duplicate/jarring responses
   return withRetry(
@@ -115,19 +111,16 @@ export async function generateQuestions(
   userComment: string,
   signal?: AbortSignal
 ): Promise<DiagnosticQuestion[]> {
-  console.log('generateQuestions called with images:', images.length);
+  logger.debug('generateQuestions called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to generateQuestions function');
   }
 
-  logImageDetails(images, 'Question generation');
-
   return withRetry(async () => {
     const formData = createImageFormData(images);
     formData.append('rankedDiagnoses', rankedDiagnoses);
     formData.append('userComment', userComment);
-    logFormDataEntries(formData, 'Question generation FormData');
 
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
@@ -146,7 +139,7 @@ export async function generateQuestions(
     }
 
     const data = await response.json();
-    console.log('generateQuestions response:', data);
+    logger.debug('generateQuestions response:', data);
     if (data?.usage?.usage) {
       costTracker.record({
         modelKey: (data.usage.modelKey || 'modelMedium') as ModelKey,
@@ -163,7 +156,7 @@ export async function getInitialDiagnosis(
   userComment: string,
   signal?: AbortSignal
 ): Promise<{ rawDiagnoses: string[]; rankedDiagnoses: string }> {
-  console.log('getInitialDiagnosis called with images:', images.length);
+  logger.debug('getInitialDiagnosis called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to getInitialDiagnosis function');
@@ -197,7 +190,7 @@ export async function getInitialDiagnosis(
       }
 
       const data = await response.json();
-      console.log('getInitialDiagnosis response:', data);
+      logger.debug('getInitialDiagnosis response:', data);
       if (Array.isArray(data?.usage)) {
         // Record usage for multiple calls
         costTracker.recordMany(
@@ -220,7 +213,7 @@ export async function getFinalDiagnosis(
   userComment: string,
   signal?: AbortSignal
 ): Promise<DiagnosisResult> {
-  console.log('getFinalDiagnosis called with images:', images.length);
+  logger.debug('getFinalDiagnosis called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to getFinalDiagnosis function');
@@ -256,7 +249,7 @@ export async function getFinalDiagnosis(
       }
 
       const data = await response.json();
-      console.log('getFinalDiagnosis response:', data);
+      logger.debug('getFinalDiagnosis response:', data);
       if (data?.usage?.usage) {
         costTracker.record({
           modelKey: (data.usage.modelKey || 'modelHigh') as ModelKey,

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import TypingText from './TypingText';
 import LoadingSpinner from './LoadingSpinner';
 
+import { logger } from '@/lib/logger';
 interface QuestionsLoadingScreenProps {
   isIdentifying: boolean;
   isInvestigating: boolean; // initial diagnoses aggregation phase
@@ -33,7 +34,7 @@ export default function QuestionsLoadingScreen({
   // Call onComplete when everything is done
   useEffect(() => {
     if (questionsGenerated && line3Complete && onComplete) {
-      console.log(
+      logger.debug(
         'QuestionsLoadingScreen: All steps complete, calling onComplete'
       );
       const timer = setTimeout(() => {

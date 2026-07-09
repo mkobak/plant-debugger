@@ -7,28 +7,9 @@ export const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 export const MAX_FILES = 3;
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 
-// UI Animation timings (in milliseconds)
-export const TYPING_DELAY = 800;
-export const ANIMATION_DURATION = 500;
 export const LOADING_SPINNER_CHARS = ['/', '-', '\\', '|'];
 
-// API endpoints
-export const API_ENDPOINTS = {
-  IDENTIFY_PLANT: '/api/identify-plant',
-  GENERATE_QUESTIONS: '/api/generate-questions',
-  DIAGNOSE: '/api/diagnose',
-  FINALIZE_DIAGNOSIS: '/api/finalize-diagnosis',
-} as const;
-
-// Diagnosis step names
-export const DIAGNOSIS_STEPS = {
-  UPLOAD: 'upload',
-  ANALYSIS: 'analysis',
-  QUESTIONS: 'analysis',
-  RESULTS: 'results',
-} as const;
-
-// ASCII Art logos (for reference)
+// ASCII Art logos — consumed by scripts/generateAsciiSvgs.js via regex; keep in sync
 export const ASCII_LOGO_SINGLE = `██╗      ██████╗ ██╗      █████╗ ███╗   ██╗████████╗    ██████╗ ███████╗██████╗ ██╗   ██╗ ██████╗  ██████╗ ███████╗██████╗ 
 ╚██╗     ██╔══██╗██║     ██╔══██╗████╗  ██║╚══██╔══╝    ██╔══██╗██╔════╝██╔══██╗██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔══██╗
  ╚██╗    ██████╔╝██║     ███████║██╔██╗ ██║   ██║       ██║  ██║█████╗  ██████╔╝██║   ██║██║  ███╗██║  ███╗█████╗  ██████╔╝

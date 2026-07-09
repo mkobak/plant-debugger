@@ -8,22 +8,22 @@ import {
 } from '@/lib/api/shared';
 import { createQuestionsGenerationPrompt } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
-import { printPrompt, printResponse } from '@/lib/api/logging';
+import { logger, printPrompt, printResponse } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.log(`[GENERATE-QUESTIONS:${requestId}] START`);
+  logger.debug(`[GENERATE-QUESTIONS:${requestId}] START`);
 
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     signal?.addEventListener?.('abort', () => {
-      console.warn(
+      logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Request aborted by client`
       );
     });
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Aborted before reading form data`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
 
     validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
-    console.log(
+    logger.debug(
       `[GENERATE-QUESTIONS:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
     );
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Aborted before converting images`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
-    console.log(
+    logger.debug(
       `[GENERATE-QUESTIONS:${requestId}] Converted ${imageParts.length} images to base64`
     );
 
@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
     );
 
     // Concise send summary
-    console.log(
+    logger.debug(
       `[GENERATE-QUESTIONS:${requestId}] Sending to AI | images: ${imageParts.length} | schema: questions`
     );
 
     // Call Gemini API for questions generation
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Aborted before model call`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       ((usage?.promptTokenCount ?? 0) === 0 &&
         (usage?.candidatesTokenCount ?? 0) === 0)
     ) {
-      console.warn(
+      logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Missing or zero usage metadata`
       );
     }
@@ -112,11 +112,11 @@ export async function POST(request: NextRequest) {
         throw new Error('Empty JSON response');
       }
       questionsData = JSON.parse(jsonText);
-      console.log(
+      logger.debug(
         `[GENERATE-QUESTIONS:${requestId}] Parsed JSON keys: ${Object.keys(questionsData || {}).join(', ')}`
       );
     } catch (e) {
-      console.error(
+      logger.error(
         `[GENERATE-QUESTIONS:${requestId}] Failed to parse structured JSON response`,
         e
       );
@@ -139,19 +139,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(
+    logger.debug(
       `[GENERATE-QUESTIONS:${requestId}] Extracted questions: ${questions.length}`
     );
-    console.log(`[GENERATE-QUESTIONS:${requestId}] SUCCESS`);
+    logger.debug(`[GENERATE-QUESTIONS:${requestId}] SUCCESS`);
 
     return NextResponse.json({
       questions,
       usage: { modelKey: 'modelMedium', usage },
     });
   } catch (error) {
-    console.error(`[GENERATE-QUESTIONS:${requestId}] ERROR`, error);
+    logger.error(`[GENERATE-QUESTIONS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
-      console.error(`[GENERATE-QUESTIONS:${requestId}] STACK`, error.stack);
+      logger.error(`[GENERATE-QUESTIONS:${requestId}] STACK`, error.stack);
     }
 
     if (error instanceof Error && error.name === 'AbortError') {

@@ -10,19 +10,19 @@ import {
   printAndResetForRequest,
 } from '@/lib/api/costServer';
 import { NO_PLANT_PROMPT } from '@/lib/api/prompts';
-import { printPrompt, printResponse } from '@/lib/api/logging';
+import { logger, printPrompt, printResponse } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.log(`[NO-PLANT:${requestId}] START`);
+  logger.debug(`[NO-PLANT:${requestId}] START`);
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     signal?.addEventListener?.('abort', () => {
-      console.warn(`[NO-PLANT:${requestId}] Request aborted by client`);
+      logger.warn(`[NO-PLANT:${requestId}] Request aborted by client`);
     });
 
     if (signal?.aborted) {
-      console.warn(`[NO-PLANT:${requestId}] Aborted before reading form data`);
+      logger.warn(`[NO-PLANT:${requestId}] Aborted before reading form data`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
@@ -31,18 +31,18 @@ export async function POST(request: NextRequest) {
 
     validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
-    console.log(
+    logger.debug(
       `[NO-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
     );
 
     const imageParts = await convertImagesToBase64(images);
-    console.log(
+    logger.debug(
       `[NO-PLANT:${requestId}] Converted ${imageParts.length} images to base64`
     );
 
     // Print prompt exactly once (gated)
     printPrompt(`[NO-PLANT:${requestId}]`, NO_PLANT_PROMPT);
-    console.log(`[NO-PLANT:${requestId}] Sending to AI`);
+    logger.debug(`[NO-PLANT:${requestId}] Sending to AI`);
     const genPromise = models.modelLow.generateContent({
       contents: [
         {
@@ -78,10 +78,10 @@ export async function POST(request: NextRequest) {
     const message = result.response.text().trim();
     const usage = result.response?.usageMetadata || {};
     recordUsageForRequest(request, 'modelLow', usage);
-    console.log(
+    logger.debug(
       `[NO-PLANT:${requestId}] AI response length: ${message.length}`
     );
-    console.log(`[NO-PLANT:${requestId}] SUCCESS`);
+    logger.debug(`[NO-PLANT:${requestId}] SUCCESS`);
 
     // Print a server-side summary for this early-termination path
     printAndResetForRequest(request, 'Plant Debugger (no plant)');
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
       usage: { modelKey: 'modelLow', usage },
     });
   } catch (error) {
-    console.error(`[NO-PLANT:${requestId}] ERROR`, error);
+    logger.error(`[NO-PLANT:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
-      console.error(`[NO-PLANT:${requestId}] STACK`, error.stack);
+      logger.error(`[NO-PLANT:${requestId}] STACK`, error.stack);
     }
 
     if (error instanceof Error && error.message === 'aborted') {

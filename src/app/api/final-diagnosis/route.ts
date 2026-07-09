@@ -14,23 +14,28 @@ import {
   recordUsageForRequest,
   printAndResetForRequest,
 } from '@/lib/api/costServer';
-import { printPrompt, printResponse, safeStringify } from '@/lib/api/logging';
+import {
+  logger,
+  printPrompt,
+  printResponse,
+  safeStringify,
+} from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.log(`[FINAL-DIAGNOSIS:${requestId}] START`);
+  logger.debug(`[FINAL-DIAGNOSIS:${requestId}] START`);
 
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     signal?.addEventListener?.('abort', () => {
-      console.warn(`[FINAL-DIAGNOSIS:${requestId}] Request aborted by client`);
+      logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Request aborted by client`);
     });
 
     // Rate limiting check
     const clientId = getClientId(request);
 
     if (!checkRateLimit(clientId)) {
-      console.warn(
+      logger.warn(
         `[FINAL-DIAGNOSIS:${requestId}] Rate limit exceeded for client: ${clientId}`
       );
       return NextResponse.json(
@@ -40,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[FINAL-DIAGNOSIS:${requestId}] Aborted before reading form data`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     validateImages(images);
     const totalImageBytes = images.reduce((sum, f) => sum + (f.size || 0), 0);
-    console.log(
+    logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] Client: ${clientId} | images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB) | Q&A len: ${questionsAndAnswers?.length || 0} | ranked len: ${rankedDiagnoses?.length || 0}`
     );
 
@@ -60,7 +65,7 @@ export async function POST(request: NextRequest) {
     await addRateLimitDelay(clientId);
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[FINAL-DIAGNOSIS:${requestId}] Aborted before converting images`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
-    console.log(
+    logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] Converted ${imageParts.length} images to base64`
     );
 
@@ -81,17 +86,17 @@ export async function POST(request: NextRequest) {
     printPrompt(`[FINAL-DIAGNOSIS:${requestId}]`, MAIN_DIAGNOSIS_PROMPT);
 
     // Concise request summary
-    console.log(
+    logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] Sending to AI | prompt len: ${MAIN_DIAGNOSIS_PROMPT.length} | images: ${imageParts.length} | schema: finalDiagnosis`
     );
 
     // Call Gemini API for final structured diagnosis
     if (signal?.aborted) {
-      console.warn(`[FINAL-DIAGNOSIS:${requestId}] Aborted before model call`);
+      logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Aborted before model call`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
-    console.log(
+    logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] Calling Gemini API (JSON mode)...`
     );
     const genPromise = models.modelMedium.generateContent({
@@ -126,9 +131,7 @@ export async function POST(request: NextRequest) {
         });
     }).catch((err) => {
       if ((err as Error)?.message === 'aborted') {
-        console.warn(
-          `[FINAL-DIAGNOSIS:${requestId}] Aborted during model call`
-        );
+        logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Aborted during model call`);
         throw new Error('aborted');
       }
       throw err;
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest) {
     printResponse(`[FINAL-DIAGNOSIS:${requestId}]`, response);
     const usage = result.response?.usageMetadata || {};
     recordUsageForRequest(request, 'modelMedium', usage);
-    console.log(
+    logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] AI response received | candidates: ${response.candidates?.length || 0}`
     );
 
@@ -156,11 +159,11 @@ export async function POST(request: NextRequest) {
         throw new Error('Empty JSON response text');
       }
       diagnosisData = JSON.parse(jsonText);
-      console.log(
+      logger.debug(
         `[FINAL-DIAGNOSIS:${requestId}] Parsed JSON keys: ${Object.keys(diagnosisData || {}).join(', ')}`
       );
     } catch (e) {
-      console.error(
+      logger.error(
         `[FINAL-DIAGNOSIS:${requestId}] Failed to parse structured JSON response`,
         e
       );
@@ -191,7 +194,7 @@ export async function POST(request: NextRequest) {
       plant: diagnosisData.plant,
     };
 
-    console.log(`[FINAL-DIAGNOSIS:${requestId}] SUCCESS`);
+    logger.debug(`[FINAL-DIAGNOSIS:${requestId}] SUCCESS`);
 
     // Print a server-side summary in the terminal
     printAndResetForRequest(request, 'Plant Debugger');
@@ -201,9 +204,9 @@ export async function POST(request: NextRequest) {
       usage: { modelKey: 'modelMedium', usage },
     });
   } catch (error) {
-    console.error(`[FINAL-DIAGNOSIS:${requestId}] ERROR`, error);
+    logger.error(`[FINAL-DIAGNOSIS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
-      console.error(`[FINAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
+      logger.error(`[FINAL-DIAGNOSIS:${requestId}] STACK`, error.stack);
     }
 
     if (error instanceof Error && error.message === 'aborted') {

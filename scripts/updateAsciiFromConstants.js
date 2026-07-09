@@ -40,7 +40,9 @@ function extractAsciiFromConstants() {
   const twoLines = twoLinesMatch ? twoLinesMatch[1] : null;
 
   // Extract ASCII_PLANT_LOGO
-  const plantMatch = content.match(/export const ASCII_PLANT_LOGO =`([^`]+)`/s);
+  const plantMatch = content.match(
+    /export const ASCII_PLANT_LOGO =\s*`([^`]+)`/s
+  );
   const plant = plantMatch ? plantMatch[1] : null;
 
   if (!single || !twoLines || !plant) {

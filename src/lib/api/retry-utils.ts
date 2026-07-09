@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Retry utilities for API calls to prevent infinite loops
  */
@@ -41,29 +42,29 @@ export async function withRetry<T>(
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
   let lastError: any;
 
-  console.log(
+  logger.debug(
     `[RETRY] Starting ${context} (max ${opts.maxRetries + 1} attempts)`
   );
 
   for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
     try {
-      console.log(
+      logger.debug(
         `[RETRY] ${context} - Attempt ${attempt + 1}/${opts.maxRetries + 1}`
       );
       const result = await operation();
 
       if (attempt > 0) {
-        console.log(
+        logger.debug(
           `[RETRY] ${context} - Success after ${attempt + 1} attempts`
         );
       } else {
-        console.log(`[RETRY] ${context} - Success on first attempt`);
+        logger.debug(`[RETRY] ${context} - Success on first attempt`);
       }
 
       return result;
     } catch (error) {
       lastError = error;
-      console.error(
+      logger.error(
         `[RETRY] ${context} - Attempt ${attempt + 1} failed:`,
         error
       );
@@ -73,13 +74,13 @@ export async function withRetry<T>(
         (typeof (error as any)?.message === 'string' &&
           /(aborted|abort)/i.test((error as any).message))
       ) {
-        console.log(`[RETRY] ${context} - Aborted, stopping retries`);
+        logger.debug(`[RETRY] ${context} - Aborted, stopping retries`);
         throw error;
       }
 
       // If this is the last attempt, don't retry
       if (attempt === opts.maxRetries) {
-        console.error(
+        logger.error(
           `[RETRY] ${context} - All ${opts.maxRetries + 1} attempts failed`
         );
         break;
@@ -87,12 +88,12 @@ export async function withRetry<T>(
 
       // Check if we should retry this error
       if (!opts.shouldRetry(error)) {
-        console.error(`[RETRY] ${context} - Error not retryable, stopping`);
+        logger.error(`[RETRY] ${context} - Error not retryable, stopping`);
         break;
       }
 
       // Wait before retrying
-      console.log(
+      logger.debug(
         `[RETRY] ${context} - Waiting ${opts.retryDelay}ms before retry`
       );
       await new Promise((resolve) => setTimeout(resolve, opts.retryDelay));

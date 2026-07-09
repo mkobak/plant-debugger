@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { PlantImage, DiagnosisResult } from '@/types';
 import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
 
+import { logger } from '@/lib/logger';
 interface UseDiagnosisFlowProps {
   images: PlantImage[];
   questionsAndAnswers: string;
@@ -35,7 +36,7 @@ export function useDiagnosisFlow({
     const timeSinceLastAttempt = now - lastDiagnosisAttemptRef.current;
     const MIN_TIME_BETWEEN_ATTEMPTS = 10000; // 10 seconds minimum between attempts
 
-    console.log(
+    logger.debug(
       'useDiagnosisFlow: startDiagnosis called - isDiagnosing:',
       isDiagnosing,
       'diagnosisStarted:',
@@ -46,7 +47,7 @@ export function useDiagnosisFlow({
 
     // Comprehensive protection against multiple calls
     if (isDiagnosing || diagnosisStartedRef.current) {
-      console.log(
+      logger.debug(
         'useDiagnosisFlow: Diagnosis already in progress, skipping...'
       );
       return;
@@ -54,17 +55,19 @@ export function useDiagnosisFlow({
 
     // Prevent too frequent requests
     if (timeSinceLastAttempt < MIN_TIME_BETWEEN_ATTEMPTS) {
-      console.log('useDiagnosisFlow: Too soon since last attempt, skipping...');
+      logger.debug(
+        'useDiagnosisFlow: Too soon since last attempt, skipping...'
+      );
       return;
     }
 
     // Validate inputs
     if (!images || images.length === 0) {
-      console.log('useDiagnosisFlow: No images available');
+      logger.debug('useDiagnosisFlow: No images available');
       setError('No images available for diagnosis');
       return;
     }
-    console.log(
+    logger.debug(
       `useDiagnosisFlow: Starting diagnosis attempt ${retryCountRef.current + 1}/${maxRetries + 1} with images:`,
       images.length
     );
@@ -75,7 +78,7 @@ export function useDiagnosisFlow({
     setError('');
 
     try {
-      console.log(
+      logger.debug(
         'useDiagnosisFlow: Starting diagnosis with images:',
         images.length
       );
@@ -86,9 +89,9 @@ export function useDiagnosisFlow({
 
       let ranked = rankedDiagnoses;
       if (!rankedDiagnoses) {
-        console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
+        logger.debug('useDiagnosisFlow: Calling getInitialDiagnosis...');
         const initialResult = await getInitialDiagnosis(images, '', signal);
-        console.log(
+        logger.debug(
           'useDiagnosisFlow: Initial diagnosis complete:',
           initialResult
         );
@@ -102,10 +105,10 @@ export function useDiagnosisFlow({
       const runFinal = async () => {
         try {
           if (canceledRef.current) {
-            console.log('useDiagnosisFlow: Canceled before final diagnosis');
+            logger.debug('useDiagnosisFlow: Canceled before final diagnosis');
             return;
           }
-          console.log('useDiagnosisFlow: Calling getFinalDiagnosis...');
+          logger.debug('useDiagnosisFlow: Calling getFinalDiagnosis...');
           // Step 2: Get final structured diagnosis
           const finalResult = await getFinalDiagnosis(
             images,
@@ -115,7 +118,7 @@ export function useDiagnosisFlow({
             abortRef.current?.signal
           );
 
-          console.log(
+          logger.debug(
             'useDiagnosisFlow: Final diagnosis complete:',
             finalResult
           );
@@ -125,18 +128,15 @@ export function useDiagnosisFlow({
           // Reset retry count on success
           retryCountRef.current = 0;
         } catch (finalError) {
-          console.error(
-            'useDiagnosisFlow: Final diagnosis failed:',
-            finalError
-          );
+          logger.error('useDiagnosisFlow: Final diagnosis failed:', finalError);
           if (finalError instanceof Error && finalError.name === 'AbortError') {
-            console.log('useDiagnosisFlow: Final diagnosis aborted by user');
+            logger.debug('useDiagnosisFlow: Final diagnosis aborted by user');
             return;
           }
 
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
-            console.log(
+            logger.debug(
               `useDiagnosisFlow: Will retry final diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`
             );
             // Only retry the final step, not the initial step
@@ -163,9 +163,9 @@ export function useDiagnosisFlow({
         runFinal();
       }, 2000);
     } catch (error) {
-      console.error('useDiagnosisFlow: Initial diagnosis failed:', error);
+      logger.error('useDiagnosisFlow: Initial diagnosis failed:', error);
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('useDiagnosisFlow: Initial diagnosis aborted by user');
+        logger.debug('useDiagnosisFlow: Initial diagnosis aborted by user');
         setIsDiagnosing(false);
         diagnosisStartedRef.current = false;
         return;
@@ -173,7 +173,7 @@ export function useDiagnosisFlow({
 
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current++;
-        console.log(
+        logger.debug(
           `useDiagnosisFlow: Will retry initial diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`
         );
         diagnosisStartedRef.current = false; // Allow retry
@@ -192,7 +192,7 @@ export function useDiagnosisFlow({
   }, [images, questionsAndAnswers, rankedDiagnoses, userComment, isDiagnosing]);
 
   const cancelDiagnosis = useCallback(() => {
-    console.log('useDiagnosisFlow: cancelDiagnosis called');
+    logger.debug('useDiagnosisFlow: cancelDiagnosis called');
     canceledRef.current = true;
     if (abortRef.current) {
       abortRef.current.abort();
@@ -202,7 +202,7 @@ export function useDiagnosisFlow({
   }, []);
 
   const resetDiagnosis = useCallback(() => {
-    console.log('useDiagnosisFlow: resetDiagnosis called');
+    logger.debug('useDiagnosisFlow: resetDiagnosis called');
     setDiagnosisResult(null);
     setInitialDiagnosisComplete(false);
     setFinalDiagnosisComplete(false);

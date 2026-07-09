@@ -4,6 +4,7 @@
 
 import { NextRequest } from 'next/server';
 
+import { logger } from '@/lib/logger';
 // In-memory rate limiting for API routes
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -43,7 +44,7 @@ export function getClientId(request: NextRequest): string {
 export async function addRateLimitDelay(clientId: string): Promise<void> {
   const requestCount = rateLimitMap.get(clientId)?.count || 0;
   if (requestCount > 5) {
-    console.log(
+    logger.debug(
       `High request frequency detected for client ${clientId}, adding delay...`
     );
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -81,7 +82,7 @@ export async function processFormData(
     }
   }
   // Log concise summary for debugging
-  console.log(
+  logger.debug(
     '[FormData] images:',
     images.length,
     `(~${Math.round(totalImageBytes / 1024)} KB)`,

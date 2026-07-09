@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // Circuit breaker utility to prevent API abuse and excessive retries
 class CircuitBreaker {
   private failureCount = 0;
@@ -54,7 +55,7 @@ class CircuitBreaker {
 
       if (this.failureCount >= this.failureThreshold) {
         this.isOpen = true;
-        console.warn(
+        logger.warn(
           `Circuit breaker opened after ${this.failureCount} failures`
         );
       }

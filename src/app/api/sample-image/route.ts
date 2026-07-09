@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -44,7 +45,7 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error('sample-image route error', error);
+    logger.error('sample-image route error', error);
     return NextResponse.json(
       { error: 'Failed to fetch sample image' },
       { status: 500 }

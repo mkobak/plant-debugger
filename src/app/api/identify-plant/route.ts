@@ -8,23 +8,23 @@ import {
 } from '@/lib/api/shared';
 import { PLANT_IDENTIFICATION_PROMPT } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
-import { printPrompt, printResponse } from '@/lib/api/logging';
+import { logger, printPrompt, printResponse } from '@/lib/logger';
 
 // Prevent concurrent identify-plant calls per client
 const inFlightByClient = new Set<string>();
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  console.log(`[IDENTIFY-PLANT:${requestId}] START`);
+  logger.debug(`[IDENTIFY-PLANT:${requestId}] START`);
 
   try {
     const { signal } = request as unknown as { signal?: AbortSignal };
     signal?.addEventListener?.('abort', () => {
-      console.warn(`[IDENTIFY-PLANT:${requestId}] Request aborted by client`);
+      logger.warn(`[IDENTIFY-PLANT:${requestId}] Request aborted by client`);
     });
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[IDENTIFY-PLANT:${requestId}] Aborted before reading form data`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const clientId = getClientId(request);
     if (inFlightByClient.has(clientId)) {
-      console.warn(
+      logger.warn(
         `[IDENTIFY-PLANT:${requestId}] Concurrent request blocked for client ${clientId}`
       );
       return NextResponse.json(
@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
 
     validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
-    console.log(
+    logger.debug(
       `[IDENTIFY-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
     );
 
     if (signal?.aborted) {
-      console.warn(
+      logger.warn(
         `[IDENTIFY-PLANT:${requestId}] Aborted before converting images`
       );
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Convert images to base64 for Gemini
     const imageParts = await convertImagesToBase64(images);
-    console.log(
+    logger.debug(
       `[IDENTIFY-PLANT:${requestId}] Converted ${imageParts.length} images to base64`
     );
 
@@ -68,13 +68,13 @@ export async function POST(request: NextRequest) {
     printPrompt(`[IDENTIFY-PLANT:${requestId}]`, PLANT_IDENTIFICATION_PROMPT);
 
     // Log what we're sending to AI
-    console.log(
+    logger.debug(
       `[IDENTIFY-PLANT:${requestId}] Sending to AI | images: ${imageParts.length}`
     );
 
     // Call Gemini API for plant identification
     if (signal?.aborted) {
-      console.warn(`[IDENTIFY-PLANT:${requestId}] Aborted before model call`);
+      logger.warn(`[IDENTIFY-PLANT:${requestId}] Aborted before model call`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     ) {
       plantName = '';
     }
-    console.log(
+    logger.debug(
       `[IDENTIFY-PLANT:${requestId}] Extracted plant name: ${plantName}`
     );
 
@@ -135,16 +135,16 @@ export async function POST(request: NextRequest) {
       name: plantName || '', // Allow empty string
     };
 
-    console.log(`[IDENTIFY-PLANT:${requestId}] SUCCESS`);
+    logger.debug(`[IDENTIFY-PLANT:${requestId}] SUCCESS`);
 
     return NextResponse.json({
       identification,
       usage: { modelKey: 'modelLow', usage },
     });
   } catch (error) {
-    console.error(`[IDENTIFY-PLANT:${requestId}] ERROR`, error);
+    logger.error(`[IDENTIFY-PLANT:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
-      console.error(`[IDENTIFY-PLANT:${requestId}] STACK`, error.stack);
+      logger.error(`[IDENTIFY-PLANT:${requestId}] STACK`, error.stack);
     }
 
     // If aborted, return 499
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Graceful fallback: on Gemini/internal errors, return empty identification
-    console.warn(
+    logger.warn(
       `[IDENTIFY-PLANT:${requestId}] Falling back to empty identification due to model error`
     );
     return NextResponse.json({
