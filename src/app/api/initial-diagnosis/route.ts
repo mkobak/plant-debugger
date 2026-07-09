@@ -12,6 +12,7 @@ import {
 } from '@/lib/api/prompts';
 import { normalizePlantName } from '@/lib/api/plantName';
 import type { ModelKey } from '@/lib/api/modelConfig';
+import { ThinkingLevel } from '@google/genai';
 import { logger } from '@/lib/logger';
 
 export const maxDuration = 60;
@@ -87,6 +88,9 @@ export const POST = withApiRoute(
             generationConfig: {
               temperature: cfg.temperature,
               topP: cfg.topP,
+              ...(cfg.modelKey === 'modelHigh'
+                ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+                : {}),
             },
             signal: diagnosisAbort.signal,
             timeoutMs: cfg.timeoutMs,

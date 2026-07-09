@@ -4,9 +4,9 @@
  */
 
 import type { NextRequest } from 'next/server';
-import type { GenerationConfig, Part } from '@google/generative-ai';
-import { models } from './gemini';
-import type { ModelKey } from './modelConfig';
+import type { GenerateContentConfig, Part } from '@google/genai';
+import { getGenAI } from './gemini';
+import { MODEL_BY_KEY, type ModelKey } from './modelConfig';
 import { recordUsageForRequest, type UsageMetadata } from './costServer';
 import { logger, printPrompt, printResponse } from '@/lib/logger';
 
@@ -32,7 +32,7 @@ export interface GeminiCallOptions {
   request: NextRequest;
   modelKey: ModelKey;
   parts: Part[];
-  generationConfig?: GenerationConfig;
+  generationConfig?: GenerateContentConfig;
   /** Client abort signal (from the incoming request). */
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -64,20 +64,28 @@ export async function geminiCall({
   if (textPart) printPrompt(tag, textPart.text);
 
   try {
-    const result = await models[modelKey].generateContent(
-      { contents: [{ role: 'user', parts }], generationConfig },
-      { signal, timeout: timeoutMs }
-    );
+    const response = await getGenAI().models.generateContent({
+      model: MODEL_BY_KEY[modelKey],
+      contents: [{ role: 'user', parts }],
+      config: {
+        ...generationConfig,
+        abortSignal: signal,
+        httpOptions: { timeout: timeoutMs },
+      },
+    });
 
-    const response = result.response;
     printResponse(tag, response);
 
-    const usage: UsageMetadata = response?.usageMetadata || {};
+    const usage: UsageMetadata = response.usageMetadata || {};
     recordUsageForRequest(request, modelKey, usage);
 
-    const text = (response?.text?.() ?? '').trim();
-    const finishReason = response?.candidates?.[0]?.finishReason;
-    const blockReason = response?.promptFeedback?.blockReason;
+    const text = (response.text ?? '').trim();
+    const finishReason = response.candidates?.[0]?.finishReason as
+      | string
+      | undefined;
+    const blockReason = response.promptFeedback?.blockReason as
+      | string
+      | undefined;
     if (blockReason) {
       logger.warn(`${tag} ${modelKey} blocked: ${blockReason}`);
     }
@@ -86,13 +94,10 @@ export async function geminiCall({
     );
     return { text, usage, finishReason, blockReason };
   } catch (error) {
-    // The SDK throws the same abort error for client aborts and timeouts —
-    // the caller's signal state tells them apart.
+    // The SDK aborts an internal controller for both client aborts and
+    // timeouts — the caller's signal state tells them apart.
     if (signal?.aborted) throw new Error('aborted');
-    if (
-      error instanceof Error &&
-      error.name === 'GoogleGenerativeAIAbortError'
-    ) {
+    if (error instanceof Error && error.name === 'AbortError') {
       logger.warn(`${tag} ${modelKey} timed out after ${timeoutMs}ms`);
       throw new GeminiTimeoutError(
         `${modelKey} call timed out after ${timeoutMs}ms`

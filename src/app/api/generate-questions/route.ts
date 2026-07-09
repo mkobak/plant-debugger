@@ -24,7 +24,7 @@ export const POST = withApiRoute(
         temperature: 0.1,
         topP: 0.5,
         responseMimeType: 'application/json',
-        responseSchema: questionsSchema as any,
+        responseSchema: questionsSchema,
       },
       signal,
       timeoutMs: 30_000,

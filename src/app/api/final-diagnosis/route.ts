@@ -27,7 +27,7 @@ export const POST = withApiRoute(
         topP: 0.5,
         maxOutputTokens: 2048,
         responseMimeType: 'application/json',
-        responseSchema: finalDiagnosisSchema as any,
+        responseSchema: finalDiagnosisSchema,
       },
       signal,
       timeoutMs: 45_000,

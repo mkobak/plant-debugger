@@ -8,9 +8,11 @@ const recordUsage = jest.fn();
 // module under test is required (next/jest's SWC transform does not hoist
 // jest.mock factories).
 jest.doMock('@/lib/api/gemini', () => ({
-  models: {
-    modelLow: { generateContent: (...args: any[]) => generateContent(...args) },
-  },
+  getGenAI: () => ({
+    models: {
+      generateContent: (...args: any[]) => generateContent(...args),
+    },
+  }),
 }));
 jest.doMock('@/lib/api/costServer', () => ({
   recordUsageForRequest: (...args: any[]) => recordUsage(...args),
@@ -36,11 +38,9 @@ describe('geminiCall', () => {
 
   it('returns trimmed text and records usage', async () => {
     generateContent.mockResolvedValue({
-      response: {
-        text: () => '  Monstera  ',
-        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
-        candidates: [{ finishReason: 'STOP' }],
-      },
+      text: '  Monstera  ',
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+      candidates: [{ finishReason: 'STOP' }],
     });
     const result = await geminiCall(baseOptions);
     expect(result.text).toBe('Monstera');
@@ -52,19 +52,22 @@ describe('geminiCall', () => {
   });
 
   it('passes signal and timeout to the SDK', async () => {
-    generateContent.mockResolvedValue({
-      response: { text: () => 'x', usageMetadata: {} },
-    });
+    generateContent.mockResolvedValue({ text: 'x', usageMetadata: {} });
     const controller = new AbortController();
     await geminiCall({
       ...baseOptions,
       signal: controller.signal,
       timeoutMs: 12345,
     });
-    expect(generateContent).toHaveBeenCalledWith(expect.anything(), {
-      signal: controller.signal,
-      timeout: 12345,
-    });
+    expect(generateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.any(String),
+        config: expect.objectContaining({
+          abortSignal: controller.signal,
+          httpOptions: { timeout: 12345 },
+        }),
+      })
+    );
   });
 
   it('throws "aborted" when the client signal is already aborted', async () => {
@@ -79,7 +82,7 @@ describe('geminiCall', () => {
   it('classifies SDK abort as client abort when the signal aborted mid-call', async () => {
     const controller = new AbortController();
     const sdkError = new Error('fetch aborted');
-    sdkError.name = 'GoogleGenerativeAIAbortError';
+    sdkError.name = 'AbortError';
     generateContent.mockImplementation(() => {
       controller.abort();
       return Promise.reject(sdkError);
@@ -93,7 +96,7 @@ describe('geminiCall', () => {
 
   it('classifies SDK abort as timeout when the signal did not abort', async () => {
     const sdkError = new Error('request timed out');
-    sdkError.name = 'GoogleGenerativeAIAbortError';
+    sdkError.name = 'AbortError';
     generateContent.mockRejectedValue(sdkError);
     const error = await geminiCall({ ...baseOptions, timeoutMs: 100 }).catch(
       (e) => e
