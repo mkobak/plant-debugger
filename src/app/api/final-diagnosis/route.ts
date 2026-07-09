@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
 import { finalDiagnosisSchema } from '@/lib/api/schemas';
 import {
-  checkRateLimit,
   getClientId,
-  addRateLimitDelay,
   processFormData,
   convertImagesToBase64,
-  validateImages,
 } from '@/lib/api/shared';
+import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
+import {
+  validateImages,
+  validateTextFields,
+  ValidationError,
+} from '@/lib/api/validation';
 import { createFinalDiagnosisPrompt } from '@/lib/api/prompts';
 import {
   recordUsageForRequest,
@@ -31,12 +34,11 @@ export async function POST(request: NextRequest) {
       logger.warn(`[FINAL-DIAGNOSIS:${requestId}] Request aborted by client`);
     });
 
-    // Rate limiting check
     const clientId = getClientId(request);
 
-    if (!checkRateLimit(clientId)) {
+    if (!checkRateLimit(getClientIp(request))) {
       logger.warn(
-        `[FINAL-DIAGNOSIS:${requestId}] Rate limit exceeded for client: ${clientId}`
+        `[FINAL-DIAGNOSIS:${requestId}] Rate limit exceeded for IP: ${getClientIp(request)}`
       );
       return NextResponse.json(
         { error: 'Too many requests. Please wait before trying again.' },
@@ -55,14 +57,12 @@ export async function POST(request: NextRequest) {
     const { images, questionsAndAnswers, userComment, rankedDiagnoses } =
       await processFormData(formData);
 
-    validateImages(images);
+    await validateImages(images);
+    validateTextFields({ userComment, questionsAndAnswers, rankedDiagnoses });
     const totalImageBytes = images.reduce((sum, f) => sum + (f.size || 0), 0);
     logger.debug(
       `[FINAL-DIAGNOSIS:${requestId}] Client: ${clientId} | images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB) | Q&A len: ${questionsAndAnswers?.length || 0} | ranked len: ${rankedDiagnoses?.length || 0}`
     );
-
-    // Additional protection: if there are multiple rapid requests, add a delay
-    await addRateLimitDelay(clientId);
 
     if (signal?.aborted) {
       logger.warn(
@@ -204,6 +204,9 @@ export async function POST(request: NextRequest) {
       usage: { modelKey: 'modelMedium', usage },
     });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     logger.error(`[FINAL-DIAGNOSIS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
       logger.error(`[FINAL-DIAGNOSIS:${requestId}] STACK`, error.stack);

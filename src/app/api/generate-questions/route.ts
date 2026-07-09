@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
 import { questionsSchema } from '@/lib/api/schemas';
+import { processFormData, convertImagesToBase64 } from '@/lib/api/shared';
+import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
 import {
-  processFormData,
-  convertImagesToBase64,
   validateImages,
-} from '@/lib/api/shared';
+  validateTextFields,
+  ValidationError,
+} from '@/lib/api/validation';
 import { createQuestionsGenerationPrompt } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
 import { logger, printPrompt, printResponse } from '@/lib/logger';
@@ -22,6 +24,14 @@ export async function POST(request: NextRequest) {
       );
     });
 
+    if (!checkRateLimit(getClientIp(request))) {
+      logger.warn(`[GENERATE-QUESTIONS:${requestId}] Rate limit exceeded`);
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before trying again.' },
+        { status: 429 }
+      );
+    }
+
     if (signal?.aborted) {
       logger.warn(
         `[GENERATE-QUESTIONS:${requestId}] Aborted before reading form data`
@@ -33,7 +43,8 @@ export async function POST(request: NextRequest) {
     const { images, rankedDiagnoses, userComment } =
       await processFormData(formData);
 
-    validateImages(images);
+    await validateImages(images);
+    validateTextFields({ userComment, rankedDiagnoses });
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
     logger.debug(
       `[GENERATE-QUESTIONS:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
@@ -149,6 +160,9 @@ export async function POST(request: NextRequest) {
       usage: { modelKey: 'modelMedium', usage },
     });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     logger.error(`[GENERATE-QUESTIONS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
       logger.error(`[GENERATE-QUESTIONS:${requestId}] STACK`, error.stack);

@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
-import {
-  processFormData,
-  convertImagesToBase64,
-  validateImages,
-  getClientId,
-} from '@/lib/api/shared';
+import { processFormData, convertImagesToBase64 } from '@/lib/api/shared';
+import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
+import { validateImages, ValidationError } from '@/lib/api/validation';
 import { PLANT_IDENTIFICATION_PROMPT } from '@/lib/api/prompts';
 import { recordUsageForRequest } from '@/lib/api/costServer';
 import { logger, printPrompt, printResponse } from '@/lib/logger';
-
-// Prevent concurrent identify-plant calls per client
-const inFlightByClient = new Set<string>();
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 8);
@@ -30,22 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
-    const clientId = getClientId(request);
-    if (inFlightByClient.has(clientId)) {
-      logger.warn(
-        `[IDENTIFY-PLANT:${requestId}] Concurrent request blocked for client ${clientId}`
-      );
+    if (!checkRateLimit(getClientIp(request))) {
+      logger.warn(`[IDENTIFY-PLANT:${requestId}] Rate limit exceeded`);
       return NextResponse.json(
-        { error: 'Identification already in progress' },
+        { error: 'Too many requests. Please wait before trying again.' },
         { status: 429 }
       );
     }
-    inFlightByClient.add(clientId);
 
     const formData = await request.formData();
     const { images } = await processFormData(formData);
 
-    validateImages(images);
+    await validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
     logger.debug(
       `[IDENTIFY-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
@@ -147,6 +137,10 @@ export async function POST(request: NextRequest) {
       logger.error(`[IDENTIFY-PLANT:${requestId}] STACK`, error.stack);
     }
 
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     // If aborted, return 499
     if (
       (error instanceof Error && error.name === 'AbortError') ||
@@ -155,19 +149,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
     }
 
-    // Graceful fallback: on Gemini/internal errors, return empty identification
-    logger.warn(
-      `[IDENTIFY-PLANT:${requestId}] Falling back to empty identification due to model error`
+    // Surface backend failures instead of masking them as "no plant found";
+    // the client retry path handles non-OK responses.
+    return NextResponse.json(
+      { error: 'Failed to identify plant' },
+      { status: 502 }
     );
-    return NextResponse.json({
-      identification: {
-        name: '',
-      },
-    });
-  } finally {
-    try {
-      const clientId = getClientId(request);
-      inFlightByClient.delete(clientId);
-    } catch {}
   }
 }

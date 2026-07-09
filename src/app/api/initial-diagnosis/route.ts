@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
 import {
-  checkRateLimit,
   getClientId,
-  addRateLimitDelay,
   processFormData,
   convertImagesToBase64,
-  validateImages,
 } from '@/lib/api/shared';
+import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
+import {
+  validateImages,
+  validateTextFields,
+  ValidationError,
+} from '@/lib/api/validation';
 import {
   createInitialDiagnosisPrompt,
   createAggregationPrompt,
@@ -26,12 +29,11 @@ export async function POST(request: NextRequest) {
       logger.warn(`[INITIAL-DIAGNOSIS:${requestId}] Request aborted by client`);
     });
 
-    // Rate limiting check
     const clientId = getClientId(request);
 
-    if (!checkRateLimit(clientId)) {
+    if (!checkRateLimit(getClientIp(request))) {
       logger.warn(
-        `[INITIAL-DIAGNOSIS:${requestId}] Rate limit exceeded for client: ${clientId}`
+        `[INITIAL-DIAGNOSIS:${requestId}] Rate limit exceeded for IP: ${getClientIp(request)}`
       );
       return NextResponse.json(
         { error: 'Too many requests. Please wait before trying again.' },
@@ -49,13 +51,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const { images, userComment } = await processFormData(formData);
 
-    validateImages(images);
+    await validateImages(images);
+    validateTextFields({ userComment });
     logger.debug(
       `[INITIAL-DIAGNOSIS:${requestId}] client: ${clientId} | images: ${images.length} | comment len: ${userComment?.length || 0}`
     );
-
-    // Additional protection: if there are multiple rapid requests, add a delay
-    await addRateLimitDelay(clientId);
 
     if (signal?.aborted) {
       logger.warn(
@@ -421,6 +421,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     logger.error(`[INITIAL-DIAGNOSIS:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
       logger.error(`[INITIAL-DIAGNOSIS:${requestId}] STACK`, error.stack);

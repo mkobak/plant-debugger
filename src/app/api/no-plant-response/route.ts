@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { models } from '@/lib/api/gemini';
-import {
-  processFormData,
-  convertImagesToBase64,
-  validateImages,
-} from '@/lib/api/shared';
+import { processFormData, convertImagesToBase64 } from '@/lib/api/shared';
+import { checkRateLimit, getClientIp } from '@/lib/api/rateLimit';
+import { validateImages, ValidationError } from '@/lib/api/validation';
 import {
   recordUsageForRequest,
   printAndResetForRequest,
@@ -21,6 +19,14 @@ export async function POST(request: NextRequest) {
       logger.warn(`[NO-PLANT:${requestId}] Request aborted by client`);
     });
 
+    if (!checkRateLimit(getClientIp(request))) {
+      logger.warn(`[NO-PLANT:${requestId}] Rate limit exceeded`);
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before trying again.' },
+        { status: 429 }
+      );
+    }
+
     if (signal?.aborted) {
       logger.warn(`[NO-PLANT:${requestId}] Aborted before reading form data`);
       return NextResponse.json({ error: 'Request canceled' }, { status: 499 });
@@ -29,7 +35,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const { images } = await processFormData(formData);
 
-    validateImages(images);
+    await validateImages(images);
     const totalImageBytes = images.reduce((s, f) => s + (f.size || 0), 0);
     logger.debug(
       `[NO-PLANT:${requestId}] images: ${images.length} (~${Math.round(totalImageBytes / 1024)} KB)`
@@ -91,6 +97,9 @@ export async function POST(request: NextRequest) {
       usage: { modelKey: 'modelLow', usage },
     });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     logger.error(`[NO-PLANT:${requestId}] ERROR`, error);
     if (error instanceof Error && error.stack) {
       logger.error(`[NO-PLANT:${requestId}] STACK`, error.stack);
