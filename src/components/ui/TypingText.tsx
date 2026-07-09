@@ -16,7 +16,7 @@ interface TypingTextProps {
 
 export default function TypingText({
   text,
-  delay = 300,
+  delay = 100,
   className = '',
   onComplete,
   speed = 100,

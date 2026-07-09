@@ -11,7 +11,7 @@ interface RetryOptions {
 
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   maxRetries: 2, // Maximum 2 retries (total 3 attempts)
-  retryDelay: 2000, // 2 seconds delay between retries
+  retryDelay: 1000, // base delay, doubled on each retry
   shouldRetry: (error) => {
     // Retry on network errors, timeout errors, or 5xx server errors
     // Don't retry on 4xx client errors (except 429 rate limiting)
@@ -21,11 +21,8 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
     if (error.message.includes('429') || error.message.includes('rate limit')) {
       return true; // Rate limit error
     }
-    if (
-      error.message.includes('500') ||
-      error.message.includes('Internal Server Error')
-    ) {
-      return true; // Server error
+    if (/50[0-9]|Internal Server Error|timed out/i.test(error.message)) {
+      return true; // Server error or upstream timeout
     }
     return false; // Don't retry other errors
   },
@@ -92,11 +89,10 @@ export async function withRetry<T>(
         break;
       }
 
-      // Wait before retrying
-      logger.debug(
-        `[RETRY] ${context} - Waiting ${opts.retryDelay}ms before retry`
-      );
-      await new Promise((resolve) => setTimeout(resolve, opts.retryDelay));
+      // Wait before retrying, backing off exponentially
+      const backoff = opts.retryDelay * 2 ** attempt;
+      logger.debug(`[RETRY] ${context} - Waiting ${backoff}ms before retry`);
+      await new Promise((resolve) => setTimeout(resolve, backoff));
     }
   }
 
@@ -105,26 +101,4 @@ export async function withRetry<T>(
   const wrapped = new Error(msg);
   (wrapped as any).cause = lastError;
   throw wrapped;
-}
-
-/**
- * Special retry wrapper for API calls that might return empty responses
- * (like plant identification that should allow empty strings)
- */
-export async function withRetryAllowEmpty<T>(
-  operation: () => Promise<T>,
-  context: string,
-  options: RetryOptions = {}
-): Promise<T> {
-  return withRetry(operation, context, {
-    ...options,
-    shouldRetry: (error) => {
-      // Don't retry if the operation succeeded but returned empty result
-      // (we'll let the caller handle empty results)
-      if (error.message.includes('empty') || error.message.includes('blank')) {
-        return false;
-      }
-      return DEFAULT_RETRY_OPTIONS.shouldRetry(error);
-    },
-  });
 }

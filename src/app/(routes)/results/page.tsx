@@ -205,6 +205,14 @@ export default function ResultsPage() {
     }
   }, [diagnosisResult, contextDiagnosisResult, setContextDiagnosisResult]);
 
+  // Render results as soon as the data arrives — don't gate on the
+  // status-line typing animation finishing
+  useEffect(() => {
+    if (finalDiagnosisComplete) {
+      setLoadingComplete(true);
+    }
+  }, [finalDiagnosisComplete]);
+
   // Persist the signature once we have results so we can detect back navigation vs changes later
   useEffect(() => {
     if (
@@ -231,7 +239,7 @@ export default function ResultsPage() {
       // Small delay to allow typing animations to finish on first visit
       const timer = setTimeout(() => {
         setHasShownResultsBefore(true);
-      }, 2000); // Wait 2 seconds after loading completes
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [

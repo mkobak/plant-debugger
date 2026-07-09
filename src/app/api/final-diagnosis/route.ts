@@ -25,6 +25,7 @@ export const POST = withApiRoute(
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
+        maxOutputTokens: 2048,
         responseMimeType: 'application/json',
         responseSchema: finalDiagnosisSchema as any,
       },

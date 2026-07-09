@@ -34,7 +34,7 @@ export function useDiagnosisFlow({
   const startDiagnosis = useCallback(async () => {
     const now = Date.now();
     const timeSinceLastAttempt = now - lastDiagnosisAttemptRef.current;
-    const MIN_TIME_BETWEEN_ATTEMPTS = 10000; // 10 seconds minimum between attempts
+    const MIN_TIME_BETWEEN_ATTEMPTS = 1500; // guards StrictMode double-invokes
 
     logger.debug(
       'useDiagnosisFlow: startDiagnosis called - isDiagnosing:',
@@ -158,10 +158,7 @@ export function useDiagnosisFlow({
           }
         }
       };
-      // Brief delay before final diagnosis
-      setTimeout(() => {
-        runFinal();
-      }, 2000);
+      await runFinal();
     } catch (error) {
       logger.error('useDiagnosisFlow: Initial diagnosis failed:', error);
       if (error instanceof Error && error.name === 'AbortError') {

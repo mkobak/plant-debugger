@@ -12,7 +12,6 @@ import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import {
-  identifyPlant,
   generateQuestions,
   getNoPlantResponse,
   getInitialDiagnosis,
@@ -114,13 +113,26 @@ export default function QuestionsPage() {
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
 
-      // Step 1: Identify plant
-      logger.debug('Step 1: Identifying plant...');
+      // Step 1: Identify plant + initial diagnoses (single request; the
+      // server runs identification in parallel with the diagnosis calls)
+      logger.debug('Step 1: Identifying plant and diagnosing...');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
-      // identifying flag already set true before calling this
-      const identification = await identifyPlant(images, signal);
-      setCtxIsIdentifying(false);
-      if (!identification) throw new Error('Failed to identify plant');
+      // Purely cosmetic phase progression while the merged request runs
+      const phaseTimer = setTimeout(() => {
+        setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
+      }, 2500);
+      let initialDiag: Awaited<ReturnType<typeof getInitialDiagnosis>>;
+      try {
+        initialDiag = await getInitialDiagnosis(
+          images,
+          additionalComments || '',
+          signal
+        );
+      } finally {
+        clearTimeout(phaseTimer);
+        setCtxIsIdentifying(false);
+      }
+      const identification = initialDiag.identification;
       logger.debug('Plant identified:', identification);
       setPlantIdentification(identification);
       setEditablePlantName(identification.name || 'Unknown plant');
@@ -151,21 +163,12 @@ export default function QuestionsPage() {
         return;
       }
 
-      // Step 2: Initial diagnoses (pro + flash aggregation)
-      logger.debug('Step 2: Generating initial diagnoses...');
-      setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
       setCtxIsGeneratingQuestions(true);
-      const initialDiag = await getInitialDiagnosis(
-        images,
-        additionalComments || '',
-        signal
-      );
       setRawInitialDiagnoses(initialDiag.rawDiagnoses);
       setRankedDiagnoses(initialDiag.rankedDiagnoses);
-      // Transition to question generation phase
+      // Step 2: Clarifying questions based on ranked diagnoses + comment
+      logger.debug('Step 2: Generating questions...');
       setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
-      // Step 3: Clarifying questions based on ranked diagnoses + comment
-      logger.debug('Step 3: Generating questions...');
       const generatedQuestions = await generateQuestions(
         images,
         initialDiag.rankedDiagnoses,
@@ -182,15 +185,12 @@ export default function QuestionsPage() {
       qaRunLocks.delete(imgSig);
       setLoadingPhase(LoadingPhase.COMPLETE);
 
-      // Show content after a brief delay
-      setTimeout(() => {
-        logger.debug('Process complete, showing content');
-        // Reset all typing states when transitioning to content
-        setPlantNameTyped(false);
-        setInstructionsTyped(false);
-        setCommentsLabelTyped(false);
-        setPageState(PageState.SHOWING_CONTENT);
-      }, 500);
+      logger.debug('Process complete, showing content');
+      // Reset all typing states when transitioning to content
+      setPlantNameTyped(false);
+      setInstructionsTyped(false);
+      setCommentsLabelTyped(false);
+      setPageState(PageState.SHOWING_CONTENT);
     } catch (error: any) {
       logger.error('Diagnosis process failed:', error);
       const aborted =
