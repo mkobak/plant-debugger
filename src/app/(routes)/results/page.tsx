@@ -16,6 +16,7 @@ import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
 import { useResultsExport } from '@/hooks/useResultsExport';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { imagesSignature } from '@/utils';
+import { formatReportAsMarkdown } from '@/utils/reportText';
 import { DiagnosticQuestion, DiagnosisResult } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -212,6 +213,20 @@ export default function ResultsPage() {
     setLoadingComplete(false);
     setHasShownResultsBefore(false); // Reset typing animation state
     resetDiagnosis();
+  };
+
+  const [copied, setCopied] = useState(false);
+  const handleCopyReport = async () => {
+    if (!diagnosisResult) return;
+    try {
+      await navigator.clipboard.writeText(
+        formatReportAsMarkdown(diagnosisResult)
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      logger.warn('Copy to clipboard failed', e);
+    }
   };
 
   const { isExporting, handleDownload } = useResultsExport({
@@ -453,6 +468,14 @@ export default function ResultsPage() {
                 disabled={isDiagnosing}
               >
                 Reset
+              </ActionButton>
+
+              <ActionButton
+                variant="reset"
+                disabled={!diagnosisResult}
+                onClick={handleCopyReport}
+              >
+                {copied ? 'Copied!' : 'Copy'}
               </ActionButton>
 
               <ActionButton

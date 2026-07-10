@@ -38,8 +38,13 @@ export default function TypingText({
     setComplete(false);
     setStarted(false);
 
+    // Respect prefers-reduced-motion: render instantly, no typing animation
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
     // If we've already typed this text once this session, render instantly
-    if (typingSession.has(key)) {
+    if (prefersReducedMotion || typingSession.has(key)) {
       setDisplay(text);
       setComplete(true);
       setStarted(true);
