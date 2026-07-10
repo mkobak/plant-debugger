@@ -48,7 +48,16 @@ function openRaw(version?: number): Promise<IDBDatabase> {
     const request = version
       ? indexedDB.open(DB_NAME, version)
       : indexedDB.open(DB_NAME);
-    request.onerror = () => reject(request.error);
+    // A version upgrade blocked by another open connection (other tab, or a
+    // concurrent load in this one) would otherwise leave this promise pending
+    // forever — reject instead so callers fall back gracefully.
+    const timeout = window.setTimeout(() => {
+      reject(new Error('IndexedDB open timed out (upgrade blocked?)'));
+    }, 4000);
+    request.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(request.error);
+    };
     request.onblocked = () => {
       logger.warn(
         '[persistence] DB upgrade blocked by another open connection'
@@ -66,7 +75,10 @@ function openRaw(version?: number): Promise<IDBDatabase> {
         db.createObjectStore(HISTORY_STORE, { keyPath: 'id' });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      window.clearTimeout(timeout);
+      resolve(request.result);
+    };
   });
 }
 

@@ -15,7 +15,7 @@ import { useNavigation } from '@/hooks/useNavigation';
 import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
 import { useResultsExport } from '@/hooks/useResultsExport';
 import useConfirmReset from '@/hooks/useConfirmReset';
-import { imagesSignature } from '@/utils';
+import { imagesSignature, hashString } from '@/utils';
 import { formatReportAsMarkdown } from '@/utils/reportText';
 import { saveHistoryEntry, makeThumbnail } from '@/lib/history';
 import { DiagnosticQuestion, DiagnosisResult } from '@/types';
@@ -170,10 +170,13 @@ export default function ResultsPage() {
     }
   }, [finalDiagnosisComplete]);
 
-  // Save freshly completed diagnoses to the local history (once per run)
+  // Record any completed diagnosis in the local history — fresh runs AND
+  // results restored from a previous session (which predate the history
+  // feature or were completed before navigating away). The entry id derives
+  // from the diagnosis signature, so repeated saves are idempotent.
   const historySavedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!finalDiagnosisComplete || !diagnosisResult) return;
+    if (!diagnosisResult) return;
     if (historySavedRef.current === diagnosisSignature) return;
     historySavedRef.current = diagnosisSignature;
     (async () => {
@@ -181,20 +184,14 @@ export default function ResultsPage() {
         ? await makeThumbnail(images[0].file)
         : null;
       await saveHistoryEntry({
-        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        id: `h-${hashString(diagnosisSignature)}`,
         createdAt: Date.now(),
         plant: diagnosisResult.plant || plantIdentification?.name || 'Unknown',
         diagnosisResult,
         thumbnail,
       });
     })();
-  }, [
-    finalDiagnosisComplete,
-    diagnosisResult,
-    diagnosisSignature,
-    images,
-    plantIdentification,
-  ]);
+  }, [diagnosisResult, diagnosisSignature, images, plantIdentification]);
 
   // Persist the signature once we have results so we can detect back navigation vs changes later
   useEffect(() => {

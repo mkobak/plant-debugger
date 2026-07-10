@@ -52,4 +52,77 @@ describe('TypingText', () => {
     });
     expect(onComplete).toHaveBeenCalled();
   });
+
+  it('does not restart typing when the parent re-renders with a new onComplete identity', () => {
+    mockReducedMotion(false);
+    jest.useFakeTimers();
+    const key = `t-${Math.random()}`;
+    const { rerender, container } = render(
+      <TypingText
+        text="Streaming resilient line"
+        speed={100}
+        delay={0}
+        onceKey={key}
+        onComplete={() => {}}
+      />
+    );
+    // Let it type roughly half of the text
+    act(() => {
+      jest.advanceTimersByTime(120);
+    });
+    const midway = container.textContent || '';
+    expect(midway.length).toBeGreaterThan(3);
+
+    // Parent re-render with a fresh inline arrow — exactly what happens on
+    // every streamed-field update on the results page
+    rerender(
+      <TypingText
+        text="Streaming resilient line"
+        speed={100}
+        delay={0}
+        onceKey={key}
+        onComplete={() => {}}
+      />
+    );
+    // If the effect restarted, the display would have reset to ''
+    const afterRerender = container.textContent || '';
+    expect(afterRerender.length).toBeGreaterThanOrEqual(midway.length);
+
+    // And it still completes normally
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText('Streaming resilient line')).toBeInTheDocument();
+  });
+
+  it('uses the latest onComplete callback at completion time', () => {
+    mockReducedMotion(false);
+    jest.useFakeTimers();
+    const first = jest.fn();
+    const second = jest.fn();
+    const key = `t-${Math.random()}`;
+    const { rerender } = render(
+      <TypingText
+        text="Hi"
+        speed={100}
+        delay={0}
+        onceKey={key}
+        onComplete={first}
+      />
+    );
+    rerender(
+      <TypingText
+        text="Hi"
+        speed={100}
+        delay={0}
+        onceKey={key}
+        onComplete={second}
+      />
+    );
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
 });

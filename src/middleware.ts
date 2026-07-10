@@ -4,15 +4,20 @@ import { NextRequest, NextResponse } from 'next/server';
  * Per-request nonce-based CSP. Next.js reads the Content-Security-Policy
  * header from the *request* and applies the nonce to its own inline
  * bootstrap scripts, which lets us drop 'unsafe-inline' from script-src.
- * Dev builds still need 'unsafe-eval' for HMR/react-refresh.
+ *
+ * Development is exempt entirely: next dev injects react-refresh/HMR inline
+ * scripts without the nonce, and 'strict-dynamic' then blocks hydration.
  */
 export function middleware(request: NextRequest) {
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-  const isDev = process.env.NODE_ENV === 'development';
 
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
     "img-src 'self' blob: data:",
     "font-src 'self' fonts.gstatic.com",

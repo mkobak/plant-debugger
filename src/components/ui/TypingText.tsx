@@ -30,6 +30,12 @@ export default function TypingText({
   const intervalRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
+  // Callers pass inline arrows; keeping the latest in a ref means parent
+  // re-renders don't restart the typing effect (which visibly flickers when
+  // the parent re-renders often, e.g. during streamed results)
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   const key = useMemo(() => onceKey ?? text, [onceKey, text]);
 
   useEffect(() => {
@@ -49,7 +55,7 @@ export default function TypingText({
       setComplete(true);
       setStarted(true);
       // Ensure any chaining still fires
-      const id = window.setTimeout(() => onComplete?.(), 0);
+      const id = window.setTimeout(() => onCompleteRef.current?.(), 0);
       timeoutRef.current = id;
       return () => {
         if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
@@ -70,7 +76,10 @@ export default function TypingText({
           typingSession.add(key);
           setComplete(true);
           // small delay to allow cursor to blink once
-          const completeId = window.setTimeout(() => onComplete?.(), 100);
+          const completeId = window.setTimeout(
+            () => onCompleteRef.current?.(),
+            100
+          );
           timeoutRef.current = completeId;
         }
       }, interval);
@@ -83,7 +92,10 @@ export default function TypingText({
       if (intervalRef.current) window.clearInterval(intervalRef.current);
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
-  }, [text, delay, speed, onComplete, key]);
+    // onComplete deliberately omitted (read via ref): unstable identities
+    // from inline arrows must not restart the animation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, delay, speed, key]);
 
   // If a global typing reset happens, allow re-typing next render
   useEffect(() => {
