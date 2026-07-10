@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   keywords: ['plant', 'diagnosis', 'health'],
 };
 
+// Nonce-based CSP (src/middleware.ts) requires per-request rendering:
+// statically prerendered HTML would ship without the nonce and
+// 'strict-dynamic' would block every script.
+export const dynamic = 'force-dynamic';
+
 const sourceCodePro = Source_Code_Pro({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
