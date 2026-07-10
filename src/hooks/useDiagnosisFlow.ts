@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { PlantImage } from '@/types';
 import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
 import { useDiagnosis } from '@/context/DiagnosisContext';
+import type { FinalDiagnosisFields } from '@/lib/api/finalDiagnosisMapping';
 
 import { logger } from '@/lib/logger';
 interface UseDiagnosisFlowProps {
@@ -24,6 +25,9 @@ export function useDiagnosisFlow({
   const [initialDiagnosisComplete, setInitialDiagnosisComplete] =
     useState(false);
   const [finalDiagnosisComplete, setFinalDiagnosisComplete] = useState(false);
+  // Completed fields revealed while the final diagnosis streams in
+  const [partialDiagnosis, setPartialDiagnosis] =
+    useState<FinalDiagnosisFields | null>(null);
   const [error, setError] = useState<string>('');
 
   const diagnosisStartedRef = useRef(false);
@@ -117,7 +121,8 @@ export function useDiagnosisFlow({
             questionsAndAnswers,
             ranked || '',
             userComment || '',
-            abortRef.current?.signal
+            abortRef.current?.signal,
+            (fields) => setPartialDiagnosis(fields)
           );
 
           logger.debug(
@@ -126,6 +131,7 @@ export function useDiagnosisFlow({
           );
           setDiagnosisResult(finalResult);
           setFinalDiagnosisComplete(true);
+          setPartialDiagnosis(null);
 
           // Reset retry count on success
           retryCountRef.current = 0;
@@ -200,6 +206,7 @@ export function useDiagnosisFlow({
 
   const cancelDiagnosis = useCallback(() => {
     logger.debug('useDiagnosisFlow: cancelDiagnosis called');
+    setPartialDiagnosis(null);
     canceledRef.current = true;
     if (abortRef.current) {
       abortRef.current.abort();
@@ -210,6 +217,7 @@ export function useDiagnosisFlow({
 
   const resetDiagnosis = useCallback(() => {
     logger.debug('useDiagnosisFlow: resetDiagnosis called');
+    setPartialDiagnosis(null);
     setDiagnosisResult(null);
     setInitialDiagnosisComplete(false);
     setFinalDiagnosisComplete(false);
@@ -225,6 +233,7 @@ export function useDiagnosisFlow({
     initialDiagnosisComplete,
     finalDiagnosisComplete,
     diagnosisResult,
+    partialDiagnosis,
     error,
     startDiagnosis,
     resetDiagnosis,

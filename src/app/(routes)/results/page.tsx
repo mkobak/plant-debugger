@@ -16,7 +16,7 @@ import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
 import { useResultsExport } from '@/hooks/useResultsExport';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { imagesSignature } from '@/utils';
-import { DiagnosticQuestion } from '@/types';
+import { DiagnosticQuestion, DiagnosisResult } from '@/types';
 import { logger } from '@/lib/logger';
 
 export default function ResultsPage() {
@@ -77,6 +77,7 @@ export default function ResultsPage() {
     initialDiagnosisComplete,
     finalDiagnosisComplete,
     diagnosisResult,
+    partialDiagnosis,
     error,
     startDiagnosis,
     resetDiagnosis,
@@ -231,6 +232,45 @@ export default function ResultsPage() {
     },
   });
 
+  // While the final diagnosis streams, assemble a partial result from the
+  // completed fields so sections appear as they finish generating
+  type DisplayResult = Omit<DiagnosisResult, 'primary'> & {
+    primary: DiagnosisResult['primary'] | null;
+  };
+  const displayResult: DisplayResult | null = useMemo(() => {
+    if (diagnosisResult) return diagnosisResult;
+    const f = partialDiagnosis;
+    if (!f?.plant) return null;
+    return {
+      plant: f.plant,
+      primary:
+        f.primaryDiagnosis && f.primaryConfidence && f.primarySummary
+          ? {
+              condition: f.primaryDiagnosis,
+              confidence: f.primaryConfidence as 'High' | 'Medium' | 'Low',
+              summary: f.primarySummary,
+              reasoning: f.primaryReasoning || '',
+              treatment: f.primaryTreatmentPlan || '',
+              prevention: f.primaryPreventionTips || '',
+            }
+          : null,
+      ...(f.secondaryDiagnosis && f.secondaryConfidence && f.secondarySummary
+        ? {
+            secondary: {
+              condition: f.secondaryDiagnosis,
+              confidence: f.secondaryConfidence as 'High' | 'Medium' | 'Low',
+              summary: f.secondarySummary,
+              reasoning: f.secondaryReasoning || '',
+              treatment: f.secondaryTreatmentPlan || '',
+              prevention: f.secondaryPreventionTips || '',
+            },
+          }
+        : {}),
+      careTips: f.careTips || '',
+    };
+  }, [diagnosisResult, partialDiagnosis]);
+  const isStreaming = !diagnosisResult && !!displayResult;
+
   const sectionDivider = (
     <div className="result-section report-block">
       <div className="section-divider"></div>
@@ -269,7 +309,7 @@ export default function ResultsPage() {
           )}
 
           {/* Prompt only during diagnosing (loading), below images and above status/loading screen */}
-          {isDiagnosing && !loadingComplete && (
+          {isDiagnosing && !loadingComplete && !isStreaming && (
             <div className="prompt-line">
               <Prompt path="~/results" />
             </div>
@@ -278,7 +318,7 @@ export default function ResultsPage() {
           <div className="results-page">
             <div className="terminal-text">
               {/* Show loading screen while diagnosing */}
-              {isDiagnosing && !loadingComplete && (
+              {isDiagnosing && !loadingComplete && !isStreaming && (
                 <LoadingScreen
                   isDiagnosing={isDiagnosing}
                   isAggregating={!initialDiagnosisComplete}
@@ -317,62 +357,71 @@ export default function ResultsPage() {
                 </div>
               )}
 
-              {/* Show results only when diagnosis is complete */}
-              {diagnosisResult && (loadingComplete || !isDiagnosing) && (
-                <div className="diagnosis-results">
-                  {/* Plant Information */}
-                  {diagnosisResult.plant && (
-                    <div className="result-section report-block">
-                      <TypingText
-                        text={`Plant name: ${diagnosisResult.plant}`}
-                        speed={100}
-                        onceKey={`${typingKeyPrefix}|plant`}
-                        onComplete={() => setPlantTitleDone(true)}
+              {/* Results: streamed sections appear as fields complete */}
+              {displayResult &&
+                (isStreaming || loadingComplete || !isDiagnosing) && (
+                  <div className="diagnosis-results">
+                    {/* Plant Information */}
+                    {displayResult.plant && (
+                      <div className="result-section report-block">
+                        <TypingText
+                          text={`Plant name: ${displayResult.plant}`}
+                          speed={100}
+                          onceKey={`${typingKeyPrefix}|plant`}
+                          onComplete={() => setPlantTitleDone(true)}
+                        />
+                      </div>
+                    )}
+
+                    {/* Care Tips - last field to stream in */}
+                    {plantTitleDone && displayResult.careTips && (
+                      <CareTips
+                        careTips={displayResult.careTips}
+                        expanded={showCare}
+                        onToggle={() => setShowCare(!showCare)}
                       />
-                    </div>
-                  )}
+                    )}
 
-                  {/* Care Tips Section - appears after plant name is typed */}
-                  {plantTitleDone && (
-                    <CareTips
-                      careTips={diagnosisResult.careTips}
-                      expanded={showCare}
-                      onToggle={() => setShowCare(!showCare)}
-                    />
-                  )}
+                    {displayResult.plant && plantTitleDone && sectionDivider}
 
-                  {diagnosisResult.plant && plantTitleDone && sectionDivider}
-
-                  {/* Primary Diagnosis */}
-                  {plantTitleDone && (
-                    <DiagnosisSection
-                      title="Bug detected:"
-                      diagnosis={diagnosisResult.primary}
-                      expanded={showPrimaryDetails}
-                      onToggle={() =>
-                        setShowPrimaryDetails(!showPrimaryDetails)
-                      }
-                    />
-                  )}
-
-                  {/* Secondary Diagnosis */}
-                  {diagnosisResult.secondary && plantTitleDone && (
-                    <>
-                      {sectionDivider}
+                    {/* Primary Diagnosis */}
+                    {plantTitleDone && displayResult.primary && (
                       <DiagnosisSection
-                        title="Another possible bug:"
-                        diagnosis={diagnosisResult.secondary}
-                        expanded={showSecondaryDetails}
+                        title="Bug detected:"
+                        diagnosis={displayResult.primary}
+                        expanded={showPrimaryDetails}
                         onToggle={() =>
-                          setShowSecondaryDetails(!showSecondaryDetails)
+                          setShowPrimaryDetails(!showPrimaryDetails)
+                        }
+                        detailsReady={
+                          !isStreaming ||
+                          !!partialDiagnosis?.primaryPreventionTips
                         }
                       />
-                    </>
-                  )}
+                    )}
 
-                  {plantTitleDone && sectionDivider}
-                </div>
-              )}
+                    {/* Secondary Diagnosis */}
+                    {displayResult.secondary && plantTitleDone && (
+                      <>
+                        {sectionDivider}
+                        <DiagnosisSection
+                          title="Another possible bug:"
+                          diagnosis={displayResult.secondary}
+                          expanded={showSecondaryDetails}
+                          onToggle={() =>
+                            setShowSecondaryDetails(!showSecondaryDetails)
+                          }
+                          detailsReady={
+                            !isStreaming ||
+                            !!partialDiagnosis?.secondaryPreventionTips
+                          }
+                        />
+                      </>
+                    )}
+
+                    {plantTitleDone && !isStreaming && sectionDivider}
+                  </div>
+                )}
             </div>
             {/* /.results-page */}
           </div>

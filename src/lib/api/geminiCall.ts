@@ -47,6 +47,48 @@ export interface GeminiCallResult {
   blockReason?: string;
 }
 
+/**
+ * Streaming variant: returns the SDK's chunk iterator. The caller is
+ * responsible for accumulating text and recording usage from the final
+ * chunk (usageMetadata arrives with the last chunk).
+ */
+export async function geminiCallStream({
+  modelKey,
+  parts,
+  generationConfig,
+  signal,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  tag,
+}: Omit<GeminiCallOptions, 'request'>) {
+  if (signal?.aborted) throw new Error('aborted');
+
+  const textPart = parts.find((p) => 'text' in p) as
+    | { text: string }
+    | undefined;
+  if (textPart) printPrompt(tag, textPart.text);
+
+  try {
+    return await getGenAI().models.generateContentStream({
+      model: MODEL_BY_KEY[modelKey],
+      contents: [{ role: 'user', parts }],
+      config: {
+        ...generationConfig,
+        abortSignal: signal,
+        httpOptions: { timeout: timeoutMs },
+      },
+    });
+  } catch (error) {
+    if (signal?.aborted) throw new Error('aborted');
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn(`${tag} ${modelKey} stream timed out after ${timeoutMs}ms`);
+      throw new GeminiTimeoutError(
+        `${modelKey} stream timed out after ${timeoutMs}ms`
+      );
+    }
+    throw error;
+  }
+}
+
 export async function geminiCall({
   request,
   modelKey,

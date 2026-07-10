@@ -8,6 +8,8 @@ interface DiagnosisSectionProps {
   diagnosis: DiagnosisResult['primary'];
   expanded: boolean;
   onToggle: () => void;
+  /** While streaming, hide the Expand button until details have arrived. */
+  detailsReady?: boolean;
 }
 
 /** One diagnosis block: condition, confidence, summary, expandable details. */
@@ -16,6 +18,7 @@ export default function DiagnosisSection({
   diagnosis,
   expanded,
   onToggle,
+  detailsReady = true,
 }: DiagnosisSectionProps) {
   return (
     <>
@@ -33,11 +36,13 @@ export default function DiagnosisSection({
             }}
           />
         </div>
-        <button className="detail-button" onClick={onToggle}>
-          {expanded ? 'Collapse' : 'Expand'} Details
-        </button>
+        {detailsReady && (
+          <button className="detail-button" onClick={onToggle}>
+            {expanded ? 'Collapse' : 'Expand'} Details
+          </button>
+        )}
 
-        {expanded && (
+        {detailsReady && expanded && (
           <div className="detailed-section" style={{ marginTop: '-1px' }}>
             {(
               [

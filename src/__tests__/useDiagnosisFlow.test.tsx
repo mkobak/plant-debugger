@@ -70,7 +70,8 @@ describe('useDiagnosisFlow', () => {
       'Q&A',
       'Root rot, Spider mites',
       'note',
-      expect.anything()
+      expect.anything(),
+      expect.any(Function)
     );
     await waitFor(() => {
       expect(result.current.diagnosisResult).toEqual(finalResult);
@@ -106,7 +107,8 @@ describe('useDiagnosisFlow', () => {
       '',
       'Root rot',
       '',
-      expect.anything()
+      expect.anything(),
+      expect.any(Function)
     );
     await waitFor(() =>
       expect(result.current.diagnosisResult).toEqual(finalResult)

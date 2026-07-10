@@ -15,6 +15,7 @@ import {
 } from './client-utils';
 import { withRetry } from './retry-utils';
 import { costTracker, type UsageMetadata } from '@/lib/costTracker';
+import { extractCompleteFields } from '@/utils/partialJson';
 import type { ModelKey } from '@/lib/api/modelConfig';
 
 import { logger } from '@/lib/logger';
@@ -170,7 +171,9 @@ export async function getFinalDiagnosis(
   questionsAndAnswers: string,
   rankedDiagnoses: string,
   userComment: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /** Called with completed fields as the response streams in. */
+  onPartial?: (fields: Record<string, string>) => void
 ): Promise<DiagnosisResult> {
   logger.debug('getFinalDiagnosis called with images:', images.length);
 
@@ -179,6 +182,9 @@ export async function getFinalDiagnosis(
   }
 
   return withRetry(async () => {
+    // Note: on retry the previous attempt's partial reveal is intentionally
+    // left in place — a blank flash is worse than briefly stale text; the
+    // fresh stream replaces the fields wholesale as they arrive.
     const formData = createImageFormData(images);
     formData.append('questionsAndAnswers', questionsAndAnswers);
     formData.append('rankedDiagnoses', rankedDiagnoses);
@@ -195,17 +201,68 @@ export async function getFinalDiagnosis(
       await throwHttpError(response, 'Failed to get final diagnosis');
     }
 
-    const data = await response.json();
-    logger.debug('getFinalDiagnosis response:', data);
-    if (data?.usage?.usage) {
-      costTracker.record({
-        modelKey: (data.usage.modelKey || 'modelHigh') as ModelKey,
-        usage: data.usage.usage,
-        route: 'final-diagnosis',
-      });
+    if (
+      !response.body ||
+      !response.headers.get('content-type')?.includes('application/x-ndjson')
+    ) {
+      // Non-streaming response (should not happen, but keep a safe path)
+      const data = await response.json();
+      return data.diagnosisResult as DiagnosisResult;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    let jsonText = '';
+    let lastFieldCount = 0;
+    let result: DiagnosisResult | null = null;
+
+    const handleEvent = (line: string) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'chunk') {
+        jsonText += event.text;
+        if (onPartial) {
+          const fields = extractCompleteFields(jsonText);
+          const count = Object.keys(fields).length;
+          if (count > lastFieldCount) {
+            lastFieldCount = count;
+            onPartial(fields);
+          }
+        }
+      } else if (event.type === 'done') {
+        result = event.diagnosisResult as DiagnosisResult;
+        if (event.usage?.usage) {
+          costTracker.record({
+            modelKey: (event.usage.modelKey || 'modelMedium') as ModelKey,
+            usage: event.usage.usage,
+            route: 'final-diagnosis',
+          });
+        }
+      } else if (event.type === 'error') {
+        throw new HttpError(
+          event.error || 'Failed to get final diagnosis',
+          502
+        );
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) handleEvent(line);
+    }
+    if (buffered.trim()) handleEvent(buffered);
+
+    if (!result) {
+      throw new HttpError('Final diagnosis stream ended unexpectedly', 502);
     }
     // Print cost summary after final diagnosis
     costTracker.printSummary('Plant Debugger');
-    return data.diagnosisResult;
+    logger.debug('getFinalDiagnosis complete (streamed)');
+    return result;
   }, 'Final Diagnosis');
 }

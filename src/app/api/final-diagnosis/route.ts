@@ -1,13 +1,27 @@
 import { NextResponse } from 'next/server';
 import { withApiRoute } from '@/lib/api/withApiRoute';
-import { geminiCall } from '@/lib/api/geminiCall';
+import { geminiCallStream, isAbortError } from '@/lib/api/geminiCall';
 import { finalDiagnosisSchema } from '@/lib/api/schemas';
 import { createFinalDiagnosisPrompt } from '@/lib/api/prompts';
-import { printAndResetForRequest } from '@/lib/api/costServer';
+import {
+  recordUsageForRequest,
+  printAndResetForRequest,
+  type UsageMetadata,
+} from '@/lib/api/costServer';
+import { mapFinalDiagnosis } from '@/lib/api/finalDiagnosisMapping';
+import { ThinkingLevel } from '@google/genai';
 import { logger } from '@/lib/logger';
 
 export const maxDuration = 60;
 
+/**
+ * Streams the final diagnosis as NDJSON events:
+ *   {"type":"chunk","text":"..."}   raw JSON-mode output as it generates
+ *   {"type":"done","diagnosisResult":{...},"usage":{...}}
+ *   {"type":"error","error":"..."}
+ * The client progressively reveals completed fields from the chunks; the
+ * authoritative parsed result arrives in the final "done" event.
+ */
 export const POST = withApiRoute(
   'FINAL-DIAGNOSIS',
   { errorMessage: 'Failed to generate final diagnosis' },
@@ -18,14 +32,17 @@ export const POST = withApiRoute(
       data.rankedDiagnoses || ''
     );
 
-    const { text, usage } = await geminiCall({
-      request,
+    const stream = await geminiCallStream({
       modelKey: 'modelMedium',
       parts: [{ text: prompt }, ...imageParts],
       generationConfig: {
         temperature: 0.1,
         topP: 0.5,
-        maxOutputTokens: 2048,
+        // Thinking tokens count against maxOutputTokens on gemini-3.5-flash;
+        // bound the thinking (reasoning already happened upstream) and leave
+        // generous headroom so the JSON is never truncated mid-stream
+        maxOutputTokens: 4096,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         responseMimeType: 'application/json',
         responseSchema: finalDiagnosisSchema,
       },
@@ -34,44 +51,65 @@ export const POST = withApiRoute(
       tag,
     });
 
-    let diagnosisData: any;
-    try {
-      if (!text) throw new Error('Empty JSON response text');
-      diagnosisData = JSON.parse(text);
-    } catch (e) {
-      logger.error(`${tag} Failed to parse structured JSON response`, e);
-      throw new Error('Invalid structured diagnosis response');
-    }
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      async start(controller) {
+        const send = (event: object) =>
+          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+        try {
+          let fullText = '';
+          let usage: UsageMetadata = {};
+          let finishReason: string | undefined;
+          for await (const chunk of stream) {
+            const text = chunk.text ?? '';
+            if (text) {
+              fullText += text;
+              send({ type: 'chunk', text });
+            }
+            if (chunk.usageMetadata) usage = chunk.usageMetadata;
+            const reason = chunk.candidates?.[0]?.finishReason;
+            if (reason) finishReason = reason as string;
+          }
 
-    const diagnosisResult = {
-      primary: {
-        condition: diagnosisData.primaryDiagnosis,
-        confidence: diagnosisData.primaryConfidence,
-        summary: diagnosisData.primarySummary,
-        reasoning: diagnosisData.primaryReasoning,
-        treatment: diagnosisData.primaryTreatmentPlan,
-        prevention: diagnosisData.primaryPreventionTips,
+          recordUsageForRequest(request, 'modelMedium', usage);
+          logger.debug(
+            `${tag} Stream complete | finish=${finishReason} len=${fullText.length}`
+          );
+          if (finishReason && finishReason !== 'STOP') {
+            throw new Error(`Stream ended with finishReason=${finishReason}`);
+          }
+          if (!fullText.trim()) throw new Error('Empty JSON response text');
+          const diagnosisResult = mapFinalDiagnosis(JSON.parse(fullText));
+
+          // Print a server-side cost summary in the terminal
+          printAndResetForRequest(request, 'Plant Debugger');
+
+          send({
+            type: 'done',
+            diagnosisResult,
+            usage: { modelKey: 'modelMedium', usage },
+          });
+        } catch (error) {
+          if (isAbortError(error) || signal?.aborted) {
+            logger.warn(`${tag} Stream aborted by client`);
+          } else {
+            logger.error(`${tag} Stream failed`, error);
+            send({
+              type: 'error',
+              error: 'Failed to generate final diagnosis',
+            });
+          }
+        } finally {
+          controller.close();
+        }
       },
-      ...(diagnosisData.secondaryDiagnosis && {
-        secondary: {
-          condition: diagnosisData.secondaryDiagnosis,
-          confidence: diagnosisData.secondaryConfidence,
-          summary: diagnosisData.secondarySummary,
-          reasoning: diagnosisData.secondaryReasoning,
-          treatment: diagnosisData.secondaryTreatmentPlan,
-          prevention: diagnosisData.secondaryPreventionTips,
-        },
-      }),
-      careTips: diagnosisData.careTips || 'No care tips provided',
-      plant: diagnosisData.plant,
-    };
+    });
 
-    // Print a server-side cost summary in the terminal
-    printAndResetForRequest(request, 'Plant Debugger');
-
-    return NextResponse.json({
-      diagnosisResult,
-      usage: { modelKey: 'modelMedium', usage },
+    return new NextResponse(body, {
+      headers: {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 );

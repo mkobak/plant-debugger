@@ -93,6 +93,24 @@ export const finalDiagnosisSchema = {
     'primarySummary',
     'careTips',
   ],
+  // Generation order for streaming: fields arrive in the order the UI
+  // reveals them (visible summaries before collapsed detail sections)
+  propertyOrdering: [
+    'plant',
+    'primaryDiagnosis',
+    'primaryConfidence',
+    'primarySummary',
+    'primaryReasoning',
+    'primaryTreatmentPlan',
+    'primaryPreventionTips',
+    'secondaryDiagnosis',
+    'secondaryConfidence',
+    'secondarySummary',
+    'secondaryReasoning',
+    'secondaryTreatmentPlan',
+    'secondaryPreventionTips',
+    'careTips',
+  ],
 } as const;
 
 export const questionsSchema = {
