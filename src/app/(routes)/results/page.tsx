@@ -17,6 +17,7 @@ import { useResultsExport } from '@/hooks/useResultsExport';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { imagesSignature } from '@/utils';
 import { formatReportAsMarkdown } from '@/utils/reportText';
+import { saveHistoryEntry, makeThumbnail } from '@/lib/history';
 import { DiagnosticQuestion, DiagnosisResult } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -168,6 +169,32 @@ export default function ResultsPage() {
       setLoadingComplete(true);
     }
   }, [finalDiagnosisComplete]);
+
+  // Save freshly completed diagnoses to the local history (once per run)
+  const historySavedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!finalDiagnosisComplete || !diagnosisResult) return;
+    if (historySavedRef.current === diagnosisSignature) return;
+    historySavedRef.current = diagnosisSignature;
+    (async () => {
+      const thumbnail = images[0]?.file
+        ? await makeThumbnail(images[0].file)
+        : null;
+      await saveHistoryEntry({
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        createdAt: Date.now(),
+        plant: diagnosisResult.plant || plantIdentification?.name || 'Unknown',
+        diagnosisResult,
+        thumbnail,
+      });
+    })();
+  }, [
+    finalDiagnosisComplete,
+    diagnosisResult,
+    diagnosisSignature,
+    images,
+    plantIdentification,
+  ]);
 
   // Persist the signature once we have results so we can detect back navigation vs changes later
   useEffect(() => {

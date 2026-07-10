@@ -12,10 +12,11 @@ import {
 
 import { logger } from '@/lib/logger';
 const DB_NAME = 'plantDebuggerDB';
-const DB_VERSION = 1;
 const IMAGE_STORE = 'images';
 const STATE_STORE = 'state';
 const STATE_KEY = 'diagnosis';
+export const HISTORY_STORE = 'history';
+const REQUIRED_STORES = [IMAGE_STORE, STATE_STORE, HISTORY_STORE];
 
 interface PersistedImageMeta {
   id: string;
@@ -38,14 +39,21 @@ interface PersistedState {
   lastQAImagesSignature: string | null;
 }
 
-function openDB(): Promise<IDBDatabase> {
+function openRaw(version?: number): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
       reject(new Error('No window'));
       return;
     }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = version
+      ? indexedDB.open(DB_NAME, version)
+      : indexedDB.open(DB_NAME);
     request.onerror = () => reject(request.error);
+    request.onblocked = () => {
+      logger.warn(
+        '[persistence] DB upgrade blocked by another open connection'
+      );
+    };
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(IMAGE_STORE)) {
@@ -54,9 +62,31 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STATE_STORE)) {
         db.createObjectStore(STATE_STORE);
       }
+      if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+        db.createObjectStore(HISTORY_STORE, { keyPath: 'id' });
+      }
     };
     request.onsuccess = () => resolve(request.result);
   });
+}
+
+/**
+ * Opens the DB and guarantees all expected object stores exist. Rather than
+ * a hardcoded version, missing stores trigger a one-version bump so the
+ * schema self-heals even after an interrupted upgrade left the version
+ * incremented without its stores.
+ */
+export async function openDB(): Promise<IDBDatabase> {
+  let db = await openRaw();
+  const missing = REQUIRED_STORES.some(
+    (store) => !db.objectStoreNames.contains(store)
+  );
+  if (missing) {
+    const nextVersion = db.version + 1;
+    db.close();
+    db = await openRaw(nextVersion);
+  }
+  return db;
 }
 
 export async function saveDiagnosisState(params: {

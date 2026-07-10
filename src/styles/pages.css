@@ -456,3 +456,15 @@
   /* Increased spacing between bullet points */
   color: var(--grey-0);
 }
+
+/* History page */
+.history-entry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.home-history-link {
+  margin-top: var(--spacing-sm);
+}
