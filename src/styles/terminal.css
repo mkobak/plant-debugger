@@ -483,6 +483,12 @@
   color: var(--green);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .typing-cursor {
+    animation: none;
+  }
+}
+
 @keyframes blink {
   0%,
   50% {

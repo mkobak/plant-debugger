@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -13,14 +12,13 @@ import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import {
-  identifyPlant,
   generateQuestions,
   getNoPlantResponse,
   getInitialDiagnosis,
 } from '@/lib/api/diagnosis';
 
-// Prevent duplicate QA runs across React StrictMode remounts
-const qaRunLocks = new Set<string>();
+import { logger } from '@/lib/logger';
+import { imagesSignature } from '@/utils';
 
 // Page state machine for loading, content, and error
 enum PageState {
@@ -38,9 +36,9 @@ enum LoadingPhase {
 }
 
 export default function QuestionsPage() {
-  const router = useRouter();
-  const processStartedRef = useRef(false);
-  const initialRenderRef = useRef(true);
+  // Signature of the image set a run was started for during this mount;
+  // synchronous, so it also dedupes StrictMode double-invoked effects
+  const startedSignatureRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Avoid aborting on unmount to prevent React StrictMode remounts from canceling in-flight requests
   const { goHome, goToResults, goToUpload } = useNavigation();
@@ -84,26 +82,22 @@ export default function QuestionsPage() {
   const [commentsLabelTyped, setCommentsLabelTyped] = useState(false);
   const [promptComplete, setPromptComplete] = useState(true);
 
-  const computeImagesSignature = useCallback(
-    () => images.map((i) => i.id).join('|'),
-    [images]
-  );
-  const imagesSignature = computeImagesSignature();
+  const imgSignature = imagesSignature(images);
   // Key for typing animation session, changes when images change
-  const typingSessionKey = `qa:${imagesSignature}`;
+  const typingSessionKey = `qa:${imgSignature}`;
 
   // On mount: redirect to home if no images are present
   useEffect(() => {
-    console.log('QuestionsPage mounting');
+    logger.debug('QuestionsPage mounting');
     // Redirect if no images are present
     if (images.length === 0) {
       const timeout = setTimeout(() => {
-        console.log('No images found, redirecting to home');
+        logger.debug('No images found, redirecting to home');
         goHome();
       }, 100);
       return () => clearTimeout(timeout);
     }
-  }, [images.length, router, goHome]);
+  }, [images.length, goHome]);
 
   // Wrapped async process to identify plant and generate questions
   const startDiagnosisProcess = useCallback(async () => {
@@ -115,20 +109,33 @@ export default function QuestionsPage() {
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
 
-      // Step 1: Identify plant
-      console.log('Step 1: Identifying plant...');
+      // Step 1: Identify plant + initial diagnoses (single request; the
+      // server runs identification in parallel with the diagnosis calls)
+      logger.debug('Step 1: Identifying plant and diagnosing...');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
-      // identifying flag already set true before calling this
-      const identification = await identifyPlant(images, signal);
-      setCtxIsIdentifying(false);
-      if (!identification) throw new Error('Failed to identify plant');
-      console.log('Plant identified:', identification);
+      // Purely cosmetic phase progression while the merged request runs
+      const phaseTimer = setTimeout(() => {
+        setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
+      }, 2500);
+      let initialDiag: Awaited<ReturnType<typeof getInitialDiagnosis>>;
+      try {
+        initialDiag = await getInitialDiagnosis(
+          images,
+          additionalComments || '',
+          signal
+        );
+      } finally {
+        clearTimeout(phaseTimer);
+        setCtxIsIdentifying(false);
+      }
+      const identification = initialDiag.identification;
+      logger.debug('Plant identified:', identification);
       setPlantIdentification(identification);
       setEditablePlantName(identification.name || 'Unknown plant');
 
       // If no plant detected, get a message and skip questions
       if (!identification.name) {
-        console.log('No plant detected, generating message...');
+        logger.debug('No plant detected, generating message...');
         try {
           // Only fetch once per image set
           if (!noPlantMessage) {
@@ -136,37 +143,26 @@ export default function QuestionsPage() {
             setNoPlantMessage(message);
           }
         } catch (e) {
-          console.error('Failed to get message:', e);
+          logger.error('Failed to get message:', e);
           setNoPlantMessage(
             '404 plant not found. Looks like our classifier threw a null pointer on foliage.'
           );
         }
         // Record signature so we know this run is complete for these images
-        const imgSig = computeImagesSignature();
-        setLastQAImagesSignature(imgSig);
+        setLastQAImagesSignature(imagesSignature(images));
         setQaProcessingSignature(null);
-        qaRunLocks.delete(imgSig);
         setLoadingPhase(LoadingPhase.COMPLETE);
         setPageState(PageState.SHOWING_CONTENT);
         setCtxIsGeneratingQuestions(false);
         return;
       }
 
-      // Step 2: Initial diagnoses (pro + flash aggregation)
-      console.log('Step 2: Generating initial diagnoses...');
-      setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
       setCtxIsGeneratingQuestions(true);
-      const initialDiag = await getInitialDiagnosis(
-        images,
-        additionalComments || '',
-        signal
-      );
       setRawInitialDiagnoses(initialDiag.rawDiagnoses);
       setRankedDiagnoses(initialDiag.rankedDiagnoses);
-      // Transition to question generation phase
+      // Step 2: Clarifying questions based on ranked diagnoses + comment
+      logger.debug('Step 2: Generating questions...');
       setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
-      // Step 3: Clarifying questions based on ranked diagnoses + comment
-      console.log('Step 3: Generating questions...');
       const generatedQuestions = await generateQuestions(
         images,
         initialDiag.rankedDiagnoses,
@@ -174,53 +170,44 @@ export default function QuestionsPage() {
         signal
       );
       setCtxIsGeneratingQuestions(false);
-      console.log('Questions generated:', generatedQuestions.length);
+      logger.debug('Questions generated:', generatedQuestions.length);
       setQuestions(generatedQuestions);
       // Record signature so we can detect changes next time
-      const imgSig = computeImagesSignature();
-      setLastQAImagesSignature(imgSig);
-      // Release lock now that this run finished
-      qaRunLocks.delete(imgSig);
+      setLastQAImagesSignature(imagesSignature(images));
+      setQaProcessingSignature(null);
       setLoadingPhase(LoadingPhase.COMPLETE);
 
-      // Show content after a brief delay
-      setTimeout(() => {
-        console.log('Process complete, showing content');
-        // Reset all typing states when transitioning to content
-        setPlantNameTyped(false);
-        setInstructionsTyped(false);
-        setCommentsLabelTyped(false);
-        setPageState(PageState.SHOWING_CONTENT);
-      }, 500);
+      logger.debug('Process complete, showing content');
+      // Reset all typing states when transitioning to content
+      setPlantNameTyped(false);
+      setInstructionsTyped(false);
+      setCommentsLabelTyped(false);
+      setPageState(PageState.SHOWING_CONTENT);
     } catch (error: any) {
-      console.error('Diagnosis process failed:', error);
+      logger.error('Diagnosis process failed:', error);
       const aborted =
         (error instanceof Error && error.name === 'AbortError') ||
         (typeof error?.message === 'string' &&
           error.message.toLowerCase().includes('aborted')) ||
         abortRef.current?.signal.aborted;
       if (aborted) {
-        console.log('QuestionsPage: aborted by user');
+        logger.debug('QuestionsPage: aborted by user');
         setCtxIsIdentifying(false);
         setCtxIsGeneratingQuestions(false);
-        const imgSig = computeImagesSignature();
-        qaRunLocks.delete(imgSig);
         setQaProcessingSignature(null);
         setLastQAImagesSignature(null);
-        processStartedRef.current = false;
+        startedSignatureRef.current = null;
         return;
       }
       setError(
         error instanceof Error ? error.message : 'An unexpected error occurred'
       );
       setPageState(PageState.ERROR);
-      const imgSig = computeImagesSignature();
-      qaRunLocks.delete(imgSig);
+      // Keep startedSignatureRef set so the start effect does not auto-retry
+      // in a loop; the Retry button re-triggers the run explicitly.
       setQaProcessingSignature(null);
-      processStartedRef.current = false;
     }
   }, [
-    computeImagesSignature,
     images,
     noPlantMessage,
     setCtxIsGeneratingQuestions,
@@ -235,89 +222,66 @@ export default function QuestionsPage() {
     setRankedDiagnoses,
   ]);
 
-  // Detect navigation back and restore state if possible
+  // Restore prior state on back-navigation, or start the QA run
   useEffect(() => {
-    console.log('Navigation check useEffect triggered');
-    console.log('- questions.length:', questions.length);
-    console.log('- plantIdentification:', !!plantIdentification);
-    console.log('- pageState:', pageState);
-    console.log('- processStartedRef.current:', processStartedRef.current);
-
-    const imgSig = computeImagesSignature();
-
-    // If images changed, rerun the QA flow
+    const imgSig = imagesSignature(images);
+    // If images changed since the last completed run, the flow must rerun
     const signatureChanged =
       !!lastQAImagesSignature && lastQAImagesSignature !== imgSig;
+    const startedThisMount = startedSignatureRef.current === imgSig;
 
     // Restore state if navigating back and data is present
-    if (
-      !signatureChanged &&
-      questions.length > 0 &&
-      plantIdentification &&
-      !processStartedRef.current
-    ) {
-      console.log('DETECTING NAVIGATION BACK - setting states');
-      setIsNavigatingBack(true);
-      setEditablePlantName(plantIdentification.name || '');
-      setPlantNameTyped(true);
-      setInstructionsTyped(true);
-      setCommentsLabelTyped(true);
-      setPageState(PageState.SHOWING_CONTENT);
-      return;
-    }
-
-    // Restore state if previously detected no-plant for these images
-    if (!signatureChanged && noPlantMessage && !processStartedRef.current) {
-      console.log(
-        'DETECTING NAVIGATION BACK (no-plant) - restoring content without rerun'
-      );
-      setIsNavigatingBack(true);
-      setPageState(PageState.SHOWING_CONTENT);
-      return;
-    }
-
-    // Start the identification and question generation process if not already started
-    if (
-      images.length > 0 &&
-      (signatureChanged ||
-        (!processStartedRef.current &&
-          pageState === PageState.LOADING &&
-          !ctxIsIdentifying &&
-          !ctxIsGeneratingQuestions)) &&
-      // Skip if already completed for this signature
-      (signatureChanged || lastQAImagesSignature !== imgSig) &&
-      // Skip if a run for this signature is already in progress (StrictMode safety)
-      qaProcessingSignature !== imgSig &&
-      // Extra guard: global lock for remounts
-      !qaRunLocks.has(imgSig)
-    ) {
-      console.log('Starting identification and question generation process');
-      processStartedRef.current = true;
-      // Clear old data if signature changed
-      if (signatureChanged) {
-        setPlantIdentification(null);
-        setQuestions([]);
-        setNoPlantMessage('');
-        setPageState(PageState.LOADING);
+    if (!signatureChanged && !startedThisMount) {
+      if (questions.length > 0 && plantIdentification) {
+        logger.debug('QuestionsPage: restoring state (navigation back)');
+        setIsNavigatingBack(true);
+        setEditablePlantName(plantIdentification.name || '');
+        setPlantNameTyped(true);
+        setInstructionsTyped(true);
+        setCommentsLabelTyped(true);
+        setPageState(PageState.SHOWING_CONTENT);
+        return;
       }
-      // Mark as identifying to guard against duplicate starts
-      setCtxIsIdentifying(true);
-      setQaProcessingSignature(imgSig);
-      // Acquire global lock synchronously
-      qaRunLocks.add(imgSig);
-      startDiagnosisProcess();
+      if (noPlantMessage) {
+        logger.debug('QuestionsPage: restoring no-plant state');
+        setIsNavigatingBack(true);
+        setPageState(PageState.SHOWING_CONTENT);
+        return;
+      }
     }
+
+    // Start the run unless it already ran or is running for these images
+    const alreadyCompleted =
+      !signatureChanged && lastQAImagesSignature === imgSig;
+    const alreadyRunning = qaProcessingSignature === imgSig;
+    if (
+      images.length === 0 ||
+      startedThisMount ||
+      alreadyCompleted ||
+      alreadyRunning
+    ) {
+      return;
+    }
+
+    logger.debug('QuestionsPage: starting identification/questions run');
+    startedSignatureRef.current = imgSig;
+    // Clear old data if images changed
+    if (signatureChanged) {
+      setPlantIdentification(null);
+      setQuestions([]);
+      setNoPlantMessage('');
+      setPageState(PageState.LOADING);
+    }
+    setCtxIsIdentifying(true);
+    setQaProcessingSignature(imgSig);
+    startDiagnosisProcess();
   }, [
     questions.length,
     plantIdentification,
-    pageState,
-    images.length,
+    images,
     lastQAImagesSignature,
     qaProcessingSignature,
-    ctxIsIdentifying,
-    ctxIsGeneratingQuestions,
     noPlantMessage,
-    computeImagesSignature,
     startDiagnosisProcess,
     setCtxIsIdentifying,
     setNoPlantMessage,
@@ -330,7 +294,6 @@ export default function QuestionsPage() {
     return () => {
       setCtxIsIdentifying(false);
       setCtxIsGeneratingQuestions(false);
-      processStartedRef.current = false;
     };
   }, [setCtxIsIdentifying, setCtxIsGeneratingQuestions]);
 
@@ -339,7 +302,7 @@ export default function QuestionsPage() {
   };
 
   const getAnswerById = (questionId: string) =>
-    answers.find((a: any) => a.questionId === questionId);
+    answers.find((a) => a.questionId === questionId);
 
   const handleReset = () => {
     requestReset();
@@ -415,12 +378,8 @@ export default function QuestionsPage() {
                   variant="reset"
                   onClick={() => {
                     // Abort and go back to upload
-                    processStartedRef.current = false;
+                    startedSignatureRef.current = null;
                     if (abortRef.current) abortRef.current.abort();
-                    try {
-                      const sig = computeImagesSignature();
-                      qaRunLocks.delete(sig);
-                    } catch {}
                     setQaProcessingSignature(null);
                     setLastQAImagesSignature(null);
                     setCtxIsIdentifying(false);
@@ -443,7 +402,8 @@ export default function QuestionsPage() {
                 <div className="error-actions">
                   <button
                     onClick={() => {
-                      processStartedRef.current = false;
+                      startedSignatureRef.current = imagesSignature(images);
+                      setQaProcessingSignature(imagesSignature(images));
                       startDiagnosisProcess();
                     }}
                     className="retry-button"
@@ -486,7 +446,7 @@ export default function QuestionsPage() {
                       speed={100}
                       onceKey={`${typingSessionKey}|plant-label`}
                       onComplete={() => {
-                        console.log('Plant name typing complete');
+                        logger.debug('Plant name typing complete');
                         setPlantNameTyped(true);
                       }}
                     />
@@ -522,7 +482,7 @@ export default function QuestionsPage() {
                       speed={100}
                       onceKey={`${typingSessionKey}|instructions`}
                       onComplete={() => {
-                        console.log('Instructions typing complete');
+                        logger.debug('Instructions typing complete');
                         setInstructionsTyped(true);
                       }}
                     />
@@ -531,7 +491,7 @@ export default function QuestionsPage() {
                   )}
 
                   {(instructionsTyped || isNavigatingBack) &&
-                    questions.map((question: any, index: number) => {
+                    questions.map((question, index) => {
                       const existing = getAnswerById(question.id);
                       return (
                         <div key={question.id} className="question-item">

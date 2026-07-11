@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
+import { logger } from '@/lib/logger';
 interface DomPdfOptions {
   element: HTMLElement;
   fileName: string;
@@ -89,7 +90,7 @@ export async function exportElementToSinglePagePdf({
     header.appendChild(ts);
     clone.insertBefore(header, clone.firstChild);
   } catch (e) {
-    console.warn('Failed to inject PDF header', e);
+    logger.warn('Failed to inject PDF header', e);
   }
 
   // --- Export-only image enlargement & frame adjustments ---
@@ -140,7 +141,7 @@ export async function exportElementToSinglePagePdf({
     }
   } catch (e) {
     // Non-fatal; continue with export even if adjustments fail.
-    console.warn('Image enlargement adjustments failed (PDF export)', e);
+    logger.warn('Image enlargement adjustments failed (PDF export)', e);
   }
 
   const wrapper = document.createElement('div');

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Retry utilities for API calls to prevent infinite loops
  */
@@ -10,21 +11,23 @@ interface RetryOptions {
 
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   maxRetries: 2, // Maximum 2 retries (total 3 attempts)
-  retryDelay: 2000, // 2 seconds delay between retries
+  retryDelay: 1000, // base delay, doubled on each retry
   shouldRetry: (error) => {
     // Retry on network errors, timeout errors, or 5xx server errors
     // Don't retry on 4xx client errors (except 429 rate limiting)
     if (error instanceof TypeError && error.message.includes('fetch')) {
       return true; // Network error
     }
+    // HttpError from the API layer carries the response status
+    const status: unknown = error?.status;
+    if (typeof status === 'number') {
+      return status === 429 || status >= 500;
+    }
     if (error.message.includes('429') || error.message.includes('rate limit')) {
       return true; // Rate limit error
     }
-    if (
-      error.message.includes('500') ||
-      error.message.includes('Internal Server Error')
-    ) {
-      return true; // Server error
+    if (/50[0-9]|Internal Server Error|timed out/i.test(error.message)) {
+      return true; // Server error or upstream timeout
     }
     return false; // Don't retry other errors
   },
@@ -41,29 +44,29 @@ export async function withRetry<T>(
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
   let lastError: any;
 
-  console.log(
+  logger.debug(
     `[RETRY] Starting ${context} (max ${opts.maxRetries + 1} attempts)`
   );
 
   for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
     try {
-      console.log(
+      logger.debug(
         `[RETRY] ${context} - Attempt ${attempt + 1}/${opts.maxRetries + 1}`
       );
       const result = await operation();
 
       if (attempt > 0) {
-        console.log(
+        logger.debug(
           `[RETRY] ${context} - Success after ${attempt + 1} attempts`
         );
       } else {
-        console.log(`[RETRY] ${context} - Success on first attempt`);
+        logger.debug(`[RETRY] ${context} - Success on first attempt`);
       }
 
       return result;
     } catch (error) {
       lastError = error;
-      console.error(
+      logger.error(
         `[RETRY] ${context} - Attempt ${attempt + 1} failed:`,
         error
       );
@@ -73,13 +76,13 @@ export async function withRetry<T>(
         (typeof (error as any)?.message === 'string' &&
           /(aborted|abort)/i.test((error as any).message))
       ) {
-        console.log(`[RETRY] ${context} - Aborted, stopping retries`);
+        logger.debug(`[RETRY] ${context} - Aborted, stopping retries`);
         throw error;
       }
 
       // If this is the last attempt, don't retry
       if (attempt === opts.maxRetries) {
-        console.error(
+        logger.error(
           `[RETRY] ${context} - All ${opts.maxRetries + 1} attempts failed`
         );
         break;
@@ -87,15 +90,14 @@ export async function withRetry<T>(
 
       // Check if we should retry this error
       if (!opts.shouldRetry(error)) {
-        console.error(`[RETRY] ${context} - Error not retryable, stopping`);
+        logger.error(`[RETRY] ${context} - Error not retryable, stopping`);
         break;
       }
 
-      // Wait before retrying
-      console.log(
-        `[RETRY] ${context} - Waiting ${opts.retryDelay}ms before retry`
-      );
-      await new Promise((resolve) => setTimeout(resolve, opts.retryDelay));
+      // Wait before retrying, backing off exponentially
+      const backoff = opts.retryDelay * 2 ** attempt;
+      logger.debug(`[RETRY] ${context} - Waiting ${backoff}ms before retry`);
+      await new Promise((resolve) => setTimeout(resolve, backoff));
     }
   }
 
@@ -104,26 +106,4 @@ export async function withRetry<T>(
   const wrapped = new Error(msg);
   (wrapped as any).cause = lastError;
   throw wrapped;
-}
-
-/**
- * Special retry wrapper for API calls that might return empty responses
- * (like plant identification that should allow empty strings)
- */
-export async function withRetryAllowEmpty<T>(
-  operation: () => Promise<T>,
-  context: string,
-  options: RetryOptions = {}
-): Promise<T> {
-  return withRetry(operation, context, {
-    ...options,
-    shouldRetry: (error) => {
-      // Don't retry if the operation succeeded but returned empty result
-      // (we'll let the caller handle empty results)
-      if (error.message.includes('empty') || error.message.includes('blank')) {
-        return false;
-      }
-      return DEFAULT_RETRY_OPTIONS.shouldRetry(error);
-    },
-  });
 }

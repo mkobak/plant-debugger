@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-// Removed duplicate import of useMemo
+import { useEffect, useMemo, useRef, useState } from 'react';
 import TerminalLayout from '@/components/layout/TerminalLayout';
 import SharedHeader from '@/components/layout/SharedHeader';
 import TypingText from '@/components/ui/TypingText';
@@ -9,15 +8,21 @@ import Prompt from '@/components/ui/Prompt';
 import ActionButton from '@/components/ui/ActionButton';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import ImagePreviewGrid from '@/components/ui/ImagePreviewGrid';
+import DiagnosisSection from '@/components/results/DiagnosisSection';
+import CareTips from '@/components/results/CareTips';
 import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useDiagnosisFlow } from '@/hooks/useDiagnosisFlow';
-import { exportElementToSinglePagePdf } from '@/utils/domToPdf';
-import { useRef } from 'react';
+import { useResultsExport } from '@/hooks/useResultsExport';
 import useConfirmReset from '@/hooks/useConfirmReset';
+import { imagesSignature, hashString } from '@/utils';
+import { formatReportAsMarkdown } from '@/utils/reportText';
+import { saveHistoryEntry, makeThumbnail } from '@/lib/history';
+import { DiagnosticQuestion, DiagnosisResult } from '@/types';
+import { logger } from '@/lib/logger';
 
 export default function ResultsPage() {
-  const { goHome, goToUpload, goToQuestions } = useNavigation();
+  const { goToUpload, goToQuestions } = useNavigation();
   const {
     images,
     questions,
@@ -25,8 +30,6 @@ export default function ResultsPage() {
     additionalComments,
     plantIdentification,
     rankedDiagnoses,
-    diagnosisResult: contextDiagnosisResult,
-    setDiagnosisResult: setContextDiagnosisResult,
     lastDiagnosisSignature,
     setLastDiagnosisSignature,
   } = useDiagnosis();
@@ -36,10 +39,8 @@ export default function ResultsPage() {
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false);
   const [showCare, setShowCare] = useState(false);
   const [loadingComplete, setLoadingComplete] = useState(false);
-  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [hasShownResultsBefore, setHasShownResultsBefore] = useState(false);
   const [plantTitleDone, setPlantTitleDone] = useState(false);
-  const [promptComplete, setPromptComplete] = useState(true);
   const reportRef = useRef<HTMLDivElement | null>(null);
 
   // Format questions and answers for the diagnosis
@@ -54,8 +55,8 @@ export default function ResultsPage() {
 
     // Only include questions that have been answered
     const answeredQuestions = questions
-      .map((question: any) => {
-        const answer = answers.find((a: any) => a.questionId === question.id);
+      .map((question: DiagnosticQuestion) => {
+        const answer = answers.find((a) => a.questionId === question.id);
         if (!answer || answer.skipped) return null;
         return `${question.question}: ${answer.answer ? 'Yes' : 'No'}`;
       })
@@ -71,142 +72,6 @@ export default function ResultsPage() {
       : 'No additional questions were answered.';
   };
 
-  const formatWithMarkdown = (text: string) => {
-    if (!text) return '';
-
-    // Normalize line endings
-    const normalized = text.replace(/\r\n?/g, '\n').trim();
-
-    // Helper to apply inline markdown formatting (bold/italic)
-    const applyInlineMd = (s: string) =>
-      s
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/_(.*?)_/g, '<em>$1</em>');
-
-    const processed: string[] = [];
-    let bulletBuffer: string[] = [];
-
-    const flushBullets = () => {
-      if (bulletBuffer.length === 0) return;
-      processed.push(
-        `<div class="custom-bullet-list">${bulletBuffer
-          .map(
-            (b) =>
-              `<div class="custom-bullet-item"><span class="bullet-symbol">*</span><span class="bullet-content">${applyInlineMd(
-                b
-              )}</span></div>`
-          )
-          .join('')}</div>`
-      );
-      bulletBuffer = [];
-    };
-
-    // Split into lines first
-    const rawLines = normalized.split('\n');
-
-    // Regex to split inline collapsed bullets where the model outputs: "- **Light:** ... - **Watering:** ..."
-    // Allows an optional markdown bold/underline wrapper before the capitalized word.
-    // Split points for inline collapsed bullets. Handles:
-    // 1. " - **Light:**" (space-hyphen-space)
-    // 2. ".- **Watering:**" (period directly before hyphen, model sometimes omits space)
-    // 3. Similar after ! or ?
-    const inlineBulletSplit =
-      /(?:\s-\s+|(?<=[.!?])-\s+)(?=(?:\*\*|__)?[A-Z0-9])/g;
-
-    rawLines.forEach((rawLine) => {
-      const line = rawLine.trim();
-      if (!line) {
-        flushBullets();
-        return; // skip empty
-      }
-
-      const bulletLine = /^[-*•]\s+/.test(line);
-
-      if (bulletLine) {
-        // Remove initial bullet marker
-        const content = line.replace(/^[-*•]\s+/, '').trim();
-
-        const inlineSplitter = new RegExp(inlineBulletSplit.source, 'g');
-
-        let parts = [content];
-
-        // If we detect ANY inline bullet boundary (space-hyphen-space OR punctuation-hyphen-space), split.
-        if (inlineSplitter.test(content)) {
-          const splitParts = content
-            .split(new RegExp(inlineBulletSplit.source, 'g'))
-            .map((p) => p.trim());
-          if (splitParts.length > 1 && splitParts.every((p) => p.length > 2)) {
-            parts = splitParts;
-          }
-        }
-
-        // Secondary fallback: if still one part, but we have at least two occurrences of punctuation-hyphen or space-hyphen patterns followed by capital, attempt split.
-        if (parts.length === 1) {
-          const boundaryMatches = content.match(
-            /(?:\s-|[.!?]-)\s+(?:\*\*|__)?[A-Z0-9]/g
-          );
-          if (boundaryMatches && boundaryMatches.length >= 2) {
-            parts = content
-              .split(new RegExp(inlineBulletSplit.source, 'g'))
-              .map((p) => p.trim());
-          }
-        }
-
-        parts.forEach((p) => p && bulletBuffer.push(p));
-      } else {
-        // If the line isn't marked as a bullet but contains multiple inline hyphen bullets starting with '* ' pattern earlier
-        // Attempt detection for asterisk-start style collapsed into one line (edge case)
-        if (/^\*/.test(line) && line.includes(' - ')) {
-          // Remove initial '*'
-          const afterStar = line.replace(/^\*\s*/, '').trim();
-          const candidateParts = afterStar
-            .split(inlineBulletSplit)
-            .map((p) => p.trim());
-          if (candidateParts.length > 1) {
-            bulletBuffer.push(candidateParts[0]);
-            candidateParts.slice(1).forEach((p) => bulletBuffer.push(p));
-            return; // treat whole line as bullet list
-          }
-        }
-
-        // General fallback: detect lines with multiple inline dashes that look like bullets even if line doesn't start with a bullet marker.
-        // Example: "Summary: - **Cause:** ... - **Effect:** ... - **Fix:** ..."
-        if (line.includes(' - ')) {
-          const occurrences = line.match(/(?:^|\s)-\s+(?:\*\*|__)?[A-Z0-9]/g);
-          if (occurrences && occurrences.length >= 2) {
-            // Split prelude (text before first dash) from bullet portion
-            const firstDash = line.indexOf(' - ');
-            const prelude = line.slice(0, firstDash).trim();
-            const bulletsSegment = line.slice(firstDash).trim();
-            if (prelude) {
-              flushBullets(); // End any previous list before heading paragraph
-              processed.push(`<p>${applyInlineMd(prelude)}</p>`);
-            }
-            const listParts = bulletsSegment
-              .replace(/^-\s+/, '')
-              .split(inlineBulletSplit)
-              .map((p) => p.trim())
-              .filter(Boolean);
-            if (listParts.length > 1) {
-              listParts.forEach((p) => bulletBuffer.push(p));
-              return; // Defer flushing to allow subsequent bullet lines to join
-            }
-          }
-        }
-
-        // Not a bullet line
-        flushBullets();
-        processed.push(`<p>${applyInlineMd(line)}</p>`);
-      }
-    });
-
-    flushBullets();
-
-    return processed.join('');
-  };
-
   const questionsAndAnswers = formatQuestionsAndAnswers();
 
   const {
@@ -214,6 +79,7 @@ export default function ResultsPage() {
     initialDiagnosisComplete,
     finalDiagnosisComplete,
     diagnosisResult,
+    partialDiagnosis,
     error,
     startDiagnosis,
     resetDiagnosis,
@@ -227,15 +93,12 @@ export default function ResultsPage() {
   });
 
   // Signatures to detect rerun conditions
-  const imagesSignature = useMemo(
-    () => images.map((i) => i.id).join('|'),
-    [images]
-  );
+  const imgSignature = useMemo(() => imagesSignature(images), [images]);
   const qaSignature = useMemo(() => {
     const plantName = (plantIdentification?.name || '').trim();
     const answered = questions
-      .map((q: any) => {
-        const a = answers.find((x: any) => x.questionId === q.id);
+      .map((q) => {
+        const a = answers.find((x) => x.questionId === q.id);
         return a && !a.skipped ? `${q.id}:${a.answer}` : '';
       })
       .filter(Boolean)
@@ -243,7 +106,7 @@ export default function ResultsPage() {
     const comments = (additionalComments || '').trim();
     return `${plantName}|${answered}#${comments}`;
   }, [questions, answers, additionalComments, plantIdentification]);
-  const diagnosisSignature = `${imagesSignature}__${qaSignature}`;
+  const diagnosisSignature = `${imgSignature}__${qaSignature}`;
   const typingKeyPrefix = `results:${diagnosisSignature}`;
   // Reset plant title when inputs change (new analysis run)
   useEffect(() => {
@@ -259,45 +122,17 @@ export default function ResultsPage() {
 
   // Handle redirects and start diagnosis
   useEffect(() => {
-    console.log(
-      'ResultsPage: Main effect - images:',
-      images.length,
-      'stepInitialized:',
-      stepInitialized,
-      'isReady:',
-      isReady,
-      'diagnosisResult:',
-      !!diagnosisResult,
-      'contextDiagnosisResult:',
-      !!contextDiagnosisResult
-    );
-
     // Redirect if no images
     if (images.length === 0) {
-      console.log('ResultsPage: No images, redirecting to upload');
+      logger.debug('ResultsPage: No images, redirecting to upload');
       goToUpload();
       return;
     }
 
-    // If we already have a diagnosis result in context, we're navigating back - don't restart the process
-    if (contextDiagnosisResult) {
-      console.log(
-        'ResultsPage: Context diagnosis result already exists, skipping diagnosis'
-      );
-      setIsNavigatingBack(true);
-      setLoadingComplete(true);
-      setHasShownResultsBefore(true); // Skip typing animations when navigating back
-      return;
-    }
-
-    // If we already have a diagnosis result from the hook, we're navigating back - don't restart the process
+    // A result already in context means we're navigating back — don't rerun
     if (diagnosisResult) {
-      console.log(
-        'ResultsPage: Hook diagnosis result already exists, skipping diagnosis'
-      );
-      setIsNavigatingBack(true);
       setLoadingComplete(true);
-      setHasShownResultsBefore(true); // Skip typing animations when navigating back
+      setHasShownResultsBefore(true); // Skip typing animations
       return;
     }
 
@@ -308,49 +143,67 @@ export default function ResultsPage() {
         lastDiagnosisSignature &&
         lastDiagnosisSignature !== diagnosisSignature
       ) {
-        console.log(
+        logger.debug(
           'ResultsPage: Inputs changed, clearing previous diagnosis and restarting'
         );
-        setContextDiagnosisResult(null);
         setLoadingComplete(false);
       }
-      if (!contextDiagnosisResult) {
-        console.log('ResultsPage: Starting diagnosis...');
-        startDiagnosis();
-      }
+      logger.debug('ResultsPage: Starting diagnosis...');
+      startDiagnosis();
     }
   }, [
     images.length,
     stepInitialized,
     isReady,
     diagnosisResult,
-    contextDiagnosisResult,
     goToUpload,
     startDiagnosis,
     lastDiagnosisSignature,
     diagnosisSignature,
-    setContextDiagnosisResult,
   ]);
 
-  // Save diagnosis result to context when it's completed
+  // Render results as soon as the data arrives — don't gate on the
+  // status-line typing animation finishing
   useEffect(() => {
-    if (diagnosisResult && !contextDiagnosisResult) {
-      console.log('ResultsPage: Saving diagnosis result to context');
-      setContextDiagnosisResult(diagnosisResult);
+    if (finalDiagnosisComplete) {
+      setLoadingComplete(true);
     }
-  }, [diagnosisResult, contextDiagnosisResult, setContextDiagnosisResult]);
+  }, [finalDiagnosisComplete]);
+
+  // Record any completed diagnosis in the local history — fresh runs AND
+  // results restored from a previous session (which predate the history
+  // feature or were completed before navigating away). The entry id derives
+  // from the diagnosis signature, so repeated saves are idempotent.
+  const historySavedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!diagnosisResult) return;
+    if (historySavedRef.current === diagnosisSignature) return;
+    historySavedRef.current = diagnosisSignature;
+    (async () => {
+      const thumbnail = images[0]?.file
+        ? await makeThumbnail(images[0].file)
+        : null;
+      await saveHistoryEntry({
+        id: `h-${hashString(diagnosisSignature)}`,
+        createdAt: Date.now(),
+        plant: diagnosisResult.plant || plantIdentification?.name || 'Unknown',
+        diagnosisResult,
+        thumbnail,
+      });
+    })();
+  }, [diagnosisResult, diagnosisSignature, images, plantIdentification]);
 
   // Persist the signature once we have results so we can detect back navigation vs changes later
   useEffect(() => {
     if (
-      (finalDiagnosisComplete || contextDiagnosisResult) &&
+      (finalDiagnosisComplete || diagnosisResult) &&
       lastDiagnosisSignature !== diagnosisSignature
     ) {
       setLastDiagnosisSignature(diagnosisSignature);
     }
   }, [
     finalDiagnosisComplete,
-    contextDiagnosisResult,
+    diagnosisResult,
     diagnosisSignature,
     lastDiagnosisSignature,
     setLastDiagnosisSignature,
@@ -358,41 +211,18 @@ export default function ResultsPage() {
 
   // Set hasShownResultsBefore when results first become available
   useEffect(() => {
-    if (
-      (finalDiagnosisComplete || contextDiagnosisResult) &&
-      loadingComplete &&
-      !hasShownResultsBefore
-    ) {
+    if (diagnosisResult && loadingComplete && !hasShownResultsBefore) {
       // Small delay to allow typing animations to finish on first visit
       const timer = setTimeout(() => {
         setHasShownResultsBefore(true);
-      }, 2000); // Wait 2 seconds after loading completes
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [
-    finalDiagnosisComplete,
-    contextDiagnosisResult,
-    loadingComplete,
-    hasShownResultsBefore,
-  ]);
-
-  // Reset hook state if context diagnosis result is cleared (e.g., after reset)
-  useEffect(() => {
-    if (!contextDiagnosisResult && diagnosisResult) {
-      console.log('ResultsPage: Context was reset, resetting hook state');
-      resetDiagnosis();
-    }
-    // Also reset typing animation flag when context is cleared
-    if (!contextDiagnosisResult && !diagnosisResult) {
+    // Allow re-typing after the result is cleared (e.g. reset or changed inputs)
+    if (!diagnosisResult && hasShownResultsBefore) {
       setHasShownResultsBefore(false);
     }
-  }, [contextDiagnosisResult, diagnosisResult, resetDiagnosis]);
-
-  const getConfidenceColor = (confidence: 'High' | 'Medium' | 'Low') => {
-    if (confidence === 'High') return 'var(--green)';
-    if (confidence === 'Medium') return 'var(--orange)';
-    return 'var(--red)';
-  };
+  }, [diagnosisResult, loadingComplete, hasShownResultsBefore]);
 
   const { requestReset, ResetConfirmModal } = useConfirmReset();
   const handleNewDiagnosis = () => {
@@ -409,62 +239,82 @@ export default function ResultsPage() {
     resetDiagnosis();
   };
 
-  const handleDownload = async () => {
-    if (!currentDiagnosisResult || !reportRef.current) return;
+  const [copied, setCopied] = useState(false);
+  const handleCopyReport = async () => {
+    if (!diagnosisResult) return;
     try {
-      setIsExporting(true);
-      const ts = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
-      const plant = (currentDiagnosisResult.plant || 'plant').replace(
-        /[^a-z0-9_-]+/gi,
-        '_'
+      await navigator.clipboard.writeText(
+        formatReportAsMarkdown(diagnosisResult)
       );
-      // Temporarily force-open sections & adjust classes for export
-      const root = reportRef.current; // now wraps images + results
-      // Ensure all images inside root are loaded before snapshot
-      const imgs = Array.from(
-        root.querySelectorAll('img')
-      ) as HTMLImageElement[];
-      await Promise.all(
-        imgs.map((img) =>
-          img.complete && img.naturalWidth > 0
-            ? Promise.resolve()
-            : new Promise((res) => {
-                img.addEventListener('load', res, { once: true });
-                img.addEventListener('error', res, { once: true });
-              })
-        )
-      );
-      const prevShowCare = showCare;
-      const prevShowPrimaryDetails = showPrimaryDetails;
-      const prevShowSecondaryDetails = showSecondaryDetails;
-      if (!showCare) setShowCare(true);
-      if (!showPrimaryDetails) setShowPrimaryDetails(true);
-      if (currentDiagnosisResult.secondary && !showSecondaryDetails)
-        setShowSecondaryDetails(true);
-      // Wait for state flush
-      await new Promise((r) => setTimeout(r, 50));
-      root.classList.add('report-exporting');
-      await exportElementToSinglePagePdf({
-        element: root,
-        fileName: `diagnosis-${plant}-${ts}.pdf`,
-      });
-      root.classList.remove('report-exporting');
-      // Restore previous states
-      setShowCare(prevShowCare);
-      setShowPrimaryDetails(prevShowPrimaryDetails);
-      setShowSecondaryDetails(prevShowSecondaryDetails);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      console.error('Failed to generate report', e);
-      alert('Failed to generate report. Please try again.');
-    } finally {
-      setIsExporting(false);
+      logger.warn('Copy to clipboard failed', e);
     }
   };
 
-  // Use the diagnosis result from context if available, otherwise from hook
-  const currentDiagnosisResult = contextDiagnosisResult || diagnosisResult;
+  const { isExporting, handleDownload } = useResultsExport({
+    reportRef,
+    diagnosisResult,
+    expandAllSections: () => {
+      const prevShowCare = showCare;
+      const prevShowPrimaryDetails = showPrimaryDetails;
+      const prevShowSecondaryDetails = showSecondaryDetails;
+      setShowCare(true);
+      setShowPrimaryDetails(true);
+      if (diagnosisResult?.secondary) setShowSecondaryDetails(true);
+      return () => {
+        setShowCare(prevShowCare);
+        setShowPrimaryDetails(prevShowPrimaryDetails);
+        setShowSecondaryDetails(prevShowSecondaryDetails);
+      };
+    },
+  });
 
-  const [isExporting, setIsExporting] = useState(false);
+  // While the final diagnosis streams, assemble a partial result from the
+  // completed fields so sections appear as they finish generating
+  type DisplayResult = Omit<DiagnosisResult, 'primary'> & {
+    primary: DiagnosisResult['primary'] | null;
+  };
+  const displayResult: DisplayResult | null = useMemo(() => {
+    if (diagnosisResult) return diagnosisResult;
+    const f = partialDiagnosis;
+    if (!f?.plant) return null;
+    return {
+      plant: f.plant,
+      primary:
+        f.primaryDiagnosis && f.primaryConfidence && f.primarySummary
+          ? {
+              condition: f.primaryDiagnosis,
+              confidence: f.primaryConfidence as 'High' | 'Medium' | 'Low',
+              summary: f.primarySummary,
+              reasoning: f.primaryReasoning || '',
+              treatment: f.primaryTreatmentPlan || '',
+              prevention: f.primaryPreventionTips || '',
+            }
+          : null,
+      ...(f.secondaryDiagnosis && f.secondaryConfidence && f.secondarySummary
+        ? {
+            secondary: {
+              condition: f.secondaryDiagnosis,
+              confidence: f.secondaryConfidence as 'High' | 'Medium' | 'Low',
+              summary: f.secondarySummary,
+              reasoning: f.secondaryReasoning || '',
+              treatment: f.secondaryTreatmentPlan || '',
+              prevention: f.secondaryPreventionTips || '',
+            },
+          }
+        : {}),
+      careTips: f.careTips || '',
+    };
+  }, [diagnosisResult, partialDiagnosis]);
+  const isStreaming = !diagnosisResult && !!displayResult;
+
+  const sectionDivider = (
+    <div className="result-section report-block">
+      <div className="section-divider"></div>
+    </div>
+  );
 
   return (
     <>
@@ -488,7 +338,7 @@ export default function ResultsPage() {
           onLogoClick={requestReset}
         />
 
-        {/* Export root now wraps images + results so images appear in PDF */}
+        {/* Export root wraps images + results so images appear in PDF */}
         <div ref={reportRef}>
           {/* Image Preview Grid always first */}
           {images.length > 0 && (
@@ -498,18 +348,16 @@ export default function ResultsPage() {
           )}
 
           {/* Prompt only during diagnosing (loading), below images and above status/loading screen */}
-          {isDiagnosing && !loadingComplete && (
-            <>
-              <div className="prompt-line">
-                <Prompt path="~/results" />
-              </div>
-            </>
+          {isDiagnosing && !loadingComplete && !isStreaming && (
+            <div className="prompt-line">
+              <Prompt path="~/results" />
+            </div>
           )}
 
           <div className="results-page">
             <div className="terminal-text">
               {/* Show loading screen while diagnosing */}
-              {isDiagnosing && !loadingComplete && (
+              {isDiagnosing && !loadingComplete && !isStreaming && (
                 <LoadingScreen
                   isDiagnosing={isDiagnosing}
                   isAggregating={!initialDiagnosisComplete}
@@ -548,16 +396,15 @@ export default function ResultsPage() {
                 </div>
               )}
 
-              {/* Show results only when diagnosis is complete */}
-              {(finalDiagnosisComplete || contextDiagnosisResult) &&
-                (diagnosisResult || contextDiagnosisResult) &&
-                (loadingComplete || !isDiagnosing) && (
+              {/* Results: streamed sections appear as fields complete */}
+              {displayResult &&
+                (isStreaming || loadingComplete || !isDiagnosing) && (
                   <div className="diagnosis-results">
                     {/* Plant Information */}
-                    {currentDiagnosisResult?.plant && (
+                    {displayResult.plant && (
                       <div className="result-section report-block">
                         <TypingText
-                          text={`Plant name: ${currentDiagnosisResult.plant}`}
+                          text={`Plant name: ${displayResult.plant}`}
                           speed={100}
                           onceKey={`${typingKeyPrefix}|plant`}
                           onComplete={() => setPlantTitleDone(true)}
@@ -565,264 +412,53 @@ export default function ResultsPage() {
                       </div>
                     )}
 
-                    {/* Care Tips Section - appears immediately after plant name is typed */}
-                    {currentDiagnosisResult && plantTitleDone && (
-                      <div className="result-section report-block">
-                        <button
-                          className="detail-button"
-                          onClick={() => setShowCare(!showCare)}
-                        >
-                          {showCare ? 'Hide' : 'Show'} Care Tips
-                        </button>
-
-                        {showCare && (
-                          <div
-                            className="care-section"
-                            style={{ marginTop: '-1px' }}
-                          >
-                            <div className="summary-content-title">
-                              Care Tips:
-                            </div>
-                            <div className="summary-content">
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: formatWithMarkdown(
-                                    currentDiagnosisResult.careTips
-                                  ),
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    {/* Care Tips - last field to stream in */}
+                    {plantTitleDone && displayResult.careTips && (
+                      <CareTips
+                        careTips={displayResult.careTips}
+                        expanded={showCare}
+                        onToggle={() => setShowCare(!showCare)}
+                      />
                     )}
 
-                    {/* Visual Divider */}
-                    {currentDiagnosisResult?.plant && plantTitleDone && (
-                      <div className="result-section report-block">
-                        <div className="section-divider"></div>
-                      </div>
-                    )}
+                    {displayResult.plant && plantTitleDone && sectionDivider}
 
                     {/* Primary Diagnosis */}
-                    {currentDiagnosisResult && plantTitleDone && (
-                      <div className="result-section report-block">
-                        <div>{`Bug detected: ${currentDiagnosisResult.primary.condition}`}</div>
-                        <div className="confidence-indicator">
-                          <span className="confidence-text">
-                            {'Confidence: '}
-                          </span>
-                          <span
-                            className="confidence-value"
-                            style={{
-                              color: getConfidenceColor(
-                                currentDiagnosisResult.primary.confidence
-                              ),
-                            }}
-                          >
-                            {currentDiagnosisResult.primary.confidence}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Primary Summary */}
-                    {currentDiagnosisResult && plantTitleDone && (
-                      <div className="result-section report-block">
-                        <div>{'Summary:'}</div>
-                        <div className="summary-content">
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: formatWithMarkdown(
-                                currentDiagnosisResult.primary.summary
-                              ),
-                            }}
-                          />
-                        </div>
-                        {/* Primary Details Button */}
-                        <button
-                          className="detail-button"
-                          onClick={() =>
-                            setShowPrimaryDetails(!showPrimaryDetails)
-                          }
-                        >
-                          {showPrimaryDetails ? 'Collapse' : 'Expand'} Details
-                        </button>
-
-                        {/* Primary Details Section */}
-                        {showPrimaryDetails && (
-                          <div
-                            className="detailed-section"
-                            style={{ marginTop: '-1px' }}
-                          >
-                            <div className="diagnosis-subsection">
-                              <div className="summary-content-title">
-                                {'Reasoning:'}
-                              </div>
-                              <div className="summary-content">
-                                <div
-                                  dangerouslySetInnerHTML={{
-                                    __html: formatWithMarkdown(
-                                      currentDiagnosisResult.primary.reasoning
-                                    ),
-                                  }}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="diagnosis-subsection">
-                              <div className="summary-content-title">
-                                {'Treatment Plan:'}
-                              </div>
-                              <div className="summary-content">
-                                <div
-                                  dangerouslySetInnerHTML={{
-                                    __html: formatWithMarkdown(
-                                      currentDiagnosisResult.primary.treatment
-                                    ),
-                                  }}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="diagnosis-subsection">
-                              <div className="summary-content-title">
-                                {'Prevention Tips:'}
-                              </div>
-                              <div className="summary-content">
-                                <div
-                                  dangerouslySetInnerHTML={{
-                                    __html: formatWithMarkdown(
-                                      currentDiagnosisResult.primary.prevention
-                                    ),
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    {plantTitleDone && displayResult.primary && (
+                      <DiagnosisSection
+                        title="Bug detected:"
+                        diagnosis={displayResult.primary}
+                        expanded={showPrimaryDetails}
+                        onToggle={() =>
+                          setShowPrimaryDetails(!showPrimaryDetails)
+                        }
+                        detailsReady={
+                          !isStreaming ||
+                          !!partialDiagnosis?.primaryPreventionTips
+                        }
+                      />
                     )}
 
                     {/* Secondary Diagnosis */}
-                    {currentDiagnosisResult?.secondary && plantTitleDone && (
+                    {displayResult.secondary && plantTitleDone && (
                       <>
-                        {/* Visual Divider */}
-                        {plantTitleDone && (
-                          <div className="result-section report-block">
-                            <div className="section-divider"></div>
-                          </div>
-                        )}
-
-                        <div className="result-section report-block">
-                          <div>{`Another possible bug: ${currentDiagnosisResult.secondary.condition}`}</div>
-                          <div className="confidence-indicator">
-                            <span
-                              className="confidence-text"
-                              style={{ color: 'var(--text-primary)' }}
-                            >
-                              {'Confidence: '}
-                            </span>
-                            <span
-                              className="confidence-value"
-                              style={{
-                                color: getConfidenceColor(
-                                  currentDiagnosisResult.secondary.confidence
-                                ),
-                              }}
-                            >
-                              {currentDiagnosisResult.secondary.confidence}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Secondary Summary */}
-                        <div className="result-section report-block">
-                          <div>{'Summary:'}</div>
-                          <div className="summary-content">
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: formatWithMarkdown(
-                                  currentDiagnosisResult.secondary.summary
-                                ),
-                              }}
-                            />
-                          </div>
-                          {/* Secondary Details Button */}
-                          <button
-                            className="detail-button"
-                            onClick={() =>
-                              setShowSecondaryDetails(!showSecondaryDetails)
-                            }
-                          >
-                            {showSecondaryDetails ? 'Collapse' : 'Expand'}{' '}
-                            Details
-                          </button>
-
-                          {/* Secondary Details Section */}
-                          {showSecondaryDetails && (
-                            <div
-                              className="detailed-section"
-                              style={{ marginTop: '-1px' }}
-                            >
-                              <div className="diagnosis-subsection">
-                                <div className="summary-content-title">
-                                  {'Reasoning:'}
-                                </div>
-                                <div className="summary-content">
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: formatWithMarkdown(
-                                        currentDiagnosisResult.secondary
-                                          .reasoning
-                                      ),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="diagnosis-subsection">
-                                <div className="summary-content-title">
-                                  {'Treatment Plan:'}
-                                </div>
-                                <div className="summary-content">
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: formatWithMarkdown(
-                                        currentDiagnosisResult.secondary
-                                          .treatment
-                                      ),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="diagnosis-subsection">
-                                <div className="summary-content-title">
-                                  {'Prevention Tips:'}
-                                </div>
-                                <div className="summary-content">
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: formatWithMarkdown(
-                                        currentDiagnosisResult.secondary
-                                          .prevention
-                                      ),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        {sectionDivider}
+                        <DiagnosisSection
+                          title="Another possible bug:"
+                          diagnosis={displayResult.secondary}
+                          expanded={showSecondaryDetails}
+                          onToggle={() =>
+                            setShowSecondaryDetails(!showSecondaryDetails)
+                          }
+                          detailsReady={
+                            !isStreaming ||
+                            !!partialDiagnosis?.secondaryPreventionTips
+                          }
+                        />
                       </>
                     )}
-                    {/* Visual Divider */}
-                    {plantTitleDone && (
-                      <div className="result-section report-block">
-                        <div className="section-divider"></div>
-                      </div>
-                    )}
+
+                    {plantTitleDone && !isStreaming && sectionDivider}
                   </div>
                 )}
             </div>
@@ -859,8 +495,16 @@ export default function ResultsPage() {
               </ActionButton>
 
               <ActionButton
+                variant="reset"
+                disabled={!diagnosisResult}
+                onClick={handleCopyReport}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </ActionButton>
+
+              <ActionButton
                 variant="primary"
-                disabled={!currentDiagnosisResult}
+                disabled={!diagnosisResult}
                 onClick={handleDownload}
               >
                 Download

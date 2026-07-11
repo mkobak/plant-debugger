@@ -38,7 +38,7 @@ export default function LoadingScreen({
     if (finalDiagnosisComplete && line3Complete && onComplete) {
       const timer = setTimeout(() => {
         onComplete();
-      }, 500);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [finalDiagnosisComplete, line3Complete, onComplete]);
@@ -53,7 +53,7 @@ export default function LoadingScreen({
       <div className="loading-screen compact">
         <TypingText
           text={`Status: ${status}...`}
-          speed={100}
+          speed={150}
           onceKey={
             onceKeyPrefix ? `${onceKeyPrefix}|compact|${status}` : undefined
           }
@@ -72,7 +72,7 @@ export default function LoadingScreen({
       <div className="terminal-line">
         <TypingText
           text="> Processing answers..."
-          speed={100}
+          speed={150}
           onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line1` : undefined}
           onComplete={() => setLine1Complete(true)}
         />
@@ -81,7 +81,7 @@ export default function LoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Investigating possible bugs..."
-            speed={100}
+            speed={150}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line2` : undefined}
             onComplete={() => setLine2Complete(true)}
           >
@@ -93,7 +93,7 @@ export default function LoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Finalizing debugging report..."
-            speed={100}
+            speed={150}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|line3` : undefined}
             onComplete={handleLine3Complete}
           >

@@ -22,6 +22,7 @@ import {
   loadDiagnosisState,
   clearDiagnosisState,
 } from '@/lib/persistence';
+import { imagesSignature } from '@/utils';
 
 interface DiagnosisContextType {
   images: PlantImage[];
@@ -125,8 +126,8 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
 
   const setImagesWithLogging = (newImages: PlantImage[]) => {
     setImages((prev) => {
-      const prevSig = prev.map((i) => i.id).join('|');
-      const newSig = newImages.map((i) => i.id).join('|');
+      const prevSig = imagesSignature(prev);
+      const newSig = imagesSignature(newImages);
       if (prevSig !== newSig) {
         // If images change, clear dependent state so flows rerun
         setPlantIdentification(null);
@@ -218,9 +219,9 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     typingSession.reset();
     // Reset the cost tracker for a fresh run
     costTracker.reset();
-    // Inform server to reset server-side cost totals (best-effort)
+    // Inform server to reset server-side cost totals (best-effort, dev only)
     try {
-      fetch('/api/reset-costs', { method: 'POST' });
+      fetch('/api/reset-costs', { method: 'POST' }).catch(() => {});
     } catch {}
     // Clear persisted state
     clearDiagnosisState();

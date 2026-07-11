@@ -9,72 +9,47 @@ import {
   DiagnosisResult,
 } from '@/types';
 import {
-  initialDiagnosisCircuitBreaker,
-  finalDiagnosisCircuitBreaker,
-} from '@/utils/circuitBreaker';
-import {
   createImageFormData,
-  logFormDataEntries,
-  logImageDetails,
   validateImages,
   getClientHeaders,
 } from './client-utils';
-import { withRetry, withRetryAllowEmpty } from './retry-utils';
-import { costTracker } from '@/lib/costTracker';
+import { withRetry } from './retry-utils';
+import { costTracker, type UsageMetadata } from '@/lib/costTracker';
+import { extractCompleteFields } from '@/utils/partialJson';
 import type { ModelKey } from '@/lib/api/modelConfig';
 
-export async function identifyPlant(
-  images: PlantImage[],
-  signal?: AbortSignal
-): Promise<PlantIdentification> {
-  console.log('identifyPlant called with images:', images.length);
+import { logger } from '@/lib/logger';
 
-  if (!images || images.length === 0) {
-    throw new Error('No images provided to identifyPlant function');
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
   }
-
-  logImageDetails(images, 'Plant identification');
-
-  return withRetryAllowEmpty(async () => {
-    const formData = createImageFormData(images);
-    logFormDataEntries(formData, 'Plant identification FormData');
-
-    const response = await fetch('/api/identify-plant', {
-      method: 'POST',
-      body: formData,
-      headers: getClientHeaders(),
-      signal,
-    });
-
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }));
-      throw new Error(
-        error.error || `HTTP ${response.status}: Failed to identify plant`
-      );
-    }
-
-    const data = await response.json();
-    console.log('identifyPlant response:', data);
-    if (data?.usage?.usage) {
-      costTracker.record({
-        modelKey: (data.usage.modelKey || 'modelLow') as ModelKey,
-        usage: data.usage.usage,
-        route: 'identify-plant',
-      });
-    }
-
-    // Allow empty species if not identified
-    return data.identification;
-  }, 'Plant Identification');
 }
 
+async function throwHttpError(
+  response: Response,
+  fallback: string
+): Promise<never> {
+  const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+  if (response.status === 429) {
+    throw new HttpError(
+      'API rate limit reached. Please wait a few minutes before trying again.',
+      429
+    );
+  }
+  throw new HttpError(
+    error.error || `HTTP ${response.status}: ${fallback}`,
+    response.status
+  );
+}
 export async function getNoPlantResponse(
   images: PlantImage[],
   signal?: AbortSignal
 ): Promise<string> {
-  console.log('getNoPlantResponse called with images:', images.length);
+  logger.debug('getNoPlantResponse called with images:', images.length);
   validateImages(images);
   // No retries for no-plant messages to avoid duplicate/jarring responses
   return withRetry(
@@ -87,12 +62,7 @@ export async function getNoPlantResponse(
         signal,
       });
       if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: 'Unknown error' }));
-        throw new Error(
-          error.error || `HTTP ${response.status}: Failed to generate message`
-        );
+        await throwHttpError(response, 'Failed to generate message');
       }
       const data = await response.json();
       if (data?.usage?.usage) {
@@ -115,19 +85,16 @@ export async function generateQuestions(
   userComment: string,
   signal?: AbortSignal
 ): Promise<DiagnosticQuestion[]> {
-  console.log('generateQuestions called with images:', images.length);
+  logger.debug('generateQuestions called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to generateQuestions function');
   }
 
-  logImageDetails(images, 'Question generation');
-
   return withRetry(async () => {
     const formData = createImageFormData(images);
     formData.append('rankedDiagnoses', rankedDiagnoses);
     formData.append('userComment', userComment);
-    logFormDataEntries(formData, 'Question generation FormData');
 
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
@@ -137,16 +104,11 @@ export async function generateQuestions(
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }));
-      throw new Error(
-        error.error || `HTTP ${response.status}: Failed to generate questions`
-      );
+      await throwHttpError(response, 'Failed to generate questions');
     }
 
     const data = await response.json();
-    console.log('generateQuestions response:', data);
+    logger.debug('generateQuestions response:', data);
     if (data?.usage?.usage) {
       costTracker.record({
         modelKey: (data.usage.modelKey || 'modelMedium') as ModelKey,
@@ -162,55 +124,46 @@ export async function getInitialDiagnosis(
   images: PlantImage[],
   userComment: string,
   signal?: AbortSignal
-): Promise<{ rawDiagnoses: string[]; rankedDiagnoses: string }> {
-  console.log('getInitialDiagnosis called with images:', images.length);
+): Promise<{
+  identification: PlantIdentification;
+  rawDiagnoses: string[];
+  rankedDiagnoses: string;
+}> {
+  logger.debug('getInitialDiagnosis called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to getInitialDiagnosis function');
   }
 
-  return initialDiagnosisCircuitBreaker.call(async () => {
-    return withRetry(async () => {
-      const formData = createImageFormData(images);
-      formData.append('userComment', userComment);
+  return withRetry(async () => {
+    const formData = createImageFormData(images);
+    formData.append('userComment', userComment);
 
-      const response = await fetch('/api/initial-diagnosis', {
-        method: 'POST',
-        body: formData,
-        headers: getClientHeaders(),
-        signal,
-      });
+    const response = await fetch('/api/initial-diagnosis', {
+      method: 'POST',
+      body: formData,
+      headers: getClientHeaders(),
+      signal,
+    });
 
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: 'Unknown error' }));
-        if (response.status === 429) {
-          throw new Error(
-            'API rate limit reached. Please wait a few minutes before trying again.'
-          );
-        }
-        throw new Error(
-          error.error ||
-            `HTTP ${response.status}: Failed to get initial diagnosis`
-        );
-      }
+    if (!response.ok) {
+      await throwHttpError(response, 'Failed to get initial diagnosis');
+    }
 
-      const data = await response.json();
-      console.log('getInitialDiagnosis response:', data);
-      if (Array.isArray(data?.usage)) {
-        // Record usage for multiple calls
-        costTracker.recordMany(
-          data.usage.map((u: any) => ({
-            modelKey: (u.modelKey || 'modelLow') as ModelKey,
-            usage: u.usage,
-            route: 'initial-diagnosis',
-          }))
-        );
-      }
-      return data;
-    }, 'Initial Diagnosis');
-  });
+    const data = await response.json();
+    logger.debug('getInitialDiagnosis response:', data);
+    if (Array.isArray(data?.usage)) {
+      // Record usage for multiple calls
+      costTracker.recordMany(
+        data.usage.map((u: any) => ({
+          modelKey: (u.modelKey || 'modelLow') as ModelKey,
+          usage: u.usage,
+          route: 'initial-diagnosis',
+        }))
+      );
+    }
+    return data;
+  }, 'Initial Diagnosis');
 }
 
 export async function getFinalDiagnosis(
@@ -218,55 +171,98 @@ export async function getFinalDiagnosis(
   questionsAndAnswers: string,
   rankedDiagnoses: string,
   userComment: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /** Called with completed fields as the response streams in. */
+  onPartial?: (fields: Record<string, string>) => void
 ): Promise<DiagnosisResult> {
-  console.log('getFinalDiagnosis called with images:', images.length);
+  logger.debug('getFinalDiagnosis called with images:', images.length);
 
   if (!images || images.length === 0) {
     throw new Error('No images provided to getFinalDiagnosis function');
   }
 
-  return finalDiagnosisCircuitBreaker.call(async () => {
-    return withRetry(async () => {
-      const formData = createImageFormData(images);
-      formData.append('questionsAndAnswers', questionsAndAnswers);
-      formData.append('rankedDiagnoses', rankedDiagnoses);
-      if (userComment) formData.append('userComment', userComment);
+  return withRetry(async () => {
+    // Note: on retry the previous attempt's partial reveal is intentionally
+    // left in place — a blank flash is worse than briefly stale text; the
+    // fresh stream replaces the fields wholesale as they arrive.
+    const formData = createImageFormData(images);
+    formData.append('questionsAndAnswers', questionsAndAnswers);
+    formData.append('rankedDiagnoses', rankedDiagnoses);
+    if (userComment) formData.append('userComment', userComment);
 
-      const response = await fetch('/api/final-diagnosis', {
-        method: 'POST',
-        body: formData,
-        headers: getClientHeaders(),
-        signal,
-      });
+    const response = await fetch('/api/final-diagnosis', {
+      method: 'POST',
+      body: formData,
+      headers: getClientHeaders(),
+      signal,
+    });
 
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: 'Unknown error' }));
-        if (response.status === 429) {
-          throw new Error(
-            'API rate limit reached. Please wait a few minutes before trying again.'
-          );
+    if (!response.ok) {
+      await throwHttpError(response, 'Failed to get final diagnosis');
+    }
+
+    if (
+      !response.body ||
+      !response.headers.get('content-type')?.includes('application/x-ndjson')
+    ) {
+      // Non-streaming response (should not happen, but keep a safe path)
+      const data = await response.json();
+      return data.diagnosisResult as DiagnosisResult;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    let jsonText = '';
+    let lastFieldCount = 0;
+    let result: DiagnosisResult | null = null;
+
+    const handleEvent = (line: string) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'chunk') {
+        jsonText += event.text;
+        if (onPartial) {
+          const fields = extractCompleteFields(jsonText);
+          const count = Object.keys(fields).length;
+          if (count > lastFieldCount) {
+            lastFieldCount = count;
+            onPartial(fields);
+          }
         }
-        throw new Error(
-          error.error ||
-            `HTTP ${response.status}: Failed to get final diagnosis`
+      } else if (event.type === 'done') {
+        result = event.diagnosisResult as DiagnosisResult;
+        if (event.usage?.usage) {
+          costTracker.record({
+            modelKey: (event.usage.modelKey || 'modelMedium') as ModelKey,
+            usage: event.usage.usage,
+            route: 'final-diagnosis',
+          });
+        }
+      } else if (event.type === 'error') {
+        throw new HttpError(
+          event.error || 'Failed to get final diagnosis',
+          502
         );
       }
+    };
 
-      const data = await response.json();
-      console.log('getFinalDiagnosis response:', data);
-      if (data?.usage?.usage) {
-        costTracker.record({
-          modelKey: (data.usage.modelKey || 'modelHigh') as ModelKey,
-          usage: data.usage.usage,
-          route: 'final-diagnosis',
-        });
-      }
-      // Print cost summary after final diagnosis
-      costTracker.printSummary('Plant Debugger');
-      return data.diagnosisResult;
-    }, 'Final Diagnosis');
-  });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) handleEvent(line);
+    }
+    if (buffered.trim()) handleEvent(buffered);
+
+    if (!result) {
+      throw new HttpError('Final diagnosis stream ended unexpectedly', 502);
+    }
+    // Print cost summary after final diagnosis
+    costTracker.printSummary('Plant Debugger');
+    logger.debug('getFinalDiagnosis complete (streamed)');
+    return result;
+  }, 'Final Diagnosis');
 }

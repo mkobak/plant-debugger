@@ -1,6 +1,7 @@
 'use client';
 import { BUCKET_BY_KEY, PRICES, type ModelKey } from '@/lib/api/modelConfig';
 
+import { logger } from '@/lib/logger';
 const ENABLE_LOGS =
   (process.env.NEXT_PUBLIC_ENABLE_CLIENT_COST_LOGS ?? 'true')
     .toString()
@@ -59,7 +60,7 @@ class CostTracker {
     const outCost = dollars(ct, rateFor(entry.modelKey, 'output', pt));
     const route = entry.route ? ` [${entry.route}]` : '';
     if (ENABLE_LOGS) {
-      console.log(
+      logger.debug(
         `(CostTracker) ${entry.modelKey}${route}: input ${pt}, output ${ct}, cost ~$${(inCost + outCost).toFixed(4)}`
       );
     }
@@ -73,7 +74,7 @@ class CostTracker {
   reset() {
     this.entries = [];
     // Log reset for debugging
-    console.log('[CostTracker] reset');
+    logger.debug('[CostTracker] reset');
   }
 
   totals() {
@@ -133,7 +134,7 @@ class CostTracker {
     ];
     // Log summary as a single message block for readability
     if (ENABLE_LOGS) {
-      console.log(lines.join('\n'));
+      logger.debug(lines.join('\n'));
     }
   }
 }

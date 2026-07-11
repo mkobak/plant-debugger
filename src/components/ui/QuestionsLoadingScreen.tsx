@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import TypingText from './TypingText';
 import LoadingSpinner from './LoadingSpinner';
 
+import { logger } from '@/lib/logger';
 interface QuestionsLoadingScreenProps {
   isIdentifying: boolean;
   isInvestigating: boolean; // initial diagnoses aggregation phase
@@ -33,12 +34,12 @@ export default function QuestionsLoadingScreen({
   // Call onComplete when everything is done
   useEffect(() => {
     if (questionsGenerated && line3Complete && onComplete) {
-      console.log(
+      logger.debug(
         'QuestionsLoadingScreen: All steps complete, calling onComplete'
       );
       const timer = setTimeout(() => {
         onComplete();
-      }, 300);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [questionsGenerated, line3Complete, onComplete]);
@@ -57,7 +58,7 @@ export default function QuestionsLoadingScreen({
       <div className="questions-loading-screen compact">
         <TypingText
           text={`Status: ${status}...`}
-          speed={100}
+          speed={150}
           // Include status so each transition retypes once
           onceKey={
             onceKeyPrefix ? `${onceKeyPrefix}|compact|${status}` : undefined
@@ -78,7 +79,7 @@ export default function QuestionsLoadingScreen({
       <div className="terminal-line">
         <TypingText
           text="> Analyzing images..."
-          speed={100}
+          speed={150}
           onceKey={onceKeyPrefix ? `${onceKeyPrefix}|analyzing` : undefined}
           onComplete={() => setLine1Complete(true)}
         />
@@ -87,7 +88,7 @@ export default function QuestionsLoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Identifying plant..."
-            speed={100}
+            speed={150}
             onceKey={onceKeyPrefix ? `${onceKeyPrefix}|identifying` : undefined}
             onComplete={() => setLine2Complete(true)}
           >
@@ -99,7 +100,7 @@ export default function QuestionsLoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Investigating possible bugs..."
-            speed={100}
+            speed={150}
             onceKey={
               onceKeyPrefix ? `${onceKeyPrefix}|investigating` : undefined
             }
@@ -113,7 +114,7 @@ export default function QuestionsLoadingScreen({
         <div className="terminal-line">
           <TypingText
             text="> Generating questions..."
-            speed={100}
+            speed={150}
             onceKey={
               onceKeyPrefix
                 ? `${onceKeyPrefix}|generating_questions`

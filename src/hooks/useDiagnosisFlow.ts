@@ -1,7 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { PlantImage, DiagnosisResult } from '@/types';
+import { PlantImage } from '@/types';
 import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
+import { useDiagnosis } from '@/context/DiagnosisContext';
+import type { FinalDiagnosisFields } from '@/lib/api/finalDiagnosisMapping';
 
+import { logger } from '@/lib/logger';
 interface UseDiagnosisFlowProps {
   images: PlantImage[];
   questionsAndAnswers: string;
@@ -15,12 +18,16 @@ export function useDiagnosisFlow({
   rankedDiagnoses,
   userComment,
 }: UseDiagnosisFlowProps) {
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  // Diagnosis result and loading state live in the context — the single
+  // source of truth shared with the rest of the app
+  const { diagnosisResult, setDiagnosisResult, isDiagnosing, setIsDiagnosing } =
+    useDiagnosis();
   const [initialDiagnosisComplete, setInitialDiagnosisComplete] =
     useState(false);
   const [finalDiagnosisComplete, setFinalDiagnosisComplete] = useState(false);
-  const [diagnosisResult, setDiagnosisResult] =
-    useState<DiagnosisResult | null>(null);
+  // Completed fields revealed while the final diagnosis streams in
+  const [partialDiagnosis, setPartialDiagnosis] =
+    useState<FinalDiagnosisFields | null>(null);
   const [error, setError] = useState<string>('');
 
   const diagnosisStartedRef = useRef(false);
@@ -33,9 +40,9 @@ export function useDiagnosisFlow({
   const startDiagnosis = useCallback(async () => {
     const now = Date.now();
     const timeSinceLastAttempt = now - lastDiagnosisAttemptRef.current;
-    const MIN_TIME_BETWEEN_ATTEMPTS = 10000; // 10 seconds minimum between attempts
+    const MIN_TIME_BETWEEN_ATTEMPTS = 1500; // guards StrictMode double-invokes
 
-    console.log(
+    logger.debug(
       'useDiagnosisFlow: startDiagnosis called - isDiagnosing:',
       isDiagnosing,
       'diagnosisStarted:',
@@ -46,7 +53,7 @@ export function useDiagnosisFlow({
 
     // Comprehensive protection against multiple calls
     if (isDiagnosing || diagnosisStartedRef.current) {
-      console.log(
+      logger.debug(
         'useDiagnosisFlow: Diagnosis already in progress, skipping...'
       );
       return;
@@ -54,17 +61,19 @@ export function useDiagnosisFlow({
 
     // Prevent too frequent requests
     if (timeSinceLastAttempt < MIN_TIME_BETWEEN_ATTEMPTS) {
-      console.log('useDiagnosisFlow: Too soon since last attempt, skipping...');
+      logger.debug(
+        'useDiagnosisFlow: Too soon since last attempt, skipping...'
+      );
       return;
     }
 
     // Validate inputs
     if (!images || images.length === 0) {
-      console.log('useDiagnosisFlow: No images available');
+      logger.debug('useDiagnosisFlow: No images available');
       setError('No images available for diagnosis');
       return;
     }
-    console.log(
+    logger.debug(
       `useDiagnosisFlow: Starting diagnosis attempt ${retryCountRef.current + 1}/${maxRetries + 1} with images:`,
       images.length
     );
@@ -75,7 +84,7 @@ export function useDiagnosisFlow({
     setError('');
 
     try {
-      console.log(
+      logger.debug(
         'useDiagnosisFlow: Starting diagnosis with images:',
         images.length
       );
@@ -86,9 +95,9 @@ export function useDiagnosisFlow({
 
       let ranked = rankedDiagnoses;
       if (!rankedDiagnoses) {
-        console.log('useDiagnosisFlow: Calling getInitialDiagnosis...');
+        logger.debug('useDiagnosisFlow: Calling getInitialDiagnosis...');
         const initialResult = await getInitialDiagnosis(images, '', signal);
-        console.log(
+        logger.debug(
           'useDiagnosisFlow: Initial diagnosis complete:',
           initialResult
         );
@@ -102,41 +111,40 @@ export function useDiagnosisFlow({
       const runFinal = async () => {
         try {
           if (canceledRef.current) {
-            console.log('useDiagnosisFlow: Canceled before final diagnosis');
+            logger.debug('useDiagnosisFlow: Canceled before final diagnosis');
             return;
           }
-          console.log('useDiagnosisFlow: Calling getFinalDiagnosis...');
+          logger.debug('useDiagnosisFlow: Calling getFinalDiagnosis...');
           // Step 2: Get final structured diagnosis
           const finalResult = await getFinalDiagnosis(
             images,
             questionsAndAnswers,
             ranked || '',
             userComment || '',
-            abortRef.current?.signal
+            abortRef.current?.signal,
+            (fields) => setPartialDiagnosis(fields)
           );
 
-          console.log(
+          logger.debug(
             'useDiagnosisFlow: Final diagnosis complete:',
             finalResult
           );
           setDiagnosisResult(finalResult);
           setFinalDiagnosisComplete(true);
+          setPartialDiagnosis(null);
 
           // Reset retry count on success
           retryCountRef.current = 0;
         } catch (finalError) {
-          console.error(
-            'useDiagnosisFlow: Final diagnosis failed:',
-            finalError
-          );
+          logger.error('useDiagnosisFlow: Final diagnosis failed:', finalError);
           if (finalError instanceof Error && finalError.name === 'AbortError') {
-            console.log('useDiagnosisFlow: Final diagnosis aborted by user');
+            logger.debug('useDiagnosisFlow: Final diagnosis aborted by user');
             return;
           }
 
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
-            console.log(
+            logger.debug(
               `useDiagnosisFlow: Will retry final diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`
             );
             // Only retry the final step, not the initial step
@@ -158,14 +166,11 @@ export function useDiagnosisFlow({
           }
         }
       };
-      // Brief delay before final diagnosis
-      setTimeout(() => {
-        runFinal();
-      }, 2000);
+      await runFinal();
     } catch (error) {
-      console.error('useDiagnosisFlow: Initial diagnosis failed:', error);
+      logger.error('useDiagnosisFlow: Initial diagnosis failed:', error);
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('useDiagnosisFlow: Initial diagnosis aborted by user');
+        logger.debug('useDiagnosisFlow: Initial diagnosis aborted by user');
         setIsDiagnosing(false);
         diagnosisStartedRef.current = false;
         return;
@@ -173,7 +178,7 @@ export function useDiagnosisFlow({
 
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current++;
-        console.log(
+        logger.debug(
           `useDiagnosisFlow: Will retry initial diagnosis in 3 seconds (attempt ${retryCountRef.current}/${maxRetries})`
         );
         diagnosisStartedRef.current = false; // Allow retry
@@ -189,20 +194,30 @@ export function useDiagnosisFlow({
       diagnosisStartedRef.current = false;
       retryCountRef.current = 0;
     }
-  }, [images, questionsAndAnswers, rankedDiagnoses, userComment, isDiagnosing]);
+  }, [
+    images,
+    questionsAndAnswers,
+    rankedDiagnoses,
+    userComment,
+    isDiagnosing,
+    setDiagnosisResult,
+    setIsDiagnosing,
+  ]);
 
   const cancelDiagnosis = useCallback(() => {
-    console.log('useDiagnosisFlow: cancelDiagnosis called');
+    logger.debug('useDiagnosisFlow: cancelDiagnosis called');
+    setPartialDiagnosis(null);
     canceledRef.current = true;
     if (abortRef.current) {
       abortRef.current.abort();
     }
     setIsDiagnosing(false);
     diagnosisStartedRef.current = false;
-  }, []);
+  }, [setIsDiagnosing]);
 
   const resetDiagnosis = useCallback(() => {
-    console.log('useDiagnosisFlow: resetDiagnosis called');
+    logger.debug('useDiagnosisFlow: resetDiagnosis called');
+    setPartialDiagnosis(null);
     setDiagnosisResult(null);
     setInitialDiagnosisComplete(false);
     setFinalDiagnosisComplete(false);
@@ -211,13 +226,14 @@ export function useDiagnosisFlow({
     diagnosisStartedRef.current = false;
     lastDiagnosisAttemptRef.current = 0;
     retryCountRef.current = 0; // Reset retry count
-  }, []);
+  }, [setDiagnosisResult, setIsDiagnosing]);
 
   return {
     isDiagnosing,
     initialDiagnosisComplete,
     finalDiagnosisComplete,
     diagnosisResult,
+    partialDiagnosis,
     error,
     startDiagnosis,
     resetDiagnosis,

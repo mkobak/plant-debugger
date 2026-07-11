@@ -2,9 +2,26 @@
  * Utility functions for the Plant Debugger application
  */
 
+import { MAX_FILE_SIZE, ACCEPTED_IMAGE_TYPES } from '@/lib/constants';
+
 // Generate a unique string ID
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Stable signature for a set of images; used to detect image changes
+// across the analysis/results flows
+export function imagesSignature(images: Array<{ id: string }>): string {
+  return images.map((i) => i.id).join('|');
+}
+
+// Small non-cryptographic hash (djb2) for deriving stable short ids
+export function hashString(input: string): string {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash + input.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
 }
 
 // Format file size as human-readable string
@@ -20,10 +37,7 @@ export function formatFileSize(bytes: number): string {
 
 // Validate image file type and size
 export function isValidImageFile(file: File): boolean {
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-  const maxSize = 1024 * 1024; // 1MB
-
-  return validTypes.includes(file.type) && file.size <= maxSize;
+  return ACCEPTED_IMAGE_TYPES.includes(file.type) && file.size <= MAX_FILE_SIZE;
 }
 
 // Create object URL for a file
