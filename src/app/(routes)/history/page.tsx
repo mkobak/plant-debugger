@@ -54,80 +54,87 @@ export default function HistoryPage() {
             <p>No past diagnoses yet. Finished reports will appear here.</p>
           )}
 
-          {entries?.map((entry) => (
-            <div key={entry.id} className="result-section report-block">
-              <div className="history-entry-row">
-                <button
-                  className="detail-button"
-                  onClick={() =>
-                    setOpenId(openId === entry.id ? null : entry.id)
-                  }
-                >
-                  {openId === entry.id ? '[-]' : '[+]'}
-                </button>
-                {entry.thumbnail && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={entry.thumbnail}
-                    alt=""
-                    width={32}
-                    height={32}
-                    style={{ objectFit: 'cover' }}
-                  />
-                )}
-                <span>
-                  {formatDate(entry.createdAt)} — {entry.plant} —{' '}
-                  {entry.diagnosisResult.primary.condition}
-                </span>
-                <button
-                  className="detail-button"
-                  onClick={() => handleDelete(entry.id)}
-                  aria-label={`Delete report from ${formatDate(entry.createdAt)}`}
-                >
-                  Delete
-                </button>
-              </div>
-
-              {openId === entry.id && (
-                <div style={{ marginTop: '8px' }}>
-                  <DiagnosisSection
-                    title="Bug detected:"
-                    diagnosis={entry.diagnosisResult.primary}
-                    expanded={!!expandedDetails[entry.id]}
-                    onToggle={() =>
-                      setExpandedDetails((p) => ({
-                        ...p,
-                        [entry.id]: !p[entry.id],
-                      }))
+          <div className="history-list">
+            {entries?.map((entry) => (
+              <div key={entry.id} className="result-section report-block">
+                <div className="history-entry-row">
+                  <button
+                    className="detail-button"
+                    onClick={() =>
+                      setOpenId(openId === entry.id ? null : entry.id)
                     }
-                  />
-                  {entry.diagnosisResult.secondary && (
+                    aria-label={
+                      openId === entry.id ? 'Collapse report' : 'Expand report'
+                    }
+                  >
+                    {openId === entry.id ? '[-]' : '[+]'}
+                  </button>
+                  {entry.thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={entry.thumbnail}
+                      alt=""
+                      className="history-entry-thumb"
+                    />
+                  ) : (
+                    <span className="history-entry-thumb--placeholder" />
+                  )}
+                  <span className="history-entry-text">
+                    <span className="history-entry-date">
+                      {formatDate(entry.createdAt)}
+                    </span>
+                    {entry.plant} — {entry.diagnosisResult.primary.condition}
+                  </span>
+                  <button
+                    className="text-action"
+                    onClick={() => handleDelete(entry.id)}
+                    aria-label={`Delete report from ${formatDate(entry.createdAt)}`}
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {openId === entry.id && (
+                  <div style={{ marginTop: '8px' }}>
                     <DiagnosisSection
-                      title="Another possible bug:"
-                      diagnosis={entry.diagnosisResult.secondary}
-                      expanded={!!expandedDetails[`${entry.id}-2`]}
+                      title="Bug detected:"
+                      diagnosis={entry.diagnosisResult.primary}
+                      expanded={!!expandedDetails[entry.id]}
                       onToggle={() =>
                         setExpandedDetails((p) => ({
                           ...p,
-                          [`${entry.id}-2`]: !p[`${entry.id}-2`],
+                          [entry.id]: !p[entry.id],
                         }))
                       }
                     />
-                  )}
-                  <CareTips
-                    careTips={entry.diagnosisResult.careTips}
-                    expanded={!!expandedCare[entry.id]}
-                    onToggle={() =>
-                      setExpandedCare((p) => ({
-                        ...p,
-                        [entry.id]: !p[entry.id],
-                      }))
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+                    {entry.diagnosisResult.secondary && (
+                      <DiagnosisSection
+                        title="Another possible bug:"
+                        diagnosis={entry.diagnosisResult.secondary}
+                        expanded={!!expandedDetails[`${entry.id}-2`]}
+                        onToggle={() =>
+                          setExpandedDetails((p) => ({
+                            ...p,
+                            [`${entry.id}-2`]: !p[`${entry.id}-2`],
+                          }))
+                        }
+                      />
+                    )}
+                    <CareTips
+                      careTips={entry.diagnosisResult.careTips}
+                      expanded={!!expandedCare[entry.id]}
+                      onToggle={() =>
+                        setExpandedCare((p) => ({
+                          ...p,
+                          [entry.id]: !p[entry.id],
+                        }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
           <div className="page-actions">
             <ActionButton variant="reset" onClick={goHome}>
