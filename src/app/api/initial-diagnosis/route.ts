@@ -50,6 +50,12 @@ const CALL_CONFIGS: Array<{
   },
 ];
 
+/**
+ * Streams NDJSON events so the client can show progress:
+ *   {"type":"identification","name":"..."}  as soon as the plant is known
+ *   {"type":"done", identification, rawDiagnoses, rankedDiagnoses, usage}
+ *   {"type":"error","error":"..."}
+ */
 export const POST = withApiRoute(
   'INITIAL-DIAGNOSIS',
   { errorMessage: 'Failed to generate initial diagnosis' },
@@ -99,99 +105,145 @@ export const POST = withApiRoute(
       )
     );
 
-    let identificationUsage: { modelKey: ModelKey; usage: object }[] = [];
-    let plantName: string;
-    try {
-      const identification = await identificationPromise;
-      plantName = normalizePlantName(identification.text);
-      identificationUsage = [
-        { modelKey: 'modelLow', usage: identification.usage },
-      ];
-    } catch (err) {
-      if (signal?.aborted) throw new Error('aborted');
-      // Identification failing must not sink the diagnosis; a non-empty
-      // placeholder keeps the client off the no-plant path.
-      logger.warn(`${tag} Identification failed: ${(err as Error)?.message}`);
-      plantName = 'Unknown plant';
-    }
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      async start(controller) {
+        const send = (event: object) =>
+          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+        try {
+          let identificationUsage: { modelKey: ModelKey; usage: object }[] = [];
+          let plantName: string;
+          try {
+            const identification = await identificationPromise;
+            plantName = normalizePlantName(identification.text);
+            identificationUsage = [
+              { modelKey: 'modelLow', usage: identification.usage },
+            ];
+          } catch (err) {
+            if (isAbortError(err) || signal?.aborted) throw err;
+            // Identification failing must not sink the diagnosis; a non-empty
+            // placeholder keeps the client off the no-plant path.
+            logger.warn(
+              `${tag} Identification failed: ${(err as Error)?.message}`
+            );
+            plantName = 'Unknown plant';
+          }
 
-    if (!plantName) {
-      logger.debug(`${tag} No plant detected; aborting diagnosis calls`);
-      diagnosisAbort.abort();
-      return NextResponse.json({
-        identification: { name: '' },
-        rawDiagnoses: [],
-        rankedDiagnoses: '',
-        usage: identificationUsage,
-      });
-    }
+          // Early progress signal: the client shows the name immediately
+          send({ type: 'identification', name: plantName });
 
-    const settled = await settledPromise;
-    if (signal?.aborted) throw new Error('aborted');
+          if (!plantName) {
+            logger.debug(`${tag} No plant detected; aborting diagnosis calls`);
+            diagnosisAbort.abort();
+            send({
+              type: 'done',
+              identification: { name: '' },
+              rawDiagnoses: [],
+              rankedDiagnoses: '',
+              usage: identificationUsage,
+            });
+            return;
+          }
 
-    const selection = collectSuccessfulDiagnoses(settled);
-    let successes = selection.successes;
-    const failures = selection.failures;
-    if (failures.length > 0) {
-      logger.warn(`${tag} ${failures.length}/3 calls failed:`, failures);
-    }
+          const settled = await settledPromise;
+          if (signal?.aborted) throw new Error('aborted');
 
-    // Single fallback layer: one capped flash retry if everything failed
-    if (successes.length === 0) {
-      logger.warn(`${tag} All diagnosis calls failed; one flash retry...`);
-      try {
-        const retry = await geminiCall({
-          request,
-          modelKey: 'modelMedium',
-          parts: [
-            { text: prompt },
-            { text: '\n\n[variant:retry]' },
-            ...imageParts,
-          ],
-          generationConfig: {
-            temperature: 0.35,
-            topP: 0.7,
-            maxOutputTokens: 768,
-          },
-          signal,
-          timeoutMs: 20_000,
-          tag: `${tag}[retry]`,
-        });
-        if (retry.text) {
-          successes = [{ ...retry, modelKey: 'modelMedium' }];
+          const selection = collectSuccessfulDiagnoses(settled);
+          let successes = selection.successes;
+          const failures = selection.failures;
+          if (failures.length > 0) {
+            logger.warn(`${tag} ${failures.length}/3 calls failed:`, failures);
+          }
+
+          // Single fallback layer: one capped flash retry if everything failed
+          if (successes.length === 0) {
+            logger.warn(
+              `${tag} All diagnosis calls failed; one flash retry...`
+            );
+            try {
+              const retry = await geminiCall({
+                request,
+                modelKey: 'modelMedium',
+                parts: [
+                  { text: prompt },
+                  { text: '\n\n[variant:retry]' },
+                  ...imageParts,
+                ],
+                generationConfig: {
+                  temperature: 0.35,
+                  topP: 0.7,
+                  maxOutputTokens: 768,
+                },
+                signal,
+                timeoutMs: 20_000,
+                tag: `${tag}[retry]`,
+              });
+              if (retry.text) {
+                successes = [{ ...retry, modelKey: 'modelMedium' }];
+              }
+            } catch (err) {
+              if (isAbortError(err)) throw err;
+              logger.warn(
+                `${tag} Flash retry failed: ${(err as Error)?.message}`
+              );
+            }
+          }
+
+          if (successes.length === 0) {
+            send({
+              type: 'error',
+              error: 'Diagnosis service returned no results. Please try again.',
+            });
+            return;
+          }
+
+          const aggregation = await geminiCall({
+            request,
+            modelKey: 'modelLow',
+            parts: [
+              { text: createAggregationPrompt(successes.map((s) => s.text)) },
+            ],
+            generationConfig: { temperature: 0.1, topP: 0.5 },
+            signal,
+            timeoutMs: 15_000,
+            tag: `${tag}[agg]`,
+          });
+
+          send({
+            type: 'done',
+            identification: { name: plantName },
+            rawDiagnoses: successes.map((s) => s.text),
+            rankedDiagnoses: aggregation.text,
+            usage: [
+              ...identificationUsage,
+              ...successes.map((s) => ({
+                modelKey: s.modelKey,
+                usage: s.usage,
+              })),
+              { modelKey: 'modelLow' as const, usage: aggregation.usage },
+            ],
+          });
+        } catch (error) {
+          if (isAbortError(error) || signal?.aborted) {
+            logger.warn(`${tag} Stream aborted by client`);
+          } else {
+            logger.error(`${tag} Stream failed`, error);
+            send({
+              type: 'error',
+              error: 'Failed to generate initial diagnosis',
+            });
+          }
+        } finally {
+          controller.close();
         }
-      } catch (err) {
-        if (isAbortError(err)) throw err;
-        logger.warn(`${tag} Flash retry failed: ${(err as Error)?.message}`);
-      }
-    }
-
-    if (successes.length === 0) {
-      return NextResponse.json(
-        { error: 'Diagnosis service returned no results. Please try again.' },
-        { status: 502 }
-      );
-    }
-
-    const aggregation = await geminiCall({
-      request,
-      modelKey: 'modelLow',
-      parts: [{ text: createAggregationPrompt(successes.map((s) => s.text)) }],
-      generationConfig: { temperature: 0.1, topP: 0.5 },
-      signal,
-      timeoutMs: 15_000,
-      tag: `${tag}[agg]`,
+      },
     });
 
-    return NextResponse.json({
-      identification: { name: plantName },
-      rawDiagnoses: successes.map((s) => s.text),
-      rankedDiagnoses: aggregation.text,
-      usage: [
-        ...identificationUsage,
-        ...successes.map((s) => ({ modelKey: s.modelKey, usage: s.usage })),
-        { modelKey: 'modelLow' as const, usage: aggregation.usage },
-      ],
+    return new NextResponse(body, {
+      headers: {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 );

@@ -77,6 +77,7 @@ export default function QuestionsPage() {
   );
   const [editablePlantName, setEditablePlantName] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [identifiedName, setIdentifiedName] = useState<string>('');
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [plantNameTyped, setPlantNameTyped] = useState(false);
   const [instructionsTyped, setInstructionsTyped] = useState(false);
@@ -108,22 +109,23 @@ export default function QuestionsPage() {
       const signal = abortRef.current.signal;
 
       // Step 1: Identify plant + initial diagnoses (single request; the
-      // server runs identification in parallel with the diagnosis calls)
+      // server runs identification in parallel with the diagnosis calls
+      // and streams the identified name as soon as it's known)
       logger.debug('Step 1: Identifying plant and diagnosing...');
+      setIdentifiedName('');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
-      // Purely cosmetic phase progression while the merged request runs
-      const phaseTimer = setTimeout(() => {
-        setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
-      }, 2500);
       let initialDiag: Awaited<ReturnType<typeof getInitialDiagnosis>>;
       try {
         initialDiag = await getInitialDiagnosis(
           images,
           additionalComments || '',
-          signal
+          signal,
+          (name) => {
+            setIdentifiedName(name);
+            setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
+          }
         );
       } finally {
-        clearTimeout(phaseTimer);
         setCtxIsIdentifying(false);
       }
       const identification = initialDiag.identification;
@@ -363,6 +365,7 @@ export default function QuestionsPage() {
                 isGeneratingQuestions={isGeneratingQuestions}
                 identificationComplete={identificationComplete}
                 questionsGenerated={questionsGenerated}
+                identifiedName={identifiedName}
                 onceKeyPrefix={typingSessionKey}
                 compact={true}
                 onComplete={() => {

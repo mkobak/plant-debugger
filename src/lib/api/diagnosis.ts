@@ -120,15 +120,20 @@ export async function generateQuestions(
   }, 'Question Generation');
 }
 
-export async function getInitialDiagnosis(
-  images: PlantImage[],
-  userComment: string,
-  signal?: AbortSignal
-): Promise<{
+interface InitialDiagnosisResult {
   identification: PlantIdentification;
   rawDiagnoses: string[];
   rankedDiagnoses: string;
-}> {
+}
+
+export async function getInitialDiagnosis(
+  images: PlantImage[],
+  userComment: string,
+  signal?: AbortSignal,
+  /** Called as soon as the plant has been identified, before the
+   *  consensus diagnosis finishes. Empty string means no plant. */
+  onIdentification?: (name: string) => void
+): Promise<InitialDiagnosisResult> {
   logger.debug('getInitialDiagnosis called with images:', images.length);
 
   if (!images || images.length === 0) {
@@ -150,19 +155,64 @@ export async function getInitialDiagnosis(
       await throwHttpError(response, 'Failed to get initial diagnosis');
     }
 
-    const data = await response.json();
-    logger.debug('getInitialDiagnosis response:', data);
-    if (Array.isArray(data?.usage)) {
-      // Record usage for multiple calls
-      costTracker.recordMany(
-        data.usage.map((u: any) => ({
-          modelKey: (u.modelKey || 'modelLow') as ModelKey,
-          usage: u.usage,
-          route: 'initial-diagnosis',
-        }))
-      );
+    if (
+      !response.body ||
+      !response.headers.get('content-type')?.includes('application/x-ndjson')
+    ) {
+      // Non-streaming response (should not happen, but keep a safe path)
+      return (await response.json()) as InitialDiagnosisResult;
     }
-    return data;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    let result: InitialDiagnosisResult | null = null;
+
+    const handleEvent = (line: string) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'identification') {
+        onIdentification?.(event.name as string);
+      } else if (event.type === 'done') {
+        result = {
+          identification: event.identification,
+          rawDiagnoses: event.rawDiagnoses,
+          rankedDiagnoses: event.rankedDiagnoses,
+        };
+        if (Array.isArray(event.usage)) {
+          costTracker.recordMany(
+            event.usage.map(
+              (u: { modelKey?: ModelKey; usage: UsageMetadata }) => ({
+                modelKey: (u.modelKey || 'modelLow') as ModelKey,
+                usage: u.usage,
+                route: 'initial-diagnosis',
+              })
+            )
+          );
+        }
+      } else if (event.type === 'error') {
+        throw new HttpError(
+          event.error || 'Failed to get initial diagnosis',
+          502
+        );
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) handleEvent(line);
+    }
+    if (buffered.trim()) handleEvent(buffered);
+
+    if (!result) {
+      throw new HttpError('Initial diagnosis stream ended unexpectedly', 502);
+    }
+    logger.debug('getInitialDiagnosis complete (streamed)');
+    return result;
   }, 'Initial Diagnosis');
 }
 
