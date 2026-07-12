@@ -66,6 +66,7 @@ export default function QuestionsPage() {
     setIsIdentifying: setCtxIsIdentifying,
     isGeneratingQuestions: ctxIsGeneratingQuestions,
     setIsGeneratingQuestions: setCtxIsGeneratingQuestions,
+    hydrated,
   } = useDiagnosis();
   const { requestReset, ResetConfirmModal } = useConfirmReset();
 
@@ -86,18 +87,15 @@ export default function QuestionsPage() {
   // Key for typing animation session, changes when images change
   const typingSessionKey = `qa:${imgSignature}`;
 
-  // On mount: redirect to home if no images are present
+  // Redirect home when there is no session — but only after the IndexedDB
+  // restore has finished, so a refresh doesn't kick the user out
   useEffect(() => {
-    logger.debug('QuestionsPage mounting');
-    // Redirect if no images are present
+    if (!hydrated) return;
     if (images.length === 0) {
-      const timeout = setTimeout(() => {
-        logger.debug('No images found, redirecting to home');
-        goHome();
-      }, 100);
-      return () => clearTimeout(timeout);
+      logger.debug('No images found, redirecting home');
+      goHome();
     }
-  }, [images.length, goHome]);
+  }, [hydrated, images.length, goHome]);
 
   // Wrapped async process to identify plant and generate questions
   const startDiagnosisProcess = useCallback(async () => {
@@ -224,6 +222,7 @@ export default function QuestionsPage() {
 
   // Restore prior state on back-navigation, or start the QA run
   useEffect(() => {
+    if (!hydrated) return;
     const imgSig = imagesSignature(images);
     // If images changed since the last completed run, the flow must rerun
     const signatureChanged =
@@ -276,6 +275,7 @@ export default function QuestionsPage() {
     setQaProcessingSignature(imgSig);
     startDiagnosisProcess();
   }, [
+    hydrated,
     questions.length,
     plantIdentification,
     images,

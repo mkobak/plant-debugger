@@ -8,9 +8,16 @@ export function useNavigation() {
   // Guarded navigation: Only rely on presence of data, not a separate step machine
   const push = (path: string) => router.push(path);
 
+  // Plain navigation home — never destroys session state
   const goHome = () => {
-    resetAll();
     router.push('/');
+  };
+
+  // Explicit reset: navigate first so page-level empty-state redirects
+  // can't race the destination, then clear the session
+  const resetAndGoHome = () => {
+    router.push('/');
+    resetAll();
   };
 
   const goToUpload = () => {
@@ -36,6 +43,7 @@ export function useNavigation() {
 
   return {
     goHome,
+    resetAndGoHome,
     goToUpload,
     goToQuestions,
     goToResults,

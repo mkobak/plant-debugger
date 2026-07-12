@@ -22,7 +22,7 @@ import { DiagnosticQuestion, DiagnosisResult } from '@/types';
 import { logger } from '@/lib/logger';
 
 export default function ResultsPage() {
-  const { goToUpload, goToQuestions } = useNavigation();
+  const { goHome, goToQuestions } = useNavigation();
   const {
     images,
     questions,
@@ -32,6 +32,7 @@ export default function ResultsPage() {
     rankedDiagnoses,
     lastDiagnosisSignature,
     setLastDiagnosisSignature,
+    hydrated,
   } = useDiagnosis();
 
   const [stepInitialized, setStepInitialized] = useState(false);
@@ -122,10 +123,14 @@ export default function ResultsPage() {
 
   // Handle redirects and start diagnosis
   useEffect(() => {
-    // Redirect if no images
+    // Wait for the IndexedDB session restore before deciding anything —
+    // otherwise a refresh on this page redirects before the data arrives
+    if (!hydrated) return;
+
+    // No session: go home (never to a mid-flow step)
     if (images.length === 0) {
-      logger.debug('ResultsPage: No images, redirecting to upload');
-      goToUpload();
+      logger.debug('ResultsPage: No images, redirecting home');
+      goHome();
       return;
     }
 
@@ -152,11 +157,12 @@ export default function ResultsPage() {
       startDiagnosis();
     }
   }, [
+    hydrated,
     images.length,
     stepInitialized,
     isReady,
     diagnosisResult,
-    goToUpload,
+    goHome,
     startDiagnosis,
     lastDiagnosisSignature,
     diagnosisSignature,

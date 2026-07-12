@@ -242,7 +242,7 @@ export async function loadDiagnosisState(): Promise<{
     };
   } catch (e) {
     logger.warn('[persistence] load failed', e);
-    return null;
+    throw e;
   }
 }
 

@@ -33,7 +33,7 @@ describe('useNavigation', () => {
       </DiagnosisProvider>
     );
 
-  it('goHome resets and navigates to /', () => {
+  it('resetAndGoHome resets and navigates to /', () => {
     renderWithProvider();
     act(() => {
       (window as any).__nav.goHome();

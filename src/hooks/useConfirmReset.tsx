@@ -19,7 +19,7 @@ export function useConfirmReset() {
     additionalComments,
     noPlantMessage,
   } = useDiagnosis();
-  const { goHome } = useNavigation();
+  const { resetAndGoHome } = useNavigation();
   const [open, setOpen] = useState(false);
 
   const hasProgress = useMemo(
@@ -44,13 +44,13 @@ export function useConfirmReset() {
 
   const requestReset = useCallback(() => {
     if (hasProgress) setOpen(true);
-    else goHome();
-  }, [hasProgress, goHome]);
+    else resetAndGoHome();
+  }, [hasProgress, resetAndGoHome]);
 
   const confirmReset = useCallback(() => {
-    goHome();
+    resetAndGoHome();
     setOpen(false);
-  }, [goHome]);
+  }, [resetAndGoHome]);
 
   const cancelReset = useCallback(() => setOpen(false), []);
 
