@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useNavigation } from '@/hooks/useNavigation';
+import { useDiagnosis } from '@/context/DiagnosisContext';
 import ASCIILogo from '@/components/ui/ASCIILogo';
 
 interface NavigationStep {
@@ -28,14 +28,10 @@ export default function SharedHeader({
 }: SharedHeaderProps) {
   const { isSmall: isSmallScreen } = useScreenSize();
   const { goToUpload, goToQuestions, goToResults } = useNavigation();
-  // Directly access context to compute gating
-  const { images, diagnosisResult } =
-    require('@/context/DiagnosisContext').useDiagnosis();
+  const { images, diagnosisResult } = useDiagnosis();
 
   // Use two-lines for home page on small screens
   const logoVariant = isHomePage && isSmallScreen ? 'two-lines' : 'single';
-
-  useEffect(() => {}, [logoVariant, isSmallScreen]);
 
   const navigationSteps: NavigationStep[] = [
     { step: 1, label: 'Upload', route: '/upload' },
@@ -95,13 +91,17 @@ export default function SharedHeader({
               return (
                 <span
                   key={step.step}
-                  className={`status-segment status-segment--${status} ${!isDisabled ? 'clickable' : ''}`}
-                  onClick={() => {
-                    if (!isDisabled) handleStepClick(step);
-                  }}
-                  aria-disabled={isDisabled}
+                  className={`status-segment status-segment--${status}`}
                 >
-                  {status === 'current' ? '[' + label + ']' : label}
+                  <button
+                    type="button"
+                    className={`status-segment-button ${!isDisabled ? 'clickable' : ''}`}
+                    onClick={() => handleStepClick(step)}
+                    disabled={isDisabled}
+                    aria-current={status === 'current' ? 'step' : undefined}
+                  >
+                    {status === 'current' ? '[' + label + ']' : label}
+                  </button>
                   {idx < navigationSteps.length - 1 && (
                     <span className="status-arrow">→</span>
                   )}

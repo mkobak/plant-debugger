@@ -29,6 +29,12 @@ export function useNavigation() {
     else push('/upload');
   };
 
+  // Unguarded: for callers that just set images and know they're non-empty
+  // (the context value in this hook's closure would still be stale)
+  const goToAnalysis = () => {
+    push('/analysis');
+  };
+
   const goToResults = () => {
     if (images.length > 0) push('/results');
     else push('/upload');
@@ -46,6 +52,7 @@ export function useNavigation() {
     resetAndGoHome,
     goToUpload,
     goToQuestions,
+    goToAnalysis,
     goToResults,
     canNavigateToStep,
   };

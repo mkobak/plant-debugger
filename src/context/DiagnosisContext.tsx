@@ -226,10 +226,12 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     typingSession.reset();
     // Reset the cost tracker for a fresh run
     costTracker.reset();
-    // Inform server to reset server-side cost totals (best-effort, dev only)
-    try {
-      fetch('/api/reset-costs', { method: 'POST' }).catch(() => {});
-    } catch {}
+    // Inform server to reset server-side cost totals (dev-only endpoint)
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        fetch('/api/reset-costs', { method: 'POST' }).catch(() => {});
+      } catch {}
+    }
     // Clear persisted state
     clearDiagnosisState();
   };

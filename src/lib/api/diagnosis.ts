@@ -36,7 +36,7 @@ async function throwHttpError(
   const error = await response.json().catch(() => ({ error: 'Unknown error' }));
   if (response.status === 429) {
     throw new HttpError(
-      'API rate limit reached. Please wait a few minutes before trying again.',
+      'API rate limit reached. Please wait a minute before trying again.',
       429
     );
   }

@@ -16,7 +16,7 @@ import { PlantImage } from '@/types';
 
 import { logger } from '@/lib/logger';
 export default function UploadPage() {
-  const { goToQuestions } = useNavigation();
+  const { goToAnalysis } = useNavigation();
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
@@ -24,8 +24,6 @@ export default function UploadPage() {
   const [codeComplete, setCodeComplete] = useState(false);
   const [tipComplete, setTipComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-
-  const [shouldNavigate, setShouldNavigate] = useState(false);
 
   const {
     images: contextImages,
@@ -70,18 +68,6 @@ export default function UploadPage() {
     }
   }, [contextImages.length]);
 
-  // Handle navigation after context images are updated
-  useEffect(() => {
-    if (shouldNavigate && contextImages.length > 0) {
-      logger.debug('Context images updated, navigating to questions...');
-      setShouldNavigate(false);
-      // Use a small delay to ensure context is fully updated
-      setTimeout(() => {
-        goToQuestions();
-      }, 100);
-    }
-  }, [shouldNavigate, contextImages, goToQuestions]);
-
   const handleImagePreview = (image: PlantImage) => {
     setSelectedImageId(image.id);
     setIsModalOpen(true);
@@ -98,15 +84,13 @@ export default function UploadPage() {
     setContextImages(updatedImages);
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     logger.debug('handleNext called, images length:', images.length);
-
     if (images.length > 0) {
-      logger.debug('Setting context images and preparing to navigate...');
       setContextImages(images);
-      setShouldNavigate(true);
-    } else {
-      logger.debug('No images to proceed with');
+      // Navigate directly: images are locally known to be non-empty, so
+      // there is no need to wait for the context update to round-trip
+      goToAnalysis();
     }
   };
 

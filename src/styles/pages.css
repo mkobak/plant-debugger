@@ -511,6 +511,35 @@
   color: var(--white);
 }
 
+/* Keyboard focus visibility for non-boxed interactive elements */
+.text-action:focus-visible,
+.detail-button:focus-visible,
+.answer-button:focus-visible,
+.sample-image-link:focus-visible,
+.status-segment-button:focus-visible,
+.terminal-modal__close:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* Breadcrumb steps are real buttons now; keep the text look */
+.status-segment-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: default;
+}
+
+.status-segment-button.clickable {
+  cursor: pointer;
+}
+
+.status-segment-button:disabled {
+  cursor: default;
+}
+
 .home-history-link {
   margin-top: var(--spacing-sm);
 }
