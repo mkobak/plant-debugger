@@ -11,11 +11,7 @@ import ImagePreviewGrid from '@/components/ui/ImagePreviewGrid';
 import { useDiagnosis } from '@/context/DiagnosisContext';
 import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
-import {
-  generateQuestions,
-  getNoPlantResponse,
-  getInitialDiagnosis,
-} from '@/lib/api/diagnosis';
+import { getNoPlantResponse, runAnalysis } from '@/lib/api/diagnosis';
 
 import { logger } from '@/lib/logger';
 import { imagesSignature } from '@/utils';
@@ -52,9 +48,7 @@ export default function QuestionsPage() {
     answers,
     addAnswer,
     additionalComments,
-    rawInitialDiagnoses,
     setRawInitialDiagnoses,
-    rankedDiagnoses,
     setRankedDiagnoses,
     noPlantMessage,
     setNoPlantMessage,
@@ -62,10 +56,9 @@ export default function QuestionsPage() {
     setLastQAImagesSignature,
     qaProcessingSignature,
     setQaProcessingSignature,
-    isIdentifying: ctxIsIdentifying,
     setIsIdentifying: setCtxIsIdentifying,
-    isGeneratingQuestions: ctxIsGeneratingQuestions,
     setIsGeneratingQuestions: setCtxIsGeneratingQuestions,
+    hydrated,
   } = useDiagnosis();
   const { requestReset, ResetConfirmModal } = useConfirmReset();
 
@@ -76,28 +69,24 @@ export default function QuestionsPage() {
   );
   const [editablePlantName, setEditablePlantName] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [identifiedName, setIdentifiedName] = useState<string>('');
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [plantNameTyped, setPlantNameTyped] = useState(false);
   const [instructionsTyped, setInstructionsTyped] = useState(false);
-  const [commentsLabelTyped, setCommentsLabelTyped] = useState(false);
-  const [promptComplete, setPromptComplete] = useState(true);
 
   const imgSignature = imagesSignature(images);
   // Key for typing animation session, changes when images change
   const typingSessionKey = `qa:${imgSignature}`;
 
-  // On mount: redirect to home if no images are present
+  // Redirect home when there is no session — but only after the IndexedDB
+  // restore has finished, so a refresh doesn't kick the user out
   useEffect(() => {
-    logger.debug('QuestionsPage mounting');
-    // Redirect if no images are present
+    if (!hydrated) return;
     if (images.length === 0) {
-      const timeout = setTimeout(() => {
-        logger.debug('No images found, redirecting to home');
-        goHome();
-      }, 100);
-      return () => clearTimeout(timeout);
+      logger.debug('No images found, redirecting home');
+      goHome();
     }
-  }, [images.length, goHome]);
+  }, [hydrated, images.length, goHome]);
 
   // Wrapped async process to identify plant and generate questions
   const startDiagnosisProcess = useCallback(async () => {
@@ -109,26 +98,32 @@ export default function QuestionsPage() {
       abortRef.current = new AbortController();
       const signal = abortRef.current.signal;
 
-      // Step 1: Identify plant + initial diagnoses (single request; the
-      // server runs identification in parallel with the diagnosis calls)
+      // One streamed request does identification, the consensus diagnosis,
+      // the ranking and the clarifying questions; the server emits progress
+      // events so the status line can advance before the payload lands
       logger.debug('Step 1: Identifying plant and diagnosing...');
+      setIdentifiedName('');
       setLoadingPhase(LoadingPhase.IDENTIFYING);
-      // Purely cosmetic phase progression while the merged request runs
-      const phaseTimer = setTimeout(() => {
-        setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
-      }, 2500);
-      let initialDiag: Awaited<ReturnType<typeof getInitialDiagnosis>>;
+      let analysis: Awaited<ReturnType<typeof runAnalysis>>;
       try {
-        initialDiag = await getInitialDiagnosis(
-          images,
-          additionalComments || '',
-          signal
-        );
+        analysis = await runAnalysis(images, additionalComments || '', signal, {
+          onIdentification: (name) => {
+            setIdentifiedName(name);
+            setLoadingPhase(LoadingPhase.INITIAL_DIAGNOSIS);
+            setCtxIsIdentifying(false);
+          },
+          onProgress: (stage) => {
+            if (stage === 'questions') {
+              setCtxIsGeneratingQuestions(true);
+              setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
+            }
+          },
+        });
       } finally {
-        clearTimeout(phaseTimer);
         setCtxIsIdentifying(false);
+        setCtxIsGeneratingQuestions(false);
       }
-      const identification = initialDiag.identification;
+      const identification = analysis.identification;
       logger.debug('Plant identified:', identification);
       setPlantIdentification(identification);
       setEditablePlantName(identification.name || 'Unknown plant');
@@ -153,25 +148,13 @@ export default function QuestionsPage() {
         setQaProcessingSignature(null);
         setLoadingPhase(LoadingPhase.COMPLETE);
         setPageState(PageState.SHOWING_CONTENT);
-        setCtxIsGeneratingQuestions(false);
         return;
       }
 
-      setCtxIsGeneratingQuestions(true);
-      setRawInitialDiagnoses(initialDiag.rawDiagnoses);
-      setRankedDiagnoses(initialDiag.rankedDiagnoses);
-      // Step 2: Clarifying questions based on ranked diagnoses + comment
-      logger.debug('Step 2: Generating questions...');
-      setLoadingPhase(LoadingPhase.GENERATING_QUESTIONS);
-      const generatedQuestions = await generateQuestions(
-        images,
-        initialDiag.rankedDiagnoses,
-        additionalComments || '',
-        signal
-      );
-      setCtxIsGeneratingQuestions(false);
-      logger.debug('Questions generated:', generatedQuestions.length);
-      setQuestions(generatedQuestions);
+      setRawInitialDiagnoses(analysis.rawDiagnoses);
+      setRankedDiagnoses(analysis.rankedDiagnoses);
+      logger.debug('Questions generated:', analysis.questions.length);
+      setQuestions(analysis.questions);
       // Record signature so we can detect changes next time
       setLastQAImagesSignature(imagesSignature(images));
       setQaProcessingSignature(null);
@@ -181,13 +164,12 @@ export default function QuestionsPage() {
       // Reset all typing states when transitioning to content
       setPlantNameTyped(false);
       setInstructionsTyped(false);
-      setCommentsLabelTyped(false);
       setPageState(PageState.SHOWING_CONTENT);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Diagnosis process failed:', error);
       const aborted =
         (error instanceof Error && error.name === 'AbortError') ||
-        (typeof error?.message === 'string' &&
+        (error instanceof Error &&
           error.message.toLowerCase().includes('aborted')) ||
         abortRef.current?.signal.aborted;
       if (aborted) {
@@ -224,6 +206,7 @@ export default function QuestionsPage() {
 
   // Restore prior state on back-navigation, or start the QA run
   useEffect(() => {
+    if (!hydrated) return;
     const imgSig = imagesSignature(images);
     // If images changed since the last completed run, the flow must rerun
     const signatureChanged =
@@ -238,7 +221,6 @@ export default function QuestionsPage() {
         setEditablePlantName(plantIdentification.name || '');
         setPlantNameTyped(true);
         setInstructionsTyped(true);
-        setCommentsLabelTyped(true);
         setPageState(PageState.SHOWING_CONTENT);
         return;
       }
@@ -276,6 +258,7 @@ export default function QuestionsPage() {
     setQaProcessingSignature(imgSig);
     startDiagnosisProcess();
   }, [
+    hydrated,
     questions.length,
     plantIdentification,
     images,
@@ -363,6 +346,7 @@ export default function QuestionsPage() {
                 isGeneratingQuestions={isGeneratingQuestions}
                 identificationComplete={identificationComplete}
                 questionsGenerated={questionsGenerated}
+                identifiedName={identifiedName}
                 onceKeyPrefix={typingSessionKey}
                 compact={true}
                 onComplete={() => {

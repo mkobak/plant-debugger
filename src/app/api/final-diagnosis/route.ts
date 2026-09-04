@@ -35,12 +35,11 @@ export const POST = withApiRoute(
     const stream = await geminiCallStream({
       modelKey: 'modelMedium',
       parts: [{ text: prompt }, ...imageParts],
+      // Sampling params are left at model defaults per Gemini 3 guidance
+      // (lowering temperature can degrade output). Thinking is bounded to LOW
+      // because the reasoning already happened upstream; on Gemini 3.x the
+      // thinking tokens do not count against maxOutputTokens.
       generationConfig: {
-        temperature: 0.1,
-        topP: 0.5,
-        // Thinking tokens count against maxOutputTokens on gemini-3.5-flash;
-        // bound the thinking (reasoning already happened upstream) and leave
-        // generous headroom so the JSON is never truncated mid-stream
         maxOutputTokens: 4096,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         responseMimeType: 'application/json',

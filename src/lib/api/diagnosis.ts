@@ -36,7 +36,7 @@ async function throwHttpError(
   const error = await response.json().catch(() => ({ error: 'Unknown error' }));
   if (response.status === 429) {
     throw new HttpError(
-      'API rate limit reached. Please wait a few minutes before trying again.',
+      'API rate limit reached. Please wait a minute before trying again.',
       429
     );
   }
@@ -79,67 +79,43 @@ export async function getNoPlantResponse(
   );
 }
 
-export async function generateQuestions(
-  images: PlantImage[],
-  rankedDiagnoses: string,
-  userComment: string,
-  signal?: AbortSignal
-): Promise<DiagnosticQuestion[]> {
-  logger.debug('generateQuestions called with images:', images.length);
-
-  if (!images || images.length === 0) {
-    throw new Error('No images provided to generateQuestions function');
-  }
-
-  return withRetry(async () => {
-    const formData = createImageFormData(images);
-    formData.append('rankedDiagnoses', rankedDiagnoses);
-    formData.append('userComment', userComment);
-
-    const response = await fetch('/api/generate-questions', {
-      method: 'POST',
-      body: formData,
-      headers: getClientHeaders(),
-      signal,
-    });
-
-    if (!response.ok) {
-      await throwHttpError(response, 'Failed to generate questions');
-    }
-
-    const data = await response.json();
-    logger.debug('generateQuestions response:', data);
-    if (data?.usage?.usage) {
-      costTracker.record({
-        modelKey: (data.usage.modelKey || 'modelMedium') as ModelKey,
-        usage: data.usage.usage,
-        route: 'generate-questions',
-      });
-    }
-    return data.questions;
-  }, 'Question Generation');
-}
-
-export async function getInitialDiagnosis(
-  images: PlantImage[],
-  userComment: string,
-  signal?: AbortSignal
-): Promise<{
+export interface AnalysisResult {
   identification: PlantIdentification;
   rawDiagnoses: string[];
   rankedDiagnoses: string;
-}> {
-  logger.debug('getInitialDiagnosis called with images:', images.length);
+  questions: DiagnosticQuestion[];
+}
+
+export type AnalysisStage = 'questions';
+
+/**
+ * One streamed request for identification, consensus diagnosis, ranking and
+ * clarifying questions. Progress callbacks fire as the server reaches each
+ * stage so the UI can update before the final payload lands.
+ */
+export async function runAnalysis(
+  images: PlantImage[],
+  userComment: string,
+  signal?: AbortSignal,
+  callbacks: {
+    /** Called as soon as the plant has been identified. Empty string means
+     *  no plant. */
+    onIdentification?: (name: string) => void;
+    /** Called when the consensus is in and the questions are being generated. */
+    onProgress?: (stage: AnalysisStage) => void;
+  } = {}
+): Promise<AnalysisResult> {
+  logger.debug('runAnalysis called with images:', images.length);
 
   if (!images || images.length === 0) {
-    throw new Error('No images provided to getInitialDiagnosis function');
+    throw new Error('No images provided to runAnalysis function');
   }
 
   return withRetry(async () => {
     const formData = createImageFormData(images);
     formData.append('userComment', userComment);
 
-    const response = await fetch('/api/initial-diagnosis', {
+    const response = await fetch('/api/analyze', {
       method: 'POST',
       body: formData,
       headers: getClientHeaders(),
@@ -147,23 +123,68 @@ export async function getInitialDiagnosis(
     });
 
     if (!response.ok) {
-      await throwHttpError(response, 'Failed to get initial diagnosis');
+      await throwHttpError(response, 'Failed to analyze images');
     }
 
-    const data = await response.json();
-    logger.debug('getInitialDiagnosis response:', data);
-    if (Array.isArray(data?.usage)) {
-      // Record usage for multiple calls
-      costTracker.recordMany(
-        data.usage.map((u: any) => ({
-          modelKey: (u.modelKey || 'modelLow') as ModelKey,
-          usage: u.usage,
-          route: 'initial-diagnosis',
-        }))
-      );
+    if (
+      !response.body ||
+      !response.headers.get('content-type')?.includes('application/x-ndjson')
+    ) {
+      // Non-streaming response (should not happen, but keep a safe path)
+      return (await response.json()) as AnalysisResult;
     }
-    return data;
-  }, 'Initial Diagnosis');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    let result: AnalysisResult | null = null;
+
+    const handleEvent = (line: string) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.type === 'identification') {
+        callbacks.onIdentification?.(event.name as string);
+      } else if (event.type === 'progress') {
+        callbacks.onProgress?.(event.stage as AnalysisStage);
+      } else if (event.type === 'done') {
+        result = {
+          identification: event.identification,
+          rawDiagnoses: event.rawDiagnoses,
+          rankedDiagnoses: event.rankedDiagnoses,
+          questions: Array.isArray(event.questions) ? event.questions : [],
+        };
+        if (Array.isArray(event.usage)) {
+          costTracker.recordMany(
+            event.usage.map(
+              (u: { modelKey?: ModelKey; usage: UsageMetadata }) => ({
+                modelKey: (u.modelKey || 'modelLow') as ModelKey,
+                usage: u.usage,
+                route: 'analyze',
+              })
+            )
+          );
+        }
+      } else if (event.type === 'error') {
+        throw new HttpError(event.error || 'Failed to analyze images', 502);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) handleEvent(line);
+    }
+    if (buffered.trim()) handleEvent(buffered);
+
+    if (!result) {
+      throw new HttpError('Analysis stream ended unexpectedly', 502);
+    }
+    logger.debug('runAnalysis complete (streamed)');
+    return result;
+  }, 'Analysis');
 }
 
 export async function getFinalDiagnosis(

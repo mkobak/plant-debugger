@@ -35,7 +35,10 @@ export function useImageUpload({
         const options = {
           maxSizeMB: maxFileSize / (1024 * 1024), // Convert bytes to MB
           maxWidthOrHeight: 1920,
-          useWebWorker: true,
+          // The library's worker imports its own copy from a CDN, which the
+          // CSP (default-src 'self') blocks anyway; run on the main thread
+          // explicitly instead of failing over with console errors
+          useWebWorker: false,
           fileType: file.type as 'image/jpeg' | 'image/png',
         };
 

@@ -8,23 +8,27 @@ import { NextRequest, NextResponse } from 'next/server';
  * Development is exempt entirely: next dev injects react-refresh/HMR inline
  * scripts without the nonce, and 'strict-dynamic' then blocks hydration.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (process.env.NODE_ENV === 'development') {
     return NextResponse.next();
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
 
+  // No third-party origins: fonts are self-hosted by next/font and the
+  // browser only ever talks to this app's own API routes.
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
-    "font-src 'self' fonts.gstatic.com",
-    "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    'upgrade-insecure-requests',
   ].join('; ');
 
   const requestHeaders = new Headers(request.headers);

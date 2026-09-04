@@ -64,6 +64,9 @@ interface DiagnosisContextType {
   qaProcessingSignature: string | null;
   setQaProcessingSignature: (sig: string | null) => void;
 
+  // True once the initial IndexedDB restore attempt has finished
+  hydrated: boolean;
+
   // Loading flags for async operations
   isIdentifying: boolean;
   setIsIdentifying: (loading: boolean) => void;
@@ -86,8 +89,12 @@ interface DiagnosisProviderProps {
 
 export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
   const [images, setImages] = useState<PlantImage[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const hasLoadedRef = useRef(false);
-  const saveTimeoutRef = useRef<number | null>(null);
+  // Set when hydration failed: saving would overwrite the (possibly intact)
+  // persisted session with our empty in-memory state
+  const persistDisabledRef = useRef(false);
+  const saveTimeoutRef = useRef(null as number | null);
   // Only domain data is stored here; UI/step flags are local to components
 
   // Plant identification state
@@ -219,10 +226,12 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     typingSession.reset();
     // Reset the cost tracker for a fresh run
     costTracker.reset();
-    // Inform server to reset server-side cost totals (best-effort, dev only)
-    try {
-      fetch('/api/reset-costs', { method: 'POST' }).catch(() => {});
-    } catch {}
+    // Inform server to reset server-side cost totals (dev-only endpoint)
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        fetch('/api/reset-costs', { method: 'POST' }).catch(() => {});
+      } catch {}
+    }
     // Clear persisted state
     clearDiagnosisState();
   };
@@ -232,23 +241,31 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     if (hasLoadedRef.current) return;
     let cancelled = false;
     (async () => {
-      const loaded = await loadDiagnosisState();
-      if (cancelled || !loaded) {
-        hasLoadedRef.current = true;
-        return;
+      try {
+        const loaded = await loadDiagnosisState();
+        if (!cancelled && loaded) {
+          setImages(loaded.images || []);
+          setPlantIdentification(loaded.plantIdentification || null);
+          setQuestions(loaded.questions || []);
+          setAnswers(loaded.answers || []);
+          setAdditionalComments(loaded.additionalComments || '');
+          setNoPlantMessage(loaded.noPlantMessage || '');
+          setDiagnosisResult(loaded.diagnosisResult || null);
+          setRawInitialDiagnoses(undefined); // not persisted yet
+          setRankedDiagnoses(undefined);
+          setLastDiagnosisSignature(loaded.lastDiagnosisSignature || null);
+          setLastQAImagesSignature(loaded.lastQAImagesSignature || null);
+        }
+      } catch {
+        // Failed restore: keep the persisted session intact rather than
+        // letting the debounced save overwrite it with empty state
+        persistDisabledRef.current = true;
+      } finally {
+        if (!cancelled) {
+          hasLoadedRef.current = true;
+          setHydrated(true);
+        }
       }
-      setImages(loaded.images || []);
-      setPlantIdentification(loaded.plantIdentification || null);
-      setQuestions(loaded.questions || []);
-      setAnswers(loaded.answers || []);
-      setAdditionalComments(loaded.additionalComments || '');
-      setNoPlantMessage(loaded.noPlantMessage || '');
-      setDiagnosisResult(loaded.diagnosisResult || null);
-      setRawInitialDiagnoses(undefined); // not persisted yet
-      setRankedDiagnoses(undefined);
-      setLastDiagnosisSignature(loaded.lastDiagnosisSignature || null);
-      setLastQAImagesSignature(loaded.lastQAImagesSignature || null);
-      hasLoadedRef.current = true;
     })();
     return () => {
       cancelled = true;
@@ -257,7 +274,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
 
   // Persist state (throttled) when relevant parts change
   useEffect(() => {
-    if (!hasLoadedRef.current) return; // avoid saving empty before load
+    if (!hasLoadedRef.current || persistDisabledRef.current) return; // avoid saving empty before/after failed load
     if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = window.setTimeout(() => {
       saveDiagnosisState({
@@ -318,6 +335,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
     setLastQAImagesSignature,
     qaProcessingSignature,
     setQaProcessingSignature,
+    hydrated,
     isIdentifying,
     setIsIdentifying,
     isGeneratingQuestions,

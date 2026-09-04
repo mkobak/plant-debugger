@@ -1,6 +1,5 @@
 import { RefObject, useState } from 'react';
 import { DiagnosisResult } from '@/types';
-import { exportElementToSinglePagePdf } from '@/utils/domToPdf';
 import { logger } from '@/lib/logger';
 
 interface UseResultsExportProps {
@@ -47,6 +46,9 @@ export function useResultsExport({
       // Wait for state flush
       await new Promise((r) => setTimeout(r, 50));
       root.classList.add('report-exporting');
+      // jspdf + html2canvas are only needed here: load them on demand so
+      // they stay out of the results page's initial bundle
+      const { exportElementToSinglePagePdf } = await import('@/utils/domToPdf');
       await exportElementToSinglePagePdf({
         element: root,
         fileName: `diagnosis-${plant}-${ts}.pdf`,

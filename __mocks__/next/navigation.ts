@@ -15,4 +15,5 @@ export const useRouter = () => router;
 // Test-only handle to inspect/reset the singleton router
 export const __router = router;
 
-export default {};
+const navigation = {};
+export default navigation;

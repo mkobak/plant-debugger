@@ -63,8 +63,7 @@ export async function geminiCallStream({
   if (signal?.aborted) throw new Error('aborted');
 
   const textPart = parts.find((p) => 'text' in p) as
-    | { text: string }
-    | undefined;
+    { text: string } | undefined;
   if (textPart) printPrompt(tag, textPart.text);
 
   try {
@@ -101,8 +100,7 @@ export async function geminiCall({
   if (signal?.aborted) throw new Error('aborted');
 
   const textPart = parts.find((p) => 'text' in p) as
-    | { text: string }
-    | undefined;
+    { text: string } | undefined;
   if (textPart) printPrompt(tag, textPart.text);
 
   try {
@@ -123,16 +121,14 @@ export async function geminiCall({
 
     const text = (response.text ?? '').trim();
     const finishReason = response.candidates?.[0]?.finishReason as
-      | string
-      | undefined;
+      string | undefined;
     const blockReason = response.promptFeedback?.blockReason as
-      | string
-      | undefined;
+      string | undefined;
     if (blockReason) {
       logger.warn(`${tag} ${modelKey} blocked: ${blockReason}`);
     }
     logger.debug(
-      `${tag} ${modelKey} done | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.length}`
+      `${tag} ${modelKey} done | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.length} thinking=${usage.thoughtsTokenCount ?? 0}`
     );
     return { text, usage, finishReason, blockReason };
   } catch (error) {

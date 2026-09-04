@@ -15,28 +15,6 @@ If no plant is detected, reply with 'No plant detected'.
 If only a part of a plant is visible, e.g., just the stem, make a best guess and reply with the plant name.
 `;
 
-// Generates clarifying yes/no questions after an initial ranked list of diagnoses exists.
-export const createQuestionsGenerationPrompt = (
-  rankedDiagnoses: string,
-  userComment: string
-): string => `
-You are an expert botanist. The user has provided image(s) of a sick plant and a preliminary ranked list of possible diagnoses already exists.
-Ranked diagnoses (most likely first): ${rankedDiagnoses || 'None'}.
-User comment: ${userComment || 'None provided'}.
-
-Your task now is to ask 2 - 5 highly discriminative yes/no questions that would best differentiate between these candidate diagnoses or validate / falsify the leading possibilities.
-Focus only on information that cannot be confidently inferred from the images (e.g., recent watering frequency and volume, soil composition/drainage, fertilization patterns, light exposure timing and intensity, airflow, pest sightings, recent repotting, temperature swings).
-Rules:
- - Each question must be answerable with a simple Yes or No.
- - Avoid multi-part questions; keep each question focused on a single aspect.
- - An average person who is not an expert in plant care should be able to answer the questions.
- - Avoid redundant or overlapping questions; each should target a distinct axis of differentiation.
- - If the ranked list is empty, fall back to broad high-yield questions (watering pattern, drainage, light exposure, recent changes, pests presence).
-You may optionally include mild programming metaphors inside the question wording where natural, but keep them subtle. Do not use quotation marks.
-
-Return ONLY a JSON object matching the questions schema (keys Q1..Q5). Do not include commentary outside JSON.
-`;
-
 export const createInitialDiagnosisPrompt = (userComment: string): string => `
 You are an expert botanist. Based strictly on the provided image(s) (primary source) and optionally the user's brief comment (secondary source), list up to three distinct, most likely diagnoses explaining the plant's issue.
 User comment: ${userComment || 'None provided'}
@@ -49,16 +27,30 @@ Instructions:
  - Inspect the images very closely for any signs of early issues, such as pest activity.
 `;
 
-export const createAggregationPrompt = (diagnosisResults: string[]): string => `
-You are an expert plant pathologist. I have collected these plant diagnosis suggestions from multiple experts:
-${diagnosisResults.join('\n')}
+// Single call that ranks the consensus diagnoses AND asks the clarifying
+// yes/no questions (previously two sequential calls). Runs after the parallel
+// diagnosis calls, with the images attached.
+export const createRankAndQuestionsPrompt = (
+  diagnosisResults: string[],
+  userComment: string
+): string => `
+You are an expert plant pathologist. The user has provided image(s) of a sick plant. Several experts have independently suggested diagnoses:
+${diagnosisResults.map((d, i) => `Expert ${i + 1}: ${d}`).join('\n')}
+User comment: ${userComment || 'None provided'}
 
-Please group similar diagnoses together and rank them by frequency/consensus. 
-Output ONLY a ranked list of the most likely diagnoses, most frequent first, comma-separated.
-Remove duplicates and group similar conditions together.
-Limit to maximum 5 diagnoses.
+Task 1 (rankedDiagnoses): group similar diagnoses together, remove duplicates, and rank them by frequency/consensus, most frequent first. Output a comma-separated list of at most 5 concise canonical condition names (e.g., "Root rot, Spider mites, Nitrogen deficiency").
 
-Example output: "Root rot, Spider mites, Nitrogen deficiency"
+Task 2 (Q1-Q5): ask 2 - 5 highly discriminative yes/no questions that would best differentiate between these candidate diagnoses or validate / falsify the leading possibilities.
+Focus only on information that cannot be confidently inferred from the images (e.g., recent watering frequency and volume, soil composition/drainage, fertilization patterns, light exposure timing and intensity, airflow, pest sightings, recent repotting, temperature swings).
+Rules:
+ - Each question must be answerable with a simple Yes or No.
+ - Avoid multi-part questions; keep each question focused on a single aspect.
+ - An average person who is not an expert in plant care should be able to answer the questions.
+ - Avoid redundant or overlapping questions; each should target a distinct axis of differentiation.
+ - If the expert suggestions are empty, fall back to broad high-yield questions (watering pattern, drainage, light exposure, recent changes, pests presence).
+You may optionally include mild programming metaphors inside the question wording where natural, but keep them subtle. Do not use quotation marks.
+
+Return ONLY a JSON object matching the schema (rankedDiagnoses, Q1..Q5). Do not include commentary outside JSON.
 `;
 
 export const createFinalDiagnosisPrompt = (

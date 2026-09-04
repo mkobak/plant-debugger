@@ -31,12 +31,28 @@ export default function HistoryPage() {
     Record<string, boolean>
   >({});
   const [expandedCare, setExpandedCare] = useState<Record<string, boolean>>({});
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
+    null
+  );
+
+  // Auto-revert the delete confirmation after a moment
+  useEffect(() => {
+    if (!confirmingDeleteId) return;
+    const timer = setTimeout(() => setConfirmingDeleteId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [confirmingDeleteId]);
 
   useEffect(() => {
     listHistoryEntries().then(setEntries);
   }, []);
 
   const handleDelete = async (id: string) => {
+    // First click arms the confirmation; second click deletes
+    if (confirmingDeleteId !== id) {
+      setConfirmingDeleteId(id);
+      return;
+    }
+    setConfirmingDeleteId(null);
     await deleteHistoryEntry(id);
     setEntries((prev) => (prev || []).filter((e) => e.id !== id));
     if (openId === id) setOpenId(null);
@@ -90,7 +106,7 @@ export default function HistoryPage() {
                     onClick={() => handleDelete(entry.id)}
                     aria-label={`Delete report from ${formatDate(entry.createdAt)}`}
                   >
-                    Delete
+                    {confirmingDeleteId === entry.id ? 'Confirm?' : 'Delete'}
                   </button>
                 </div>
 

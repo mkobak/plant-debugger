@@ -13,19 +13,17 @@ import { useImageUpload } from '@/hooks/useImageUpload';
 import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { PlantImage } from '@/types';
+import { SAMPLE_IMAGES } from '@/lib/constants';
 
 import { logger } from '@/lib/logger';
 export default function UploadPage() {
-  const { goToQuestions } = useNavigation();
+  const { goToAnalysis } = useNavigation();
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [titleComplete, setTitleComplete] = useState(false);
-  const [codeComplete, setCodeComplete] = useState(false);
   const [tipComplete, setTipComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-
-  const [shouldNavigate, setShouldNavigate] = useState(false);
 
   const {
     images: contextImages,
@@ -65,22 +63,9 @@ export default function UploadPage() {
     if (contextImages.length > 0) {
       setIsNavigatingBack(true);
       setTitleComplete(true);
-      setCodeComplete(true);
       setTipComplete(true);
     }
   }, [contextImages.length]);
-
-  // Handle navigation after context images are updated
-  useEffect(() => {
-    if (shouldNavigate && contextImages.length > 0) {
-      logger.debug('Context images updated, navigating to questions...');
-      setShouldNavigate(false);
-      // Use a small delay to ensure context is fully updated
-      setTimeout(() => {
-        goToQuestions();
-      }, 100);
-    }
-  }, [shouldNavigate, contextImages, goToQuestions]);
 
   const handleImagePreview = (image: PlantImage) => {
     setSelectedImageId(image.id);
@@ -98,15 +83,13 @@ export default function UploadPage() {
     setContextImages(updatedImages);
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     logger.debug('handleNext called, images length:', images.length);
-
     if (images.length > 0) {
-      logger.debug('Setting context images and preparing to navigate...');
       setContextImages(images);
-      setShouldNavigate(true);
-    } else {
-      logger.debug('No images to proceed with');
+      // Navigate directly: images are locally known to be non-empty, so
+      // there is no need to wait for the context update to round-trip
+      goToAnalysis();
     }
   };
 
@@ -120,20 +103,15 @@ export default function UploadPage() {
   const handleAddSampleImage = async () => {
     if (isUploading) return;
     try {
-      const res = await fetch('/api/sample-image');
-      if (!res.ok) {
-        setError('No sample images available.');
-        return;
-      }
-      const { url, filename } = await res.json();
-      const imgRes = await fetch(url);
+      const filename =
+        SAMPLE_IMAGES[Math.floor(Math.random() * SAMPLE_IMAGES.length)];
+      const imgRes = await fetch(`/sample-images/${filename}`);
       if (!imgRes.ok) {
         setError('Failed to fetch sample image.');
         return;
       }
       const blob = await imgRes.blob();
-      const fileName = filename || 'sample-image';
-      const file = new File([blob], fileName, {
+      const file = new File([blob], filename, {
         type: blob.type || 'image/jpeg',
       });
       const dt = new DataTransfer();

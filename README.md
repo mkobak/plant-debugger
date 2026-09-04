@@ -16,7 +16,7 @@ Plant Debugger makes plant care as easy as debugging, with a terminal-style UX a
 
 ## Tech Stack
 
-- Framework: Next.js 14 (App Router)
+- Framework: Next.js 16 (App Router)
 - Language: TypeScript
 - Styling: vanilla CSS with a custom terminal theme (see `src/styles`)
 - Testing: Jest + React Testing Library
@@ -27,7 +27,7 @@ Plant Debugger makes plant care as easy as debugging, with a terminal-style UX a
 
 ### Prerequisites
 
-- Node.js 18.17+ (<= 20.x)
+- Node.js 24.x (matches the Vercel runtime; see `.nvmrc`)
 - npm
 
 ### Installation

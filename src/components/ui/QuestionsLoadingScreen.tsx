@@ -11,6 +11,8 @@ interface QuestionsLoadingScreenProps {
   isGeneratingQuestions: boolean; // clarifying questions phase
   identificationComplete: boolean;
   questionsGenerated: boolean;
+  /** Plant name, shown as soon as identification streams in. */
+  identifiedName?: string;
   onComplete?: () => void;
   // Optional key to retrigger typing when input changes
   onceKeyPrefix?: string;
@@ -23,6 +25,7 @@ export default function QuestionsLoadingScreen({
   isGeneratingQuestions,
   identificationComplete,
   questionsGenerated,
+  identifiedName,
   onComplete,
   onceKeyPrefix,
   compact = true,
@@ -49,7 +52,9 @@ export default function QuestionsLoadingScreen({
     let status = 'Analyzing images';
     if (isIdentifying) status = 'Identifying plant';
     if (identificationComplete && isInvestigating)
-      status = 'Investigating possible bugs';
+      status = identifiedName
+        ? `Identified: ${identifiedName} — investigating possible bugs`
+        : 'Investigating possible bugs';
     if (!isInvestigating && isGeneratingQuestions && !questionsGenerated)
       status = 'Generating questions';
     if (questionsGenerated) status = 'Finalizing';

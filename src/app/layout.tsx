@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import { DiagnosisProvider } from '@/context/DiagnosisContext';
 import { Source_Code_Pro } from 'next/font/google';
 import '@/styles/base.css';
@@ -12,8 +12,26 @@ import { ViewportHeightProvider } from '@/components/layout/ViewportHeightProvid
 
 export const metadata: Metadata = {
   title: 'Plant Debugger',
-  description: 'Debug your plants',
+  description:
+    'Is your plant experiencing compilation issues? Upload photos and get an AI-powered diagnosis with treatment and care tips.',
   keywords: ['plant', 'diagnosis', 'health'],
+  openGraph: {
+    title: 'Plant Debugger',
+    description:
+      'Upload photos of your plant and get an AI-powered diagnosis with treatment and care tips.',
+    type: 'website',
+    siteName: 'Plant Debugger',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Plant Debugger',
+    description:
+      'Upload photos of your plant and get an AI-powered diagnosis with treatment and care tips.',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0d0d0d',
 };
 
 // Nonce-based CSP (src/middleware.ts) requires per-request rendering:

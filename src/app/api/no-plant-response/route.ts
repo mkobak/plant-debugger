@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { withApiRoute } from '@/lib/api/withApiRoute';
+import { withApiRoute, withResolution } from '@/lib/api/withApiRoute';
 import { geminiCall } from '@/lib/api/geminiCall';
 import { NO_PLANT_PROMPT } from '@/lib/api/prompts';
 import { printAndResetForRequest } from '@/lib/api/costServer';
+import { PartMediaResolutionLevel, ThinkingLevel } from '@google/genai';
 
 export const maxDuration = 30;
 
@@ -13,8 +14,17 @@ export const POST = withApiRoute(
     const { text: message, usage } = await geminiCall({
       request,
       modelKey: 'modelLow',
-      parts: [{ text: NO_PLANT_PROMPT }, ...imageParts],
-      generationConfig: { temperature: 0.6, topP: 0.9 },
+      // A high-level description only: low resolution keeps it cheap and fast
+      parts: [
+        { text: NO_PLANT_PROMPT },
+        ...withResolution(
+          imageParts,
+          PartMediaResolutionLevel.MEDIA_RESOLUTION_LOW
+        ),
+      ],
+      generationConfig: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+      },
       signal,
       timeoutMs: 20_000,
       tag,

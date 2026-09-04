@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ModalProps {
@@ -19,11 +19,21 @@ export default function Modal({
   size = 'md',
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  // Focus the dialog on open (makes Escape work immediately) and restore
+  // focus to the invoking element on close
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    containerRef.current?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +81,7 @@ export default function Modal({
       role="dialog"
       aria-modal="true"
       tabIndex={-1}
+      ref={containerRef}
     >
       <div className={modalClasses}>
         <div className="terminal-modal__header">

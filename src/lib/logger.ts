@@ -3,7 +3,7 @@
  * set (server-side only); `warn`/`error` always pass through.
  */
 
-function isDebugEnabled(): boolean {
+export function isDebugEnabled(): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
   const v = process.env.PB_DEBUG;
   return !!v && ['1', 'true', 'yes', 'on'].includes(String(v).toLowerCase());
@@ -12,16 +12,13 @@ function isDebugEnabled(): boolean {
 export const logger = {
   debug(...args: unknown[]): void {
     if (isDebugEnabled()) {
-      // eslint-disable-next-line no-console
       console.log(...args);
     }
   },
   warn(...args: unknown[]): void {
-    // eslint-disable-next-line no-console
     console.warn(...args);
   },
   error(...args: unknown[]): void {
-    // eslint-disable-next-line no-console
     console.error(...args);
   },
 };

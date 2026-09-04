@@ -47,4 +47,11 @@ describe('shared api helpers', () => {
     expect(getClientId(makeReq({ 'x-real-ip': 'xri' }))).toBe('xri');
     expect(getClientId(makeReq({}))).toBe('::1');
   });
+
+  it('getClientId bounds the length of client-supplied ids', () => {
+    const makeReq = (headers: Record<string, string>) =>
+      ({ headers: { get: (k: string) => headers[k] || null } }) as any;
+    const long = 'x'.repeat(500);
+    expect(getClientId(makeReq({ 'x-pb-client-id': long }))).toHaveLength(64);
+  });
 });

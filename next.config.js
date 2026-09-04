@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   images: {
-    domains: [],
     formats: ['image/webp', 'image/avif'],
   },
 };

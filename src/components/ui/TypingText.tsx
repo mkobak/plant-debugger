@@ -94,7 +94,6 @@ export default function TypingText({
     };
     // onComplete deliberately omitted (read via ref): unstable identities
     // from inline arrows must not restart the animation
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, delay, speed, key]);
 
   // If a global typing reset happens, allow re-typing next render

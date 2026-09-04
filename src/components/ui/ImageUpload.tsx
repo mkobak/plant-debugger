@@ -37,8 +37,7 @@ export default function ImageUpload({
   useEffect(() => {
     // Detect if we're on a mobile device
     const checkMobile = () => {
-      const userAgent =
-        navigator.userAgent || navigator.vendor || (window as any).opera;
+      const userAgent = navigator.userAgent || navigator.vendor || '';
       return (
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
           userAgent.toLowerCase()

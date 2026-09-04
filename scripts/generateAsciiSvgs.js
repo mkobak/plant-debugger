@@ -16,7 +16,7 @@ let cssColors = {};
 try {
   cssColors = extractColorsFromCSS();
   console.log('✅ Extracted colors from base.css');
-} catch (error) {
+} catch {
   console.warn(
     '⚠️  Could not extract colors from base.css, using fallback colors'
   );
@@ -174,9 +174,10 @@ function loadFont() {
     try {
       if (fs.existsSync(fontPath)) {
         console.log(`✅ Loading font: ${fontPath}`);
-        return opentype.loadSync(fontPath);
+        // opentype.js 2.x: parse a buffer (load/loadSync were removed)
+        return opentype.parse(fs.readFileSync(fontPath).buffer);
       }
-    } catch (error) {
+    } catch {
       console.warn(`⚠️  Could not load font: ${fontPath}`);
     }
   }
@@ -198,7 +199,7 @@ function generateTextPaths(text, font, fontSize, x, y) {
   try {
     const path = font.getPath(text, x, y, fontSize);
     return path.toSVG(2); // 2 decimal precision
-  } catch (error) {
+  } catch {
     console.warn('⚠️  Error generating font paths, using fallback');
     return generateFallbackPaths(text, fontSize, x, y);
   }
@@ -253,7 +254,7 @@ function calculateDimensions(asciiText, fontSize, lineHeight, font = null) {
           const bbox = path.getBoundingBox();
           const lineWidth = bbox.x2 - bbox.x1;
           width = Math.max(width, lineWidth);
-        } catch (error) {
+        } catch {
           // Fallback to character estimation if font path fails
           const charWidth = fontSize * 0.6;
           width = Math.max(width, line.length * charWidth);
@@ -331,18 +332,6 @@ function generateSVG(asciiText, color, fileName, font) {
     `Generated ${fileName}: ${totalWidth}x${totalHeight}px (${lines.length} lines)`
   );
   return svgContent;
-}
-
-/**
- * Escape XML special characters
- */
-function escapeXml(text) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 /**

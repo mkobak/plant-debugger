@@ -7,14 +7,36 @@ import ASCIILogo from '@/components/ui/ASCIILogo';
 import ActionButton from '@/components/ui/ActionButton';
 import { useRouter } from 'next/navigation';
 import { listHistoryEntries } from '@/lib/history';
+import { useDiagnosis } from '@/context/DiagnosisContext';
 
 export default function HomePage() {
   const router = useRouter();
   const [historyCount, setHistoryCount] = useState(0);
+  const {
+    hydrated,
+    images,
+    questions,
+    diagnosisResult,
+    plantIdentification,
+    noPlantMessage,
+  } = useDiagnosis();
 
   useEffect(() => {
-    listHistoryEntries().then((entries) => setHistoryCount(entries.length));
+    listHistoryEntries()
+      .then((entries) => setHistoryCount(entries.length))
+      .catch(() => setHistoryCount(0));
   }, []);
+
+  // A session worth resuming: images exist and it isn't a no-plant dead end
+  const hasSession = hydrated && images.length > 0 && !noPlantMessage;
+  const resumeTarget = diagnosisResult
+    ? '/results'
+    : questions.length > 0
+      ? '/analysis'
+      : '/upload';
+  const resumeLabel = plantIdentification?.name
+    ? `Resume session: ${plantIdentification.name}`
+    : 'Resume current session';
 
   return (
     <TerminalLayout>
@@ -34,6 +56,16 @@ export default function HomePage() {
               Start
             </ActionButton>
           </div>
+          {hasSession && (
+            <p className="home-history-link">
+              <button
+                className="sample-image-link"
+                onClick={() => router.push(resumeTarget)}
+              >
+                {resumeLabel}
+              </button>
+            </p>
+          )}
           {historyCount > 0 && (
             <p className="home-history-link">
               <button
