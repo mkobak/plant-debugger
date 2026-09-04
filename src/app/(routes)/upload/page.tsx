@@ -13,6 +13,7 @@ import { useImageUpload } from '@/hooks/useImageUpload';
 import { useNavigation } from '@/hooks/useNavigation';
 import useConfirmReset from '@/hooks/useConfirmReset';
 import { PlantImage } from '@/types';
+import { SAMPLE_IMAGES } from '@/lib/constants';
 
 import { logger } from '@/lib/logger';
 export default function UploadPage() {
@@ -21,7 +22,6 @@ export default function UploadPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [titleComplete, setTitleComplete] = useState(false);
-  const [codeComplete, setCodeComplete] = useState(false);
   const [tipComplete, setTipComplete] = useState(false);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
@@ -63,7 +63,6 @@ export default function UploadPage() {
     if (contextImages.length > 0) {
       setIsNavigatingBack(true);
       setTitleComplete(true);
-      setCodeComplete(true);
       setTipComplete(true);
     }
   }, [contextImages.length]);
@@ -104,20 +103,15 @@ export default function UploadPage() {
   const handleAddSampleImage = async () => {
     if (isUploading) return;
     try {
-      const res = await fetch('/api/sample-image');
-      if (!res.ok) {
-        setError('No sample images available.');
-        return;
-      }
-      const { url, filename } = await res.json();
-      const imgRes = await fetch(url);
+      const filename =
+        SAMPLE_IMAGES[Math.floor(Math.random() * SAMPLE_IMAGES.length)];
+      const imgRes = await fetch(`/sample-images/${filename}`);
       if (!imgRes.ok) {
         setError('Failed to fetch sample image.');
         return;
       }
       const blob = await imgRes.blob();
-      const fileName = filename || 'sample-image';
-      const file = new File([blob], fileName, {
+      const file = new File([blob], filename, {
         type: blob.type || 'image/jpeg',
       });
       const dt = new DataTransfer();

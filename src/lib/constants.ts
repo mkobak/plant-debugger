@@ -7,6 +7,10 @@ export const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 export const MAX_FILES = 3;
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 
+// Bundled demo photos served from /public/sample-images (picked client-side;
+// no server round trip)
+export const SAMPLE_IMAGES = ['sample-image-1.jpeg', 'sample-image-2.jpeg'];
+
 export const LOADING_SPINNER_CHARS = ['/', '-', '\\', '|'];
 
 // ASCII Art logos — consumed by scripts/generateAsciiSvgs.js via regex; keep in sync

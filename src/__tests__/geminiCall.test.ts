@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-const generateContent = jest.fn<any>();
+const generateContent = jest.fn<(...args: any[]) => any>();
 const recordUsage = jest.fn();
 
 // jest.doMock is not hoisted, so it reliably registers these mocks before the

@@ -16,7 +16,6 @@ interface LoadingScreenProps {
 }
 
 export default function LoadingScreen({
-  isDiagnosing = true,
   isAggregating = true,
   isGeneratingTreatment = false,
   aggregatingComplete = false,

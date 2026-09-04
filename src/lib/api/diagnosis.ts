@@ -79,72 +79,43 @@ export async function getNoPlantResponse(
   );
 }
 
-export async function generateQuestions(
-  images: PlantImage[],
-  rankedDiagnoses: string,
-  userComment: string,
-  signal?: AbortSignal
-): Promise<DiagnosticQuestion[]> {
-  logger.debug('generateQuestions called with images:', images.length);
-
-  if (!images || images.length === 0) {
-    throw new Error('No images provided to generateQuestions function');
-  }
-
-  return withRetry(async () => {
-    const formData = createImageFormData(images);
-    formData.append('rankedDiagnoses', rankedDiagnoses);
-    formData.append('userComment', userComment);
-
-    const response = await fetch('/api/generate-questions', {
-      method: 'POST',
-      body: formData,
-      headers: getClientHeaders(),
-      signal,
-    });
-
-    if (!response.ok) {
-      await throwHttpError(response, 'Failed to generate questions');
-    }
-
-    const data = await response.json();
-    logger.debug('generateQuestions response:', data);
-    if (data?.usage?.usage) {
-      costTracker.record({
-        modelKey: (data.usage.modelKey || 'modelMedium') as ModelKey,
-        usage: data.usage.usage,
-        route: 'generate-questions',
-      });
-    }
-    return data.questions;
-  }, 'Question Generation');
-}
-
-interface InitialDiagnosisResult {
+export interface AnalysisResult {
   identification: PlantIdentification;
   rawDiagnoses: string[];
   rankedDiagnoses: string;
+  questions: DiagnosticQuestion[];
 }
 
-export async function getInitialDiagnosis(
+export type AnalysisStage = 'questions';
+
+/**
+ * One streamed request for identification, consensus diagnosis, ranking and
+ * clarifying questions. Progress callbacks fire as the server reaches each
+ * stage so the UI can update before the final payload lands.
+ */
+export async function runAnalysis(
   images: PlantImage[],
   userComment: string,
   signal?: AbortSignal,
-  /** Called as soon as the plant has been identified, before the
-   *  consensus diagnosis finishes. Empty string means no plant. */
-  onIdentification?: (name: string) => void
-): Promise<InitialDiagnosisResult> {
-  logger.debug('getInitialDiagnosis called with images:', images.length);
+  callbacks: {
+    /** Called as soon as the plant has been identified. Empty string means
+     *  no plant. */
+    onIdentification?: (name: string) => void;
+    /** Called when the consensus is in and the questions are being generated. */
+    onProgress?: (stage: AnalysisStage) => void;
+  } = {}
+): Promise<AnalysisResult> {
+  logger.debug('runAnalysis called with images:', images.length);
 
   if (!images || images.length === 0) {
-    throw new Error('No images provided to getInitialDiagnosis function');
+    throw new Error('No images provided to runAnalysis function');
   }
 
   return withRetry(async () => {
     const formData = createImageFormData(images);
     formData.append('userComment', userComment);
 
-    const response = await fetch('/api/initial-diagnosis', {
+    const response = await fetch('/api/analyze', {
       method: 'POST',
       body: formData,
       headers: getClientHeaders(),
@@ -152,7 +123,7 @@ export async function getInitialDiagnosis(
     });
 
     if (!response.ok) {
-      await throwHttpError(response, 'Failed to get initial diagnosis');
+      await throwHttpError(response, 'Failed to analyze images');
     }
 
     if (
@@ -160,24 +131,27 @@ export async function getInitialDiagnosis(
       !response.headers.get('content-type')?.includes('application/x-ndjson')
     ) {
       // Non-streaming response (should not happen, but keep a safe path)
-      return (await response.json()) as InitialDiagnosisResult;
+      return (await response.json()) as AnalysisResult;
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffered = '';
-    let result: InitialDiagnosisResult | null = null;
+    let result: AnalysisResult | null = null;
 
     const handleEvent = (line: string) => {
       if (!line.trim()) return;
       const event = JSON.parse(line);
       if (event.type === 'identification') {
-        onIdentification?.(event.name as string);
+        callbacks.onIdentification?.(event.name as string);
+      } else if (event.type === 'progress') {
+        callbacks.onProgress?.(event.stage as AnalysisStage);
       } else if (event.type === 'done') {
         result = {
           identification: event.identification,
           rawDiagnoses: event.rawDiagnoses,
           rankedDiagnoses: event.rankedDiagnoses,
+          questions: Array.isArray(event.questions) ? event.questions : [],
         };
         if (Array.isArray(event.usage)) {
           costTracker.recordMany(
@@ -185,16 +159,13 @@ export async function getInitialDiagnosis(
               (u: { modelKey?: ModelKey; usage: UsageMetadata }) => ({
                 modelKey: (u.modelKey || 'modelLow') as ModelKey,
                 usage: u.usage,
-                route: 'initial-diagnosis',
+                route: 'analyze',
               })
             )
           );
         }
       } else if (event.type === 'error') {
-        throw new HttpError(
-          event.error || 'Failed to get initial diagnosis',
-          502
-        );
+        throw new HttpError(event.error || 'Failed to analyze images', 502);
       }
     };
 
@@ -209,11 +180,11 @@ export async function getInitialDiagnosis(
     if (buffered.trim()) handleEvent(buffered);
 
     if (!result) {
-      throw new HttpError('Initial diagnosis stream ended unexpectedly', 502);
+      throw new HttpError('Analysis stream ended unexpectedly', 502);
     }
-    logger.debug('getInitialDiagnosis complete (streamed)');
+    logger.debug('runAnalysis complete (streamed)');
     return result;
-  }, 'Initial Diagnosis');
+  }, 'Analysis');
 }
 
 export async function getFinalDiagnosis(

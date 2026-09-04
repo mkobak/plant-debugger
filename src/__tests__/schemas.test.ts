@@ -1,4 +1,7 @@
-import { finalDiagnosisSchema, questionsSchema } from '@/lib/api/schemas';
+import {
+  finalDiagnosisSchema,
+  rankAndQuestionsSchema,
+} from '@/lib/api/schemas';
 
 // Basic structural tests to ensure schemas don't accidentally lose required fields or descriptions.
 
@@ -26,12 +29,19 @@ describe('Structured Output Schemas', () => {
     expect(props.careTips.description).toMatch(/care tips/);
   });
 
-  test('questionsSchema required fields', () => {
-    expect(questionsSchema.required).toEqual(['Q1', 'Q2']);
+  test('rankAndQuestionsSchema required fields and ordering', () => {
+    expect(rankAndQuestionsSchema.required).toEqual([
+      'rankedDiagnoses',
+      'Q1',
+      'Q2',
+    ]);
+    // Ranking must stream before the questions that depend on it
+    expect(rankAndQuestionsSchema.propertyOrdering[0]).toBe('rankedDiagnoses');
   });
 
-  test('questionsSchema descriptions preserved', () => {
-    const props: any = questionsSchema.properties;
+  test('rankAndQuestionsSchema descriptions preserved', () => {
+    const props: any = rankAndQuestionsSchema.properties;
     expect(props.Q1.description).toMatch(/yes\/no question/);
+    expect(props.rankedDiagnoses.description).toMatch(/most likely first/);
   });
 });

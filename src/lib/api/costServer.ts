@@ -2,10 +2,12 @@ import type { NextRequest } from 'next/server';
 import { getClientId } from './shared';
 import { BUCKET_BY_KEY, PRICES, type ModelKey } from './modelConfig';
 
-import { logger } from '@/lib/logger';
+import { logger, isDebugEnabled } from '@/lib/logger';
 export interface UsageMetadata {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
+  /** Thinking tokens: billed at the output rate on Gemini 3 models. */
+  thoughtsTokenCount?: number;
   totalTokenCount?: number;
 }
 
@@ -20,27 +22,8 @@ interface Totals {
   >;
 }
 
-function rateFor(
-  modelKey: ModelKey,
-  kind: 'input' | 'output',
-  promptTokens: number | undefined
-): number {
-  const bucket = BUCKET_BY_KEY[modelKey];
-  if (bucket === 'pro') {
-    const above = (promptTokens ?? 0) > PRICES.pro.threshold;
-    return kind === 'input'
-      ? above
-        ? PRICES.pro.input.high
-        : PRICES.pro.input.low
-      : above
-        ? PRICES.pro.output.high
-        : PRICES.pro.output.low;
-  }
-  if (bucket === 'flash')
-    return kind === 'input' ? PRICES.flash.input : PRICES.flash.output;
-  return kind === 'input'
-    ? PRICES['flash-lite'].input
-    : PRICES['flash-lite'].output;
+function rateFor(modelKey: ModelKey, kind: 'input' | 'output'): number {
+  return PRICES[BUCKET_BY_KEY[modelKey]][kind];
 }
 
 function dollars(tokens: number | undefined, perMillion: number): number {
@@ -48,17 +31,29 @@ function dollars(tokens: number | undefined, perMillion: number): number {
   return (tokens / 1_000_000) * perMillion;
 }
 
+// This store only feeds terminal debug output. The key is the client-supplied
+// x-pb-client-id, so it is capped and only populated when debug logging is on
+// — otherwise arbitrary ids could grow it without bound on a warm instance.
+const MAX_TRACKED_CLIENTS = 200;
+
 // Keep a process-global store so multiple route modules share the same totals
-const globalAny = globalThis as any;
 const costStoreKey = '__pb_cost_store__';
-if (!globalAny[costStoreKey]) {
-  globalAny[costStoreKey] = new Map<string, Totals>();
+const globalStore = globalThis as typeof globalThis & {
+  [costStoreKey]?: Map<string, Totals>;
+};
+if (!globalStore[costStoreKey]) {
+  globalStore[costStoreKey] = new Map<string, Totals>();
 }
-const store: Map<string, Totals> = globalAny[costStoreKey];
+const store: Map<string, Totals> = globalStore[costStoreKey];
 
 function ensure(id: string): Totals {
   const t = store.get(id);
   if (t) return t;
+  if (store.size >= MAX_TRACKED_CLIENTS) {
+    // Maps iterate in insertion order: evict the oldest entry
+    const oldest = store.keys().next().value;
+    if (oldest !== undefined) store.delete(oldest);
+  }
   const v: Totals = {
     prompt: 0,
     output: 0,
@@ -79,15 +74,16 @@ export function recordUsageForRequest(
   modelKey: ModelKey,
   usage: UsageMetadata | undefined
 ) {
+  if (!usage || !isDebugEnabled()) return;
   const id = getClientId(req);
-  if (!usage) return;
   const totals = ensure(id);
   const pt = usage.promptTokenCount ?? 0;
-  const ct = usage.candidatesTokenCount ?? 0;
+  const ct =
+    (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
   totals.prompt += pt;
   totals.output += ct;
-  const incIn = dollars(pt, rateFor(modelKey, 'input', pt));
-  const incOut = dollars(ct, rateFor(modelKey, 'output', pt));
+  const incIn = dollars(pt, rateFor(modelKey, 'input'));
+  const incOut = dollars(ct, rateFor(modelKey, 'output'));
   totals.inputCost += incIn;
   totals.outputCost += incOut;
   const m = totals.byModel[modelKey];
@@ -96,7 +92,7 @@ export function recordUsageForRequest(
   m.output += ct;
   m.cost += incIn + incOut;
   logger.debug(
-    `(CostServer) ${modelKey}@${id}: input ${pt}, output ${ct}, cost ~$${(incIn + incOut).toFixed(4)}`
+    `(CostServer) ${modelKey}@${id}: input ${pt}, output ${ct} (incl. ${usage.thoughtsTokenCount ?? 0} thinking), cost ~$${(incIn + incOut).toFixed(4)}`
   );
 }
 
@@ -104,27 +100,10 @@ export function printAndResetForRequest(
   req: NextRequest,
   context = 'Diagnosis complete'
 ) {
+  if (!isDebugEnabled()) return;
   const id = getClientId(req);
-  // Merge any stray 'unknown' bucket into this id to preserve totals across retries
-  const unknown = store.get('unknown');
-  if (unknown) {
-    const target = ensure(id);
-    target.prompt += unknown.prompt;
-    target.output += unknown.output;
-    target.inputCost += unknown.inputCost;
-    target.outputCost += unknown.outputCost;
-    (
-      Object.keys(unknown.byModel) as Array<keyof typeof unknown.byModel>
-    ).forEach((k) => {
-      target.byModel[k].calls += unknown.byModel[k].calls;
-      target.byModel[k].input += unknown.byModel[k].input;
-      target.byModel[k].output += unknown.byModel[k].output;
-      target.byModel[k].cost += unknown.byModel[k].cost;
-    });
-    store.delete('unknown');
-  }
   const totals = store.get(id);
-  const callsLine = `Client: ${id} (localhost)`;
+  const callsLine = `Client: ${id}`;
   if (!totals) {
     logger.debug('====================================');
     logger.debug(`${context}: No usage recorded`);
@@ -136,27 +115,34 @@ export function printAndResetForRequest(
   logger.debug('====================================');
   logger.debug(`${context}: Gemini API cost summary`);
   logger.debug(callsLine);
-  logger.debug(
-    `- modelHigh: ${totals.byModel.modelHigh.calls} calls (~$${totals.byModel.modelHigh.cost.toFixed(4)})`
-  );
-  logger.debug(
-    `- modelMedium: ${totals.byModel.modelMedium.calls} calls (~$${totals.byModel.modelMedium.cost.toFixed(4)})`
-  );
-  logger.debug(
-    `- modelLow: ${totals.byModel.modelLow.calls} calls (~$${totals.byModel.modelLow.cost.toFixed(4)})`
-  );
+  (Object.keys(totals.byModel) as ModelKey[]).forEach((k) => {
+    logger.debug(
+      `- ${k} (${MODEL_LABEL[k]}): ${totals.byModel[k].calls} calls (~$${totals.byModel[k].cost.toFixed(4)})`
+    );
+  });
   logger.debug(
     `Input tokens: ${totals.prompt.toLocaleString()} (~$${totals.inputCost.toFixed(4)})`
   );
   logger.debug(
-    `Output tokens: ${totals.output.toLocaleString()} (~$${totals.outputCost.toFixed(4)})`
+    `Output tokens (incl. thinking): ${totals.output.toLocaleString()} (~$${totals.outputCost.toFixed(4)})`
   );
   logger.debug(`Total cost: $${total.toFixed(4)}`);
   logger.debug('====================================');
   store.delete(id);
 }
 
+const MODEL_LABEL: Record<ModelKey, string> = {
+  modelHigh: 'high',
+  modelMedium: 'medium',
+  modelLow: 'low',
+};
+
 export function resetForRequest(req: NextRequest) {
   const id = getClientId(req);
   store.delete(id);
+}
+
+/** Test-only: number of tracked clients. */
+export function trackedClientCount(): number {
+  return store.size;
 }

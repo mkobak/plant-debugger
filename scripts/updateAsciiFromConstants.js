@@ -8,11 +8,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const {
-  generateSVG,
-  calculateDimensions,
-  CONFIG,
-} = require('./generateAsciiSvgs');
 
 const CONSTANTS_PATH = path.join(__dirname, '../src/lib/constants.ts');
 const SVG_GENERATOR_PATH = path.join(__dirname, 'generateAsciiSvgs.js');

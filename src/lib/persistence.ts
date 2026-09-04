@@ -26,6 +26,10 @@ interface PersistedImageMeta {
   // We don't store url (objectURL) because we recreate it on restore
 }
 
+interface PersistedImageRecord extends PersistedImageMeta {
+  blob: Blob;
+}
+
 interface PersistedState {
   // Image ids in order (actual blobs stored separately)
   images: PersistedImageMeta[];
@@ -124,13 +128,13 @@ export async function saveDiagnosisState(params: {
     for (const img of params.images) {
       existingIds.add(img.id);
       const file = img.file; // File/Blob
-      const record = {
+      const record: PersistedImageRecord = {
         id: img.id,
         blob: file, // File extends Blob
         type: file.type || 'image/jpeg',
         compressed: img.compressed,
         size: img.size,
-      } as any;
+      };
       imageStore.put(record);
     }
     // Clean up removed images
@@ -204,10 +208,12 @@ export async function loadDiagnosisState(): Promise<{
     const rebuilt: PlantImage[] = [];
     for (const meta of stateData.images) {
       const imgReq = imageStore.get(meta.id);
-      const imageRecord: any = await new Promise((res, rej) => {
-        imgReq.onsuccess = () => res(imgReq.result);
-        imgReq.onerror = () => rej(imgReq.error);
-      });
+      const imageRecord = await new Promise<PersistedImageRecord | undefined>(
+        (res, rej) => {
+          imgReq.onsuccess = () => res(imgReq.result);
+          imgReq.onerror = () => rej(imgReq.error);
+        }
+      );
       if (!imageRecord) continue;
       const blob: Blob = imageRecord.blob;
       // Use a deterministic filename so File isn't empty name

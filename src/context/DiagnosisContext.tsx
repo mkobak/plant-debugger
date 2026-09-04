@@ -256,7 +256,7 @@ export function DiagnosisProvider({ children }: DiagnosisProviderProps) {
           setLastDiagnosisSignature(loaded.lastDiagnosisSignature || null);
           setLastQAImagesSignature(loaded.lastQAImagesSignature || null);
         }
-      } catch (e) {
+      } catch {
         // Failed restore: keep the persisted session intact rather than
         // letting the debounced save overwrite it with empty state
         persistDisabledRef.current = true;

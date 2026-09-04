@@ -11,13 +11,15 @@ import { logger } from '@/lib/logger';
  * client-supplied header, so it must never be used for rate limiting or any
  * security decision — see rateLimit.ts:getClientIp for that.
  */
+const MAX_CLIENT_ID_LENGTH = 64;
+
 export function getClientId(request: NextRequest): string {
   const cid = request.headers.get('x-pb-client-id');
-  if (cid && cid.trim().length > 0) return cid;
+  if (cid && cid.trim().length > 0) return cid.slice(0, MAX_CLIENT_ID_LENGTH);
   const xf = request.headers.get('x-forwarded-for');
-  if (xf && xf.trim().length > 0) return xf;
+  if (xf && xf.trim().length > 0) return xf.slice(0, MAX_CLIENT_ID_LENGTH);
   const xr = request.headers.get('x-real-ip');
-  if (xr && xr.trim().length > 0) return xr;
+  if (xr && xr.trim().length > 0) return xr.slice(0, MAX_CLIENT_ID_LENGTH);
   return '::1';
 }
 

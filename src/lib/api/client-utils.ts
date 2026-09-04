@@ -30,7 +30,7 @@ export function getStableClientId(): string {
     if (!id) {
       // Prefer crypto.randomUUID when available
       if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-        id = (crypto as any).randomUUID() as string;
+        id = crypto.randomUUID();
       } else {
         id = `pb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       }

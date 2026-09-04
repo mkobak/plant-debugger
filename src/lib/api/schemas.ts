@@ -113,9 +113,16 @@ export const finalDiagnosisSchema = {
   ],
 } as const;
 
-export const questionsSchema = {
+// Consensus ranking + clarifying questions in a single structured call.
+// rankedDiagnoses is generated first so the ranking informs the questions.
+export const rankAndQuestionsSchema = {
   type: 'object',
   properties: {
+    rankedDiagnoses: {
+      type: 'string',
+      description:
+        'Comma-separated ranked list (most likely first) of at most 5 distinct diagnoses, similar conditions merged and duplicates removed. Example: "Root rot, Spider mites, Nitrogen deficiency".',
+    },
     Q1: {
       type: 'string',
       description:
@@ -145,8 +152,9 @@ export const questionsSchema = {
         'Short yes/no question to help narrow down a plant diagnosis.',
     },
   },
-  required: ['Q1', 'Q2'],
+  required: ['rankedDiagnoses', 'Q1', 'Q2'],
+  propertyOrdering: ['rankedDiagnoses', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5'],
 } as const;
 
 export type FinalDiagnosisSchema = typeof finalDiagnosisSchema;
-export type QuestionsSchema = typeof questionsSchema;
+export type RankAndQuestionsSchema = typeof rankAndQuestionsSchema;

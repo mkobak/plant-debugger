@@ -3,11 +3,11 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-const getInitialDiagnosis = jest.fn<any>();
-const getFinalDiagnosis = jest.fn<any>();
+const runAnalysis = jest.fn<(...args: any[]) => any>();
+const getFinalDiagnosis = jest.fn<(...args: any[]) => any>();
 
 jest.doMock('@/lib/api/diagnosis', () => ({
-  getInitialDiagnosis: (...args: any[]) => getInitialDiagnosis(...args),
+  runAnalysis: (...args: any[]) => runAnalysis(...args),
   getFinalDiagnosis: (...args: any[]) => getFinalDiagnosis(...args),
 }));
 jest.doMock('@/lib/persistence', () => ({
@@ -42,7 +42,7 @@ const finalResult = {
 
 describe('useDiagnosisFlow', () => {
   beforeEach(() => {
-    getInitialDiagnosis.mockReset();
+    runAnalysis.mockReset();
     getFinalDiagnosis.mockReset();
   });
 
@@ -64,7 +64,7 @@ describe('useDiagnosisFlow', () => {
       await result.current.startDiagnosis();
     });
 
-    expect(getInitialDiagnosis).not.toHaveBeenCalled();
+    expect(runAnalysis).not.toHaveBeenCalled();
     expect(getFinalDiagnosis).toHaveBeenCalledWith(
       images,
       'Q&A',
@@ -81,10 +81,11 @@ describe('useDiagnosisFlow', () => {
   });
 
   it('runs initial diagnosis first when no rankedDiagnoses given', async () => {
-    getInitialDiagnosis.mockResolvedValue({
+    runAnalysis.mockResolvedValue({
       identification: { name: 'Monstera' },
       rawDiagnoses: ['Root rot'],
       rankedDiagnoses: 'Root rot',
+      questions: [],
     });
     getFinalDiagnosis.mockResolvedValue(finalResult);
 
@@ -101,7 +102,7 @@ describe('useDiagnosisFlow', () => {
       await result.current.startDiagnosis();
     });
 
-    expect(getInitialDiagnosis).toHaveBeenCalledTimes(1);
+    expect(runAnalysis).toHaveBeenCalledTimes(1);
     expect(getFinalDiagnosis).toHaveBeenCalledWith(
       images,
       '',

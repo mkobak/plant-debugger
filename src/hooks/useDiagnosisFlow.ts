@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { PlantImage } from '@/types';
-import { getInitialDiagnosis, getFinalDiagnosis } from '@/lib/api/diagnosis';
+import { runAnalysis, getFinalDiagnosis } from '@/lib/api/diagnosis';
 import { useDiagnosis } from '@/context/DiagnosisContext';
 import type { FinalDiagnosisFields } from '@/lib/api/finalDiagnosisMapping';
 
@@ -95,8 +95,14 @@ export function useDiagnosisFlow({
 
       let ranked = rankedDiagnoses;
       if (!rankedDiagnoses) {
-        logger.debug('useDiagnosisFlow: Calling getInitialDiagnosis...');
-        const initialResult = await getInitialDiagnosis(images, '', signal);
+        // Ranked diagnoses aren't persisted, so a refreshed results page
+        // re-runs the analysis step to rebuild them
+        logger.debug('useDiagnosisFlow: Calling runAnalysis...');
+        const initialResult = await runAnalysis(
+          images,
+          userComment || '',
+          signal
+        );
         logger.debug(
           'useDiagnosisFlow: Initial diagnosis complete:',
           initialResult
@@ -159,9 +165,9 @@ export function useDiagnosisFlow({
           retryCountRef.current = 0;
         } finally {
           // Keep loading state during scheduled retries; only stop when done or giving up
-          if (
-            !(retryCountRef.current > 0 && retryCountRef.current <= maxRetries)
-          ) {
+          if (!(
+            retryCountRef.current > 0 && retryCountRef.current <= maxRetries
+          )) {
             setIsDiagnosing(false);
           }
         }

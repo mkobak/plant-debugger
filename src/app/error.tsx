@@ -27,6 +27,8 @@ export default function GlobalError({
             retry
           </button>
           {'  '}
+          {/* Full reload on purpose: the client router may be what broke */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/" className="text-action">
             cd ~/home
           </a>

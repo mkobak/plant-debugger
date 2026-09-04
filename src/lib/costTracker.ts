@@ -10,6 +10,8 @@ const ENABLE_LOGS =
 export interface UsageMetadata {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
+  /** Thinking tokens: billed at the output rate on Gemini 3 models. */
+  thoughtsTokenCount?: number;
   totalTokenCount?: number;
 }
 
@@ -19,27 +21,13 @@ export interface UsageEntry {
   route?: string; // Optional: for debugging
 }
 
-function rateFor(
-  modelKey: ModelKey,
-  kind: 'input' | 'output',
-  promptTokens: number | undefined
-): number {
-  const bucket = BUCKET_BY_KEY[modelKey];
-  if (bucket === 'pro') {
-    const above = (promptTokens ?? 0) > PRICES.pro.threshold;
-    return kind === 'input'
-      ? above
-        ? PRICES.pro.input.high
-        : PRICES.pro.input.low
-      : above
-        ? PRICES.pro.output.high
-        : PRICES.pro.output.low;
-  }
-  if (bucket === 'flash')
-    return kind === 'input' ? PRICES.flash.input : PRICES.flash.output;
-  return kind === 'input'
-    ? PRICES['flash-lite'].input
-    : PRICES['flash-lite'].output;
+function rateFor(modelKey: ModelKey, kind: 'input' | 'output'): number {
+  return PRICES[BUCKET_BY_KEY[modelKey]][kind];
+}
+
+/** Billable output = answer tokens + thinking tokens. */
+function outputTokens(usage: UsageMetadata): number {
+  return (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
 }
 
 function dollars(tokens: number | undefined, perMillion: number): number {
@@ -55,9 +43,9 @@ class CostTracker {
     this.entries.push(entry);
     // Log each call for debugging and cost tracking
     const pt = entry.usage.promptTokenCount ?? 0;
-    const ct = entry.usage.candidatesTokenCount ?? 0;
-    const inCost = dollars(pt, rateFor(entry.modelKey, 'input', pt));
-    const outCost = dollars(ct, rateFor(entry.modelKey, 'output', pt));
+    const ct = outputTokens(entry.usage);
+    const inCost = dollars(pt, rateFor(entry.modelKey, 'input'));
+    const outCost = dollars(ct, rateFor(entry.modelKey, 'output'));
     const route = entry.route ? ` [${entry.route}]` : '';
     if (ENABLE_LOGS) {
       logger.debug(
@@ -79,7 +67,7 @@ class CostTracker {
 
   totals() {
     let inputTokens = 0;
-    let outputTokens = 0;
+    let outputTokensTotal = 0;
     let inputCost = 0;
     let outputCost = 0;
     const byModel: Record<
@@ -93,11 +81,11 @@ class CostTracker {
 
     for (const e of this.entries) {
       const pt = e.usage.promptTokenCount ?? 0;
-      const ct = e.usage.candidatesTokenCount ?? 0;
+      const ct = outputTokens(e.usage);
       inputTokens += pt;
-      outputTokens += ct;
-      const incIn = dollars(pt, rateFor(e.modelKey, 'input', pt));
-      const incOut = dollars(ct, rateFor(e.modelKey, 'output', pt));
+      outputTokensTotal += ct;
+      const incIn = dollars(pt, rateFor(e.modelKey, 'input'));
+      const incOut = dollars(ct, rateFor(e.modelKey, 'output'));
       inputCost += incIn;
       outputCost += incOut;
       const b = byModel[e.modelKey];
@@ -110,7 +98,7 @@ class CostTracker {
     return {
       calls: this.entries.length,
       inputTokens,
-      outputTokens,
+      outputTokens: outputTokensTotal,
       inputCost,
       outputCost,
       totalCost: inputCost + outputCost,
@@ -128,7 +116,7 @@ class CostTracker {
       `- modelMedium: ${t.byModel.modelMedium.calls} calls (~$${t.byModel.modelMedium.cost.toFixed(4)})`,
       `- modelLow: ${t.byModel.modelLow.calls} calls (~$${t.byModel.modelLow.cost.toFixed(4)})`,
       `Input tokens: ${t.inputTokens.toLocaleString()} (~$${t.inputCost.toFixed(4)})`,
-      `Output tokens: ${t.outputTokens.toLocaleString()} (~$${t.outputCost.toFixed(4)})`,
+      `Output tokens (incl. thinking): ${t.outputTokens.toLocaleString()} (~$${t.outputCost.toFixed(4)})`,
       `Total cost: $${t.totalCost.toFixed(4)}`,
       '====================================',
     ];

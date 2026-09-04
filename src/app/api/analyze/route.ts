@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withApiRoute } from '@/lib/api/withApiRoute';
+import { withApiRoute, withResolution } from '@/lib/api/withApiRoute';
 import { geminiCall, isAbortError } from '@/lib/api/geminiCall';
 import {
   collectSuccessfulDiagnoses,
@@ -8,59 +8,66 @@ import {
 import {
   PLANT_IDENTIFICATION_PROMPT,
   createInitialDiagnosisPrompt,
-  createAggregationPrompt,
+  createRankAndQuestionsPrompt,
 } from '@/lib/api/prompts';
+import { rankAndQuestionsSchema } from '@/lib/api/schemas';
+import {
+  parseRankAndQuestions,
+  fallbackRanking,
+  type RankAndQuestions,
+} from '@/lib/api/rankAndQuestions';
 import { normalizePlantName } from '@/lib/api/plantName';
 import type { ModelKey } from '@/lib/api/modelConfig';
-import { ThinkingLevel } from '@google/genai';
+import { PartMediaResolutionLevel, ThinkingLevel } from '@google/genai';
 import { logger } from '@/lib/logger';
 
 export const maxDuration = 60;
 
-// Consensus: one pro opinion + two flash opinions with varied sampling.
-// The pro call is time-boxed so a slow thinking phase cannot gate the
-// response — with 2+ flash successes the aggregation proceeds without it.
+// Consensus: three parallel opinions. Sampling parameters stay at the Gemini 3
+// defaults (Google advises against lowering temperature); diversity comes from
+// the different thinking depths. Each call is time-boxed so one slow call
+// cannot gate the response — any success proceeds.
 const CALL_CONFIGS: Array<{
   modelKey: ModelKey;
-  temperature: number;
-  topP: number;
+  thinkingLevel: ThinkingLevel;
   variant: string;
   timeoutMs: number;
 }> = [
   {
     modelKey: 'modelHigh',
-    temperature: 0.25,
-    topP: 0.5,
-    variant: 'pro',
+    thinkingLevel: ThinkingLevel.MEDIUM,
+    variant: 'deep',
     timeoutMs: 25_000,
   },
   {
     modelKey: 'modelMedium',
-    temperature: 0.45,
-    topP: 0.7,
-    variant: 'flashA',
+    thinkingLevel: ThinkingLevel.LOW,
+    variant: 'fastA',
     timeoutMs: 20_000,
   },
   {
     modelKey: 'modelMedium',
-    temperature: 0.55,
-    topP: 0.85,
-    variant: 'flashB',
+    thinkingLevel: ThinkingLevel.LOW,
+    variant: 'fastB',
     timeoutMs: 20_000,
   },
 ];
 
 /**
- * Streams NDJSON events so the client can show progress:
+ * One request for the whole analysis step. Streams NDJSON events:
  *   {"type":"identification","name":"..."}  as soon as the plant is known
- *   {"type":"done", identification, rawDiagnoses, rankedDiagnoses, usage}
+ *   {"type":"progress","stage":"questions"} consensus done, questions running
+ *   {"type":"done", identification, rawDiagnoses, rankedDiagnoses, questions, usage}
  *   {"type":"error","error":"..."}
+ * Ranking the consensus and generating the clarifying questions is a single
+ * structured call (previously two sequential calls in two requests).
  */
 export const POST = withApiRoute(
-  'INITIAL-DIAGNOSIS',
-  { errorMessage: 'Failed to generate initial diagnosis' },
+  'ANALYZE',
+  { errorMessage: 'Failed to analyze images' },
   async ({ request, tag, signal, data, imageParts }) => {
-    const prompt = createInitialDiagnosisPrompt(data.userComment || '');
+    const userComment = data.userComment || '';
+    const prompt = createInitialDiagnosisPrompt(userComment);
 
     // Identification runs concurrently with the diagnosis calls (the
     // diagnosis prompt does not depend on the plant name). If no plant is
@@ -73,35 +80,35 @@ export const POST = withApiRoute(
     const identificationPromise = geminiCall({
       request,
       modelKey: 'modelLow',
-      parts: [{ text: PLANT_IDENTIFICATION_PROMPT }, ...imageParts],
-      generationConfig: { temperature: 0.1, topP: 0.5 },
+      // Species-level identification doesn't need pest-level detail
+      parts: [
+        { text: PLANT_IDENTIFICATION_PROMPT },
+        ...withResolution(
+          imageParts,
+          PartMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM
+        ),
+      ],
+      generationConfig: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+      },
       signal,
       timeoutMs: 20_000,
       tag: `${tag}[identify]`,
     });
 
     const settledPromise = Promise.allSettled(
-      CALL_CONFIGS.map(
-        (cfg): Promise<DiagnosisAttempt> =>
-          geminiCall({
-            request,
-            modelKey: cfg.modelKey,
-            parts: [
-              { text: prompt },
-              { text: `\n\n[variant:${cfg.variant}]` },
-              ...imageParts,
-            ],
-            generationConfig: {
-              temperature: cfg.temperature,
-              topP: cfg.topP,
-              ...(cfg.modelKey === 'modelHigh'
-                ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
-                : {}),
-            },
-            signal: diagnosisAbort.signal,
-            timeoutMs: cfg.timeoutMs,
-            tag: `${tag}[${cfg.variant}]`,
-          }).then((r) => ({ ...r, modelKey: cfg.modelKey }))
+      CALL_CONFIGS.map((cfg): Promise<DiagnosisAttempt> =>
+        geminiCall({
+          request,
+          modelKey: cfg.modelKey,
+          parts: [{ text: prompt }, ...imageParts],
+          generationConfig: {
+            thinkingConfig: { thinkingLevel: cfg.thinkingLevel },
+          },
+          signal: diagnosisAbort.signal,
+          timeoutMs: cfg.timeoutMs,
+          tag: `${tag}[${cfg.variant}]`,
+        }).then((r) => ({ ...r, modelKey: cfg.modelKey }))
       )
     );
 
@@ -140,6 +147,7 @@ export const POST = withApiRoute(
               identification: { name: '' },
               rawDiagnoses: [],
               rankedDiagnoses: '',
+              questions: [],
               usage: identificationUsage,
             });
             return;
@@ -155,24 +163,17 @@ export const POST = withApiRoute(
             logger.warn(`${tag} ${failures.length}/3 calls failed:`, failures);
           }
 
-          // Single fallback layer: one capped flash retry if everything failed
+          // Single fallback layer: one capped retry if everything failed
           if (successes.length === 0) {
-            logger.warn(
-              `${tag} All diagnosis calls failed; one flash retry...`
-            );
+            logger.warn(`${tag} All diagnosis calls failed; one retry...`);
             try {
               const retry = await geminiCall({
                 request,
                 modelKey: 'modelMedium',
-                parts: [
-                  { text: prompt },
-                  { text: '\n\n[variant:retry]' },
-                  ...imageParts,
-                ],
+                parts: [{ text: prompt }, ...imageParts],
                 generationConfig: {
-                  temperature: 0.35,
-                  topP: 0.7,
                   maxOutputTokens: 768,
+                  thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
                 },
                 signal,
                 timeoutMs: 20_000,
@@ -183,9 +184,7 @@ export const POST = withApiRoute(
               }
             } catch (err) {
               if (isAbortError(err)) throw err;
-              logger.warn(
-                `${tag} Flash retry failed: ${(err as Error)?.message}`
-              );
+              logger.warn(`${tag} Retry failed: ${(err as Error)?.message}`);
             }
           }
 
@@ -197,30 +196,61 @@ export const POST = withApiRoute(
             return;
           }
 
-          const aggregation = await geminiCall({
-            request,
-            modelKey: 'modelLow',
-            parts: [
-              { text: createAggregationPrompt(successes.map((s) => s.text)) },
-            ],
-            generationConfig: { temperature: 0.1, topP: 0.5 },
-            signal,
-            timeoutMs: 15_000,
-            tag: `${tag}[agg]`,
-          });
+          send({ type: 'progress', stage: 'questions' });
+
+          const rawDiagnoses = successes.map((s) => s.text);
+          let ranked: RankAndQuestions;
+          const rankUsage: { modelKey: ModelKey; usage: object }[] = [];
+          try {
+            const result = await geminiCall({
+              request,
+              modelKey: 'modelMedium',
+              parts: [
+                {
+                  text: createRankAndQuestionsPrompt(rawDiagnoses, userComment),
+                },
+                ...imageParts,
+              ],
+              generationConfig: {
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+                responseMimeType: 'application/json',
+                responseSchema: rankAndQuestionsSchema,
+              },
+              signal,
+              timeoutMs: 20_000,
+              tag: `${tag}[rank+questions]`,
+            });
+            rankUsage.push({ modelKey: 'modelMedium', usage: result.usage });
+            ranked = parseRankAndQuestions(result.text);
+          } catch (err) {
+            if (isAbortError(err) || signal?.aborted) throw err;
+            // Degrade rather than fail: the results page can run without
+            // questions, and a local dedupe is an acceptable ranking
+            logger.warn(
+              `${tag} Rank+questions failed, using local fallback: ${(err as Error)?.message}`
+            );
+            ranked = {
+              rankedDiagnoses: fallbackRanking(rawDiagnoses),
+              questions: [],
+            };
+          }
+          logger.debug(
+            `${tag} Extracted questions: ${ranked.questions.length}`
+          );
 
           send({
             type: 'done',
             identification: { name: plantName },
-            rawDiagnoses: successes.map((s) => s.text),
-            rankedDiagnoses: aggregation.text,
+            rawDiagnoses,
+            rankedDiagnoses: ranked.rankedDiagnoses,
+            questions: ranked.questions,
             usage: [
               ...identificationUsage,
               ...successes.map((s) => ({
                 modelKey: s.modelKey,
                 usage: s.usage,
               })),
-              { modelKey: 'modelLow' as const, usage: aggregation.usage },
+              ...rankUsage,
             ],
           });
         } catch (error) {
@@ -228,10 +258,7 @@ export const POST = withApiRoute(
             logger.warn(`${tag} Stream aborted by client`);
           } else {
             logger.error(`${tag} Stream failed`, error);
-            send({
-              type: 'error',
-              error: 'Failed to generate initial diagnosis',
-            });
+            send({ type: 'error', error: 'Failed to analyze images' });
           }
         } finally {
           controller.close();

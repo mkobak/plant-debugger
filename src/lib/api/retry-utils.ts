@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 interface RetryOptions {
   maxRetries?: number;
   retryDelay?: number;
-  shouldRetry?: (error: any) => boolean;
+  shouldRetry?: (error: unknown) => boolean;
 }
 
 const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
@@ -19,14 +19,15 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
       return true; // Network error
     }
     // HttpError from the API layer carries the response status
-    const status: unknown = error?.status;
+    const status = (error as { status?: unknown })?.status;
     if (typeof status === 'number') {
       return status === 429 || status >= 500;
     }
-    if (error.message.includes('429') || error.message.includes('rate limit')) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('429') || message.includes('rate limit')) {
       return true; // Rate limit error
     }
-    if (/50[0-9]|Internal Server Error|timed out/i.test(error.message)) {
+    if (/50[0-9]|Internal Server Error|timed out/i.test(message)) {
       return true; // Server error or upstream timeout
     }
     return false; // Don't retry other errors
@@ -42,7 +43,7 @@ export async function withRetry<T>(
   options: RetryOptions = {}
 ): Promise<T> {
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
-  let lastError: any;
+  let lastError: unknown;
 
   logger.debug(
     `[RETRY] Starting ${context} (max ${opts.maxRetries + 1} attempts)`
@@ -72,9 +73,8 @@ export async function withRetry<T>(
       );
 
       if (
-        (error instanceof Error && error.name === 'AbortError') ||
-        (typeof (error as any)?.message === 'string' &&
-          /(aborted|abort)/i.test((error as any).message))
+        error instanceof Error &&
+        (error.name === 'AbortError' || /(aborted|abort)/i.test(error.message))
       ) {
         logger.debug(`[RETRY] ${context} - Aborted, stopping retries`);
         throw error;
@@ -102,8 +102,10 @@ export async function withRetry<T>(
   }
 
   // If we got here, all attempts failed
-  const msg = `${context} failed after ${opts.maxRetries + 1} attempts. Last error: ${lastError?.message || 'Unknown error'}`;
-  const wrapped = new Error(msg);
-  (wrapped as any).cause = lastError;
-  throw wrapped;
+  const lastMessage =
+    lastError instanceof Error ? lastError.message : 'Unknown error';
+  throw new Error(
+    `${context} failed after ${opts.maxRetries + 1} attempts. Last error: ${lastMessage}`,
+    { cause: lastError }
+  );
 }
