@@ -37,10 +37,12 @@ export const POST = withApiRoute(
       parts: [{ text: prompt }, ...imageParts],
       // Sampling params are left at model defaults per Gemini 3 guidance
       // (lowering temperature can degrade output). Thinking is bounded to LOW
-      // because the reasoning already happened upstream; on Gemini 3.x the
-      // thinking tokens do not count against maxOutputTokens.
+      // because the reasoning already happened upstream, which also gets the
+      // first streamed field out soonest. maxOutputTokens INCLUDES thinking
+      // tokens (hard cutoff -> finishReason=MAX_TOKENS, truncated JSON), so
+      // the cap leaves generous headroom over the ~1.5K-token report.
       generationConfig: {
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         responseMimeType: 'application/json',
         responseSchema: finalDiagnosisSchema,

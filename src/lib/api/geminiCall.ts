@@ -103,6 +103,7 @@ export async function geminiCall({
     { text: string } | undefined;
   if (textPart) printPrompt(tag, textPart.text);
 
+  const startedAt = Date.now();
   try {
     const response = await getGenAI().models.generateContent({
       model: MODEL_BY_KEY[modelKey],
@@ -128,7 +129,7 @@ export async function geminiCall({
       logger.warn(`${tag} ${modelKey} blocked: ${blockReason}`);
     }
     logger.debug(
-      `${tag} ${modelKey} done | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.length} thinking=${usage.thoughtsTokenCount ?? 0}`
+      `${tag} ${modelKey} done | finish=${finishReason} block=${blockReason || 'none'} textLen=${text.length} thinking=${usage.thoughtsTokenCount ?? 0} ${Date.now() - startedAt}ms`
     );
     return { text, usage, finishReason, blockReason };
   } catch (error) {

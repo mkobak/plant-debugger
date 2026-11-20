@@ -23,10 +23,13 @@ import { logger } from '@/lib/logger';
 
 export const maxDuration = 60;
 
-// Consensus: three parallel opinions. Sampling parameters stay at the Gemini 3
-// defaults (Google advises against lowering temperature); diversity comes from
-// the different thinking depths. Each call is time-boxed so one slow call
-// cannot gate the response — any success proceeds.
+// Consensus: three parallel opinions. Sampling parameters stay at the model
+// defaults (Google has deprecated temperature/top_p); diversity comes from
+// mixing model generations (Gemini 4 Hydrogen + 3.8 Flash). All three use LOW
+// thinking: the step waits for every call (up to its timeout), and Hydrogen
+// at MEDIUM measured ~11s vs ~4-6s at LOW, which delayed the questions screen
+// by ~6s. Each call is time-boxed so one slow call cannot gate the response
+// past its timeout — any success proceeds.
 const CALL_CONFIGS: Array<{
   modelKey: ModelKey;
   thinkingLevel: ThinkingLevel;
@@ -35,7 +38,7 @@ const CALL_CONFIGS: Array<{
 }> = [
   {
     modelKey: 'modelHigh',
-    thinkingLevel: ThinkingLevel.MEDIUM,
+    thinkingLevel: ThinkingLevel.LOW,
     variant: 'deep',
     timeoutMs: 25_000,
   },
@@ -172,7 +175,9 @@ export const POST = withApiRoute(
                 modelKey: 'modelMedium',
                 parts: [{ text: prompt }, ...imageParts],
                 generationConfig: {
-                  maxOutputTokens: 768,
+                  // The cap includes thinking tokens; keep headroom so the
+                  // short answer isn't cut off after the model has thought
+                  maxOutputTokens: 4096,
                   thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
                 },
                 signal,

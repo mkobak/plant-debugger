@@ -4,8 +4,8 @@ import { MODEL_BY_KEY, BUCKET_BY_KEY, PRICES } from '@/lib/api/modelConfig';
 import { costTracker } from '@/lib/costTracker';
 
 describe('model configuration', () => {
-  it('points every tier at a current Gemini 3.x model', () => {
-    expect(MODEL_BY_KEY.modelHigh).toBe('gemini-3.8-flash');
+  it('points every tier at a current Gemini model', () => {
+    expect(MODEL_BY_KEY.modelHigh).toBe('gemini-4-hydrogen');
     expect(MODEL_BY_KEY.modelMedium).toBe('gemini-3.8-flash');
     expect(MODEL_BY_KEY.modelLow).toBe('gemini-3.5-flash-lite');
   });
